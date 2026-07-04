@@ -109,13 +109,17 @@ class ItemInfoParser:
         fallbacks = [e for e in ("euc-kr", "utf-8", "cp1252", "latin-1") if e != preferred]
         for enc in [preferred] + fallbacks:
             try:
-                with open(filepath, "r", encoding=enc, errors="replace") as f:
+                with open(filepath, "r", encoding=enc) as f:
                     raw_lines = f.readlines()
                 break
             except Exception:
                 continue
         else:
-            raise RuntimeError(f"Cannot open {filepath} with any known encoding")
+            try:
+                with open(filepath, "r", encoding=preferred, errors="replace") as f:
+                    raw_lines = f.readlines()
+            except Exception:
+                raise RuntimeError(f"Cannot open {filepath} with any known encoding")
 
         re_entry    = re.compile(r"^\s*\[(\d+)\]\s*=\s*\{")
         re_str_field = re.compile(r"^\s*(\w+)\s*=\s*\"(.*)\"\s*,?\s*$")
@@ -243,11 +247,13 @@ class ItemInfoParser:
     # ── Public read helpers ────────────────────────────────────────────────────
 
     def get_resource_name(self, item_id: int) -> Optional[str]:
-        """Backward-compat: returns identifiedResourceName for the GRF icon resolver."""
+        """Backward-compat: returns identifiedResourceName or unIdentifiedResourceName for the GRF icon resolver."""
         if not self.loaded:
             return None
         entry = self.item_map.get(item_id)
-        return entry.get("identifiedResourceName") if entry else None
+        if not entry:
+            return None
+        return entry.get("identifiedResourceName") or entry.get("unIdentifiedResourceName")
 
     def get_client_item(self, item_id: int) -> Optional[dict]:
         """Returns the full field dict for item_id, or None if not found."""
