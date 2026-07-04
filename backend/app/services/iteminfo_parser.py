@@ -104,22 +104,16 @@ class ItemInfoParser:
 
     def _parse(self, filepath: str):
         """Line-by-line parser for iteminfo.lua. Fast and memory-efficient."""
-        # Try the configured client encoding first, then common fallbacks
-        preferred = cfg.client_encoding
-        fallbacks = [e for e in ("euc-kr", "utf-8", "cp1252", "latin-1") if e != preferred]
-        for enc in [preferred] + fallbacks:
-            try:
-                with open(filepath, "r", encoding=enc) as f:
-                    raw_lines = f.readlines()
-                break
-            except Exception:
-                continue
-        else:
-            try:
-                with open(filepath, "r", encoding=preferred, errors="replace") as f:
-                    raw_lines = f.readlines()
-            except Exception:
-                raise RuntimeError(f"Cannot open {filepath} with any known encoding")
+        # ALWAYS read as latin-1 (byte-transparent).
+        # itemInfo.lua contains EUC-KR encoded Korean text. Latin-1 preserves
+        # every byte as-is (0x00-0xFF → U+0000-U+00FF), which means resource
+        # names stored here will match the GRF filename keys exactly (the GRF
+        # reader also decodes with latin-1).
+        # Display-oriented fields (DisplayName, Description) will look like
+        # mojibake in this internal store, but that's fine — the frontend
+        # re-reads them separately with proper EUC-KR decoding for display.
+        with open(filepath, "r", encoding="latin-1") as f:
+            raw_lines = f.readlines()
 
         re_entry    = re.compile(r"^\s*\[(\d+)\]\s*=\s*\{")
         re_str_field = re.compile(r"^\s*(\w+)\s*=\s*\"(.*)\"\s*,?\s*$")
@@ -284,39 +278,74 @@ class ItemInfoParser:
         self.item_map[item_id] = current
         return current
 
+    def _find_lua_block_bounds(self, content: str, item_id: int) -> Optional[tuple[int, int]]:
+        """
+        Locates the exact start and end character indices of the item_id block
+        in content, respecting nested braces ({}) and strings.
+        Returns (start_idx, end_idx) or None if not found.
+        """
+        pattern = re.compile(r"^\s*\[\s*" + re.escape(str(item_id)) + r"\s*\]\s*=\s*\{", re.MULTILINE)
+        match = pattern.search(content)
+        if not match:
+            return None
+
+        start_idx = match.start()
+        idx = match.end() - 1  # Index of opening '{' of the block
+
+        depth = 0
+        in_str = None
+        escaped = False
+
+        while idx < len(content):
+            char = content[idx]
+
+            if in_str:
+                if escaped:
+                    escaped = False
+                elif char == '\\':
+                    escaped = True
+                elif char == in_str:
+                    in_str = None
+            else:
+                if char in ('"', "'"):
+                    in_str = char
+                elif char == '{':
+                    depth += 1
+                elif char == '}':
+                    depth -= 1
+                    if depth == 0:
+                        idx += 1
+                        # Include trailing comma, semicolon, or spaces
+                        while idx < len(content) and content[idx] in (' ', '\t', ',', ';'):
+                            idx += 1
+                        # Include trailing newline if present
+                        if idx < len(content) and content[idx] == '\n':
+                            idx += 1
+                        elif idx + 1 < len(content) and content[idx:idx+2] == '\r\n':
+                            idx += 2
+                        return (start_idx, idx)
+
+            idx += 1
+
+        return None
+
     def _write_block(self, item_id: int, fields: dict):
         """
         Reads the entire Lua file, replaces (or inserts) the block for item_id,
         and writes the result back atomically via a temp file.
         """
-        preferred = cfg.client_encoding
-        fallbacks = [e for e in ("euc-kr", "utf-8", "cp1252", "latin-1") if e != preferred]
-        for enc in [preferred] + fallbacks:
-            try:
-                with open(self.iteminfo_path, "r", encoding=enc, errors="replace") as f:
-                    content = f.read()
-                chosen_enc = enc
-                break
-            except Exception:
-                continue
-        else:
-            raise RuntimeError(f"Cannot read {self.iteminfo_path}")
+        # ALWAYS read/write as latin-1 (byte-transparent) to preserve raw EUC-KR bytes
+        with open(self.iteminfo_path, "r", encoding="latin-1") as f:
+            content = f.read()
 
         new_block = _render_block(item_id, fields)
+        bounds = self._find_lua_block_bounds(content, item_id)
 
-        # Build a regex that matches the entire [id] = { … }, block
-        # We match from [id] = { up to (and including) the closing },
-        # using DOTALL so . also matches newlines.
-        pattern = re.compile(
-            r"\[\s*" + re.escape(str(item_id)) + r"\s*\]\s*=\s*\{.*?\},",
-            re.DOTALL,
-        )
-
-        if pattern.search(content):
-            new_content = pattern.sub(new_block.rstrip("\n"), content, count=1)
+        if bounds:
+            start_idx, end_idx = bounds
+            new_content = content[:start_idx] + new_block + content[end_idx:]
         else:
             # Item not in file: insert before the final closing brace/end of table
-            # Find the last `}` that closes the tbl variable (e.g. `tbl = { … }`)
             insert_point = content.rfind("\n}")
             if insert_point == -1:
                 insert_point = len(content)
@@ -327,9 +356,9 @@ class ItemInfoParser:
                 + content[insert_point:]
             )
 
-        # Write atomically (temp → rename)
+        # Write atomically (temp → rename) with latin-1
         tmp_path = self.iteminfo_path + ".tmp"
-        with open(tmp_path, "w", encoding=chosen_enc, errors="replace") as f:
+        with open(tmp_path, "w", encoding="latin-1") as f:
             f.write(new_content)
         os.replace(tmp_path, self.iteminfo_path)
 

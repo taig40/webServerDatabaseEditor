@@ -4,7 +4,14 @@ import os
 import io
 from PIL import Image
 from typing import Optional
-from app.core.config import cfg
+
+# The Korean folder name for item icons inside the GRF.
+# GRF filenames are raw EUC-KR bytes; we store them decoded as latin-1
+# (byte-transparent) so the codepoints == the original byte values.
+# "유저인터페이스" in EUC-KR = bytes C0AF C0FA C0CE C5CD C6E4 C0CC BDBA
+_KOREAN_UI_FOLDER = b'\xc0\xaf\xc0\xfa\xc0\xce\xc5\xcd\xc6\xe4\xc0\xcc\xbd\xba'.decode('latin-1').lower()
+_KOREAN_ITEM_FOLDER = b'\xbe\xc6\xc0\xcc\xc5\xdb'.decode('latin-1').lower()  # 아이템
+_KOREAN_MONSTER_FOLDER = b'\xb8\xf3\xbd\xba\xc5\xcd'.decode('latin-1').lower()  # 몬스터
 
 # Maximum number of GRF files supported, mirroring the official RO client DATA.INI limit.
 MAX_GRF_SLOTS = 10
@@ -72,10 +79,11 @@ class _SingleGRF:
                     if str_end == -1:
                         break
 
-                    try:
-                        filename = table_data[idx:str_end].decode(cfg.client_encoding).lower()
-                    except Exception:
-                        filename = table_data[idx:str_end].decode('latin1').lower()
+                    # ALWAYS decode as latin-1 (byte-transparent).
+                    # GRF filenames are raw EUC-KR bytes; latin-1 preserves
+                    # them exactly (each byte 0x00-0xFF maps to the same
+                    # Unicode codepoint), ensuring consistent key matching.
+                    filename = table_data[idx:str_end].decode('latin-1').lower()
 
                     idx = str_end + 1
 
@@ -113,10 +121,22 @@ class _SingleGRF:
                 adjusted = filename[5:]
             else:
                 adjusted = filename
+
             full = os.path.join(self.path, adjusted).replace('\\', '/')
             if os.path.exists(full):
                 with open(full, 'rb') as f:
                     return f.read()
+
+            # Try decoding latin-1 byte representation to EUC-KR for real OS Unicode path
+            try:
+                os_adjusted = adjusted.encode('latin-1').decode('euc-kr')
+                full_os = os.path.join(self.path, os_adjusted).replace('\\', '/')
+                if os.path.exists(full_os):
+                    with open(full_os, 'rb') as f:
+                        return f.read()
+            except Exception:
+                pass
+
             return None
 
         if filename not in self.files:
@@ -297,18 +317,26 @@ class GRFReader:
         return out.getvalue()
 
     def get_item_icon(self, item_id: int) -> bytes:
-        """Locates an item icon inside the GRF(s) and returns it as a PNG stream."""
+        """
+        Locates an item icon inside the GRF(s) and returns it as a PNG stream.
+
+        All GRF filenames are stored as latin-1 decoded EUC-KR bytes.
+        Resource names from itemInfo.lua are also latin-1 bytes (since we
+        parse the Lua with latin-1 encoding).  This ensures the two always
+        match without any re-encoding gymnastics.
+        """
         if not self.loaded:
             return self.generate_dummy_png()
 
         from app.services.iteminfo_parser import iteminfo_db
         from app.services.yaml_parser import yaml_db
 
+        # 1. Get the resource name (already latin-1 byte-transparent)
         resource_name = None
-
         if iteminfo_db.loaded:
             resource_name = iteminfo_db.get_resource_name(item_id)
 
+        # 2. Fallback to AegisName / numeric ID
         if not resource_name:
             resource_name = str(item_id)
             if item_id in yaml_db.item_index:
@@ -320,20 +348,14 @@ class GRFReader:
                             resource_name = item.get('Name', str(item_id))
                             break
 
-        try:
-            resource_ansi = resource_name.encode('euc-kr').decode('latin1')
-        except Exception:
-            resource_ansi = resource_name
-
+        # 3. Build search paths using the byte-transparent Korean folder constant
+        #    _KOREAN_UI_FOLDER is the EUC-KR bytes of "유저인터페이스" decoded as latin-1,
+        #    which is exactly how _SingleGRF.load() stores the GRF keys.
         paths_to_try = [
-            f"data/texture/유저인터페이스/item/{resource_name}.bmp".lower(),
-            f"data/texture/유저인터페이스/item/{item_id}.bmp".lower(),
-            f"data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/item/{resource_name}.bmp".lower(),
-            f"data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/item/{item_id}.bmp".lower(),
+            f"data/texture/{_KOREAN_UI_FOLDER}/item/{resource_name}.bmp".lower(),
+            f"data/texture/{_KOREAN_UI_FOLDER}/item/{item_id}.bmp".lower(),
             f"data/texture/userinterface/item/{resource_name}.bmp".lower(),
             f"data/texture/userinterface/item/{item_id}.bmp".lower(),
-            f"data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/item/{resource_ansi}.bmp".lower(),
-            f"data/texture/userinterface/item/{resource_ansi}.bmp".lower(),
         ]
 
         for path in paths_to_try:
@@ -344,6 +366,110 @@ class GRFReader:
                     return png_data
 
         return self.generate_dummy_png()
+
+    def get_icon_by_resource_name(self, resource_name: str) -> Optional[bytes]:
+        """Returns PNG bytes of item icon BMP matching resource_name."""
+        if not self.loaded or not resource_name:
+            return None
+        paths_to_try = [
+            f"data/texture/{_KOREAN_UI_FOLDER}/item/{resource_name}.bmp".lower(),
+            f"data/texture/userinterface/item/{resource_name}.bmp".lower(),
+        ]
+        for path in paths_to_try:
+            bmp_data = self.extract_file(path)
+            if bmp_data:
+                return self.convert_bmp_to_png(bmp_data)
+        return None
+
+    def get_collection_by_resource_name(self, resource_name: str) -> Optional[bytes]:
+        """Returns PNG bytes of item collection BMP matching resource_name."""
+        if not self.loaded or not resource_name:
+            return None
+        paths_to_try = [
+            f"data/texture/{_KOREAN_UI_FOLDER}/collection/{resource_name}.bmp".lower(),
+            f"data/texture/userinterface/collection/{resource_name}.bmp".lower(),
+            f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.bmp".lower(),
+            f"data/sprite/item/{resource_name}.bmp".lower(),
+        ]
+        for path in paths_to_try:
+            bmp_data = self.extract_file(path)
+            if bmp_data:
+                return self.convert_bmp_to_png(bmp_data)
+        return None
+
+    def list_grf_assets(self, asset_type: str = "item_icon", query: str = "", skip: int = 0, limit: int = 60) -> dict:
+        """
+        Lists available resource assets from loaded GRFs matching a query.
+        Returns { "total": int, "items": [{"resource_name": str, "display_name": str, "item_id": int|None}] }
+        """
+        if not self.loaded:
+            return {"total": 0, "items": []}
+
+        from app.services.iteminfo_parser import iteminfo_db
+
+        # Build map of resource_name -> (item_id, display_name)
+        res_map = {}
+        if iteminfo_db.loaded:
+            for item_id, entry in iteminfo_db.item_map.items():
+                rname = entry.get("identifiedResourceName")
+                dname = entry.get("identifiedDisplayName", "")
+                if rname:
+                    res_map[rname.lower()] = (item_id, dname)
+
+        if asset_type == "item_collection":
+            prefixes = [
+                f"data/texture/{_KOREAN_UI_FOLDER}/collection/".lower(),
+                "data/texture/userinterface/collection/".lower(),
+                f"data/sprite/{_KOREAN_ITEM_FOLDER}/".lower(),
+                "data/sprite/item/".lower(),
+            ]
+        else:
+            prefixes = [
+                f"data/texture/{_KOREAN_UI_FOLDER}/item/".lower(),
+                "data/texture/userinterface/item/".lower(),
+            ]
+
+        found_resources = set()
+
+        for grf in self._grfs:
+            for k in grf.files.keys():
+                if any(k.startswith(p) for p in prefixes) and k.endswith(".bmp"):
+                    basename = os.path.basename(k)
+                    if basename.endswith(".bmp"):
+                        res_name = basename[:-4]
+                        if res_name:
+                            found_resources.add(res_name)
+
+        # Also add resources from iteminfo_db
+        for rname in res_map.keys():
+            found_resources.add(rname)
+
+        results = []
+        q_lower = query.strip().lower()
+
+        for res in sorted(found_resources):
+            mapped = res_map.get(res.lower())
+            item_id = mapped[0] if mapped else None
+            display_name = mapped[1] if mapped else ""
+
+            if q_lower:
+                match = (
+                    q_lower in res.lower() or
+                    (display_name and q_lower in display_name.lower()) or
+                    (item_id is not None and q_lower in str(item_id))
+                )
+                if not match:
+                    continue
+
+            results.append({
+                "resource_name": res,
+                "display_name": display_name,
+                "item_id": item_id,
+            })
+
+        total = len(results)
+        paged = results[skip:skip + limit]
+        return {"total": total, "items": paged}
 
     # ── Asset write helpers ────────────────────────────────────────────────
 
@@ -372,6 +498,13 @@ class GRFReader:
         if root_norm.endswith('/data') and rel.startswith('data/'):
             rel = rel[5:]
 
+        # Convert latin-1 byte-transparent string to EUC-KR decoded Unicode string
+        # for standard OS filesystem creation
+        try:
+            rel = rel.encode('latin-1').decode('euc-kr')
+        except Exception:
+            pass
+
         abs_path = os.path.join(root, rel).replace('\\', '/')
         os.makedirs(os.path.dirname(abs_path), exist_ok=True)
         with open(abs_path, 'wb') as f:
@@ -381,21 +514,21 @@ class GRFReader:
 
     def save_item_icon(self, resource_name: str, bmp_bytes: bytes) -> str:
         """Saves a BMP icon for an item under the standard RO texture path."""
-        return self._save_asset(f"data/texture/유저인터페이스/item/{resource_name}.bmp", bmp_bytes)
+        return self._save_asset(f"data/texture/{_KOREAN_UI_FOLDER}/item/{resource_name}.bmp", bmp_bytes)
 
     def save_item_collection(self, resource_name: str, bmp_bytes: bytes) -> str:
         """Saves a BMP collection sprite for an item under the standard RO sprite path."""
-        return self._save_asset(f"data/sprite/아이템/{resource_name}.bmp", bmp_bytes)
+        return self._save_asset(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.bmp", bmp_bytes)
 
     def save_mob_spr(self, aegis_name: str, spr_bytes: bytes) -> str:
         """
         Saves a .spr sprite file for a monster — picked up automatically by find_mob_files().
         """
-        return self._save_asset(f"data/sprite/몬스터/{aegis_name}.spr", spr_bytes)
+        return self._save_asset(f"data/sprite/{_KOREAN_MONSTER_FOLDER}/{aegis_name}.spr", spr_bytes)
 
     def save_mob_act(self, aegis_name: str, act_bytes: bytes) -> str:
         """Saves a .act action file for a monster."""
-        return self._save_asset(f"data/sprite/몬스터/{aegis_name}.act", act_bytes)
+        return self._save_asset(f"data/sprite/{_KOREAN_MONSTER_FOLDER}/{aegis_name}.act", act_bytes)
 
 
 grf_reader = GRFReader()

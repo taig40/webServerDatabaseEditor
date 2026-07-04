@@ -97,21 +97,21 @@ const ClientItemEditor: React.FC = () => {
         <div className="p-4 border-b border-white/5 bg-gradient-to-b from-[#1a1a28] to-[#12121a]">
           <div className="flex items-center gap-2 mb-3">
             <BookOpen size={16} className="text-cyan-400" />
-            <h2 className="text-gray-200 font-semibold text-sm">Itens (Cliente)</h2>
+            <h2 className="text-gray-200 font-semibold text-sm">Client Items (ItemInfo)</h2>
           </div>
 
           <div className="relative">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
             <input
               type="text"
-              placeholder="Buscar por ID, Nome..."
+              placeholder="Search by ID, Name..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="w-full bg-[#0f0f14] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
             />
           </div>
           <div className="text-[10px] text-gray-600 mt-2 font-mono">
-            {filteredItems.length.toLocaleString()} itens
+            {filteredItems.length.toLocaleString()} items
           </div>
         </div>
 
@@ -164,8 +164,8 @@ const ClientItemEditor: React.FC = () => {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-600">
             <Package size={56} className="mb-4 opacity-20" />
-            <h3 className="text-lg font-medium text-gray-500">Nenhum Item Selecionado</h3>
-            <p className="text-sm mt-1">Selecione um item na lista para editar os dados do cliente.</p>
+            <h3 className="text-lg font-medium text-gray-500">No Item Selected</h3>
+            <p className="text-sm mt-1">Select an item from the list to edit its client info.</p>
           </div>
         )}
       </div>

@@ -10,19 +10,28 @@ def get_first_frame_png(mob_id: int, fallback_aegis: str = None) -> bytes:
         return None
         
     sprite_name = sprite_name.lower()
-    spr_path = f"data/sprite/npc/{sprite_name}.spr"
-    act_path = f"data/sprite/npc/{sprite_name}.act"
-    
-    if spr_path not in grf_reader.files:
-        spr_path = f"data/sprite/\xc6\xe4\xb1\xe2\xb8\xf3\xbd\xba\xc5\xcd/{sprite_name}.spr"
-        act_path = f"data/sprite/\xc6\xe4\xb1\xe2\xb8\xf3\xbd\xba\xc5\xcd/{sprite_name}.act"
-        
-    if spr_path not in grf_reader.files:
-        return None
-        
-    spr_bytes = grf_reader.extract_file(spr_path)
-    act_bytes = grf_reader.extract_file(act_path)
-    
+    # Define potential sprite folder prefixes to try
+    from app.services.grf_reader import _KOREAN_MONSTER_FOLDER
+    _KOREAN_DISCARDED_MONSTER_FOLDER = b'\xc6\xe4\xb1\xe2\xb8\xf3\xbd\xba\xc5\xcd'.decode('latin-1')
+
+    folders_to_try = [
+        f"data/sprite/{_KOREAN_MONSTER_FOLDER}",
+        f"data/sprite/{_KOREAN_DISCARDED_MONSTER_FOLDER}",
+        "data/sprite/monster",
+        "data/sprite/npc",
+    ]
+
+    spr_bytes = None
+    act_bytes = None
+
+    for folder in folders_to_try:
+        spr_p = f"{folder}/{sprite_name}.spr"
+        act_p = f"{folder}/{sprite_name}.act"
+        spr_bytes = grf_reader.extract_file(spr_p)
+        if spr_bytes:
+            act_bytes = grf_reader.extract_file(act_p)
+            break
+
     if not spr_bytes or not act_bytes:
         return None
         
