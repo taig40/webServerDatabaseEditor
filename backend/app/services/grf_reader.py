@@ -3,6 +3,7 @@ import zlib
 import os
 import io
 from PIL import Image
+from typing import Optional
 
 class GRFReader:
     def __init__(self):
@@ -10,18 +11,26 @@ class GRFReader:
         self.files = {} # path -> (comp_size, comp_size_aligned, uncomp_size, flags, offset)
         self.loaded = False
         self.is_folder = False
+        # Folder used when saving new assets (icon / collection sprites).
+        # If GRF_PATH is already a folder this equals grf_path; otherwise it
+        # must be set from the GRF_OVERRIDE_PATH env variable.
+        self.override_path: str = ""
 
-    def load(self, grf_path: str):
+    def load(self, grf_path: str, override_path: str = ""):
         self.grf_path = grf_path
         if not os.path.exists(self.grf_path):
             print(f"[!] GRF path not found at {self.grf_path}")
             return
-            
+
         self.is_folder = os.path.isdir(self.grf_path)
         if self.is_folder:
             print(f"[*] GRF path is a directory! Using raw file mode from: {self.grf_path}")
+            self.override_path = self.grf_path
             self.loaded = True
             return
+
+        # Binary GRF — override_path is where we write new asset files
+        self.override_path = override_path or ""
             
         with open(self.grf_path, 'rb') as f:
             header = f.read(46)
@@ -207,5 +216,60 @@ class GRFReader:
                     return png_data
                     
         return self.generate_dummy_png()
+
+    # ── Asset write helpers ────────────────────────────────────────────────
+
+    def _resolve_write_root(self) -> Optional[str]:
+        """
+        Returns the filesystem root where we can write GRF-relative paths.
+        Returns None if no writable location is configured.
+        """
+        if self.override_path and os.path.isdir(self.override_path):
+            return self.override_path
+        if self.is_folder and self.grf_path:
+            return self.grf_path
+        return None
+
+    def _save_asset(self, grf_relative_path: str, data: bytes) -> str:
+        """
+        Saves *data* to <write_root>/<grf_relative_path>, creating dirs as needed.
+        Returns the absolute path written, or raises RuntimeError.
+        """
+        root = self._resolve_write_root()
+        if not root:
+            raise RuntimeError(
+                "No writable GRF path configured. "
+                "Set GRF_OVERRIDE_PATH in your .env when using a binary .grf file."
+            )
+
+        # If root already ends with 'data' and path starts with 'data/', avoid duplication
+        rel = grf_relative_path.replace("\\", "/")
+        root_norm = root.rstrip("/\\").replace("\\", "/")
+        if root_norm.endswith("/data") and rel.startswith("data/"):
+            rel = rel[5:]
+
+        abs_path = os.path.join(root, rel).replace("\\", "/")
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        with open(abs_path, "wb") as f:
+            f.write(data)
+        print(f"[*] Asset saved: {abs_path}")
+        return abs_path
+
+    def save_item_icon(self, resource_name: str, bmp_bytes: bytes) -> str:
+        """
+        Saves a BMP icon for an item under the standard RO texture path.
+        Tries the Korean unicode path first, then the ANSI-encoded variant.
+        """
+        # Standard path inside the GRF data tree
+        grf_path = f"data/texture/유저인터페이스/item/{resource_name}.bmp"
+        return self._save_asset(grf_path, bmp_bytes)
+
+    def save_item_collection(self, resource_name: str, bmp_bytes: bytes) -> str:
+        """
+        Saves a BMP collection sprite for an item under the standard RO sprite path.
+        """
+        grf_path = f"data/sprite/아이템/{resource_name}.bmp"
+        return self._save_asset(grf_path, bmp_bytes)
+
 
 grf_reader = GRFReader()

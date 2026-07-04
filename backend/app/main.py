@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets
+from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
 from app.services.grf_reader import grf_reader
@@ -111,7 +111,8 @@ async def lifespan(app: FastAPI):
         print(f"[*] Disparado o processo de parse assíncrono de monstros a partir de '{mob_db_path}'.")
     
     if grf_path:
-        grf_reader.load(grf_path)
+        override_path = os.environ.get("GRF_OVERRIDE_PATH", "")
+        grf_reader.load(grf_path, override_path=override_path)
         
     if iteminfo_path:
         iteminfo_db.load_background(iteminfo_path)
@@ -147,14 +148,15 @@ async def lifespan(app: FastAPI):
 app.router.lifespan_context = lifespan
 
 # Register routers
-app.include_router(items.router, prefix="/api/items", tags=["items"])
-app.include_router(grf.router, prefix="/api/grf", tags=["grf"])
-app.include_router(mobs.router, prefix="/api/mobs", tags=["mobs"])
-app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
-app.include_router(mob_skills.router, prefix="/api/mob_skills", tags=["mob_skills"])
-app.include_router(combos.router, prefix="/api/combos", tags=["combos"])
-app.include_router(quests.router, prefix="/api/quests", tags=["quests"])
-app.include_router(pets.router, prefix="/api/pets", tags=["pets"])
+app.include_router(items.router,        prefix="/api/items",        tags=["items"])
+app.include_router(grf.router,          prefix="/api/grf",          tags=["grf"])
+app.include_router(mobs.router,         prefix="/api/mobs",         tags=["mobs"])
+app.include_router(skills.router,       prefix="/api/skills",       tags=["skills"])
+app.include_router(mob_skills.router,   prefix="/api/mob_skills",   tags=["mob_skills"])
+app.include_router(combos.router,       prefix="/api/combos",       tags=["combos"])
+app.include_router(quests.router,       prefix="/api/quests",       tags=["quests"])
+app.include_router(pets.router,         prefix="/api/pets",         tags=["pets"])
+app.include_router(client_items.router, prefix="/api/client_items", tags=["client_items"])
 
 @app.get("/")
 def read_root():
