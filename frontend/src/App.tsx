@@ -8,9 +8,13 @@ import ComboEditor from './pages/ComboEditor';
 import QuestEditor from './pages/QuestEditor';
 import PetEditor from './pages/PetEditor';
 import ClientItemEditor from './pages/ClientItemEditor';
+import AchievementEditor from './pages/AchievementEditor';
+import SettingsPage from './pages/SettingsPage';
+
+type ActiveView = ModuleId | 'settings';
 
 function App() {
-  const [activeView, setActiveView] = useState<ModuleId>('items');
+  const [activeView, setActiveView] = useState<ActiveView>('items');
 
   const renderContent = () => {
     switch (activeView) {
@@ -22,6 +26,8 @@ function App() {
       case 'server_quests':  return <QuestEditor />;
       case 'pets':           return <PetEditor />;
       case 'client_items':   return <ClientItemEditor />;
+      case 'server_achievements': return <AchievementEditor />;
+      case 'settings':       return <SettingsPage />;
       default:               return (
         <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-600">
           <span className="text-5xl">🚧</span>
@@ -33,7 +39,11 @@ function App() {
   };
 
   return (
-    <Layout activeView={activeView} onViewChange={setActiveView}>
+    <Layout
+      activeView={activeView}
+      onViewChange={(v: ModuleId) => setActiveView(v)}
+      onSettingsClick={() => setActiveView('settings')}
+    >
       {renderContent()}
     </Layout>
   );

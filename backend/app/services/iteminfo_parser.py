@@ -2,6 +2,7 @@ import os
 import re
 import threading
 from typing import Optional
+from app.core.config import cfg
 
 # ─── Default block template ────────────────────────────────────────────────────
 # Used when generating a brand-new entry that didn't previously exist in the Lua.
@@ -103,8 +104,10 @@ class ItemInfoParser:
 
     def _parse(self, filepath: str):
         """Line-by-line parser for iteminfo.lua. Fast and memory-efficient."""
-        # Try EUC-KR first (Korean clients), fall back to UTF-8
-        for enc in ("euc-kr", "utf-8", "latin-1"):
+        # Try the configured client encoding first, then common fallbacks
+        preferred = cfg.client_encoding
+        fallbacks = [e for e in ("euc-kr", "utf-8", "cp1252", "latin-1") if e != preferred]
+        for enc in [preferred] + fallbacks:
             try:
                 with open(filepath, "r", encoding=enc, errors="replace") as f:
                     raw_lines = f.readlines()
@@ -280,7 +283,9 @@ class ItemInfoParser:
         Reads the entire Lua file, replaces (or inserts) the block for item_id,
         and writes the result back atomically via a temp file.
         """
-        for enc in ("euc-kr", "utf-8", "latin-1"):
+        preferred = cfg.client_encoding
+        fallbacks = [e for e in ("euc-kr", "utf-8", "cp1252", "latin-1") if e != preferred]
+        for enc in [preferred] + fallbacks:
             try:
                 with open(self.iteminfo_path, "r", encoding=enc, errors="replace") as f:
                     content = f.read()

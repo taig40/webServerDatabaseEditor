@@ -14,6 +14,7 @@ Save rules (as specified by project owner):
 import os
 import threading
 from typing import Optional
+from app.core.config import cfg
 
 
 FIELDS = [
@@ -147,7 +148,7 @@ class MobSkillDatabase:
     def _read_file(self, filepath: str):
         lines = []
         entries = []
-        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+        with open(filepath, 'r', encoding=cfg.server_encoding, errors='replace') as f:
             for i, line in enumerate(f):
                 lines.append(line)
                 entry = _parse_line(line, i)
@@ -179,7 +180,7 @@ class MobSkillDatabase:
         return any(e['mob_id'] == mob_id for e in self._original_entries)
 
     def _save_file(self, filepath: str, lines: list[str]):
-        with open(filepath, 'w', encoding='utf-8', newline='\r\n') as f:
+        with open(filepath, 'w', encoding=cfg.server_encoding, newline='\r\n') as f:
             f.writelines(lines)
 
     def update_entry(self, line_index: int, updated_data: dict) -> Optional[dict]:
@@ -232,7 +233,7 @@ class MobSkillDatabase:
                 os.makedirs(os.path.dirname(self.import_path), exist_ok=True)
                 header = '// Mob Skill Database — Custom Import\r\n// MobID,DummyName,State,SkillID,SkillLv,Rate,CastTime,Delay,Cancelable,Target,ConditionType,ConditionValue,Val1,Val2,Val3,Val4,Val5,Emotion,Chat\r\n'
                 self._import_lines = [header]
-                with open(self.import_path, 'w', encoding='utf-8', newline='\r\n') as f:
+                with open(self.import_path, 'w', encoding=cfg.server_encoding, newline='\r\n') as f:
                     f.write(header)
 
             line_index = len(self._import_lines)
