@@ -79,7 +79,20 @@ const ItemEditor: React.FC = () => {
 
   const filteredItems = useMemo(() => {
     if (!searchText) return activeItems;
-    const lower = searchText.toLowerCase();
+    const lower = searchText.toLowerCase().trim();
+
+    if (lower.startsWith('[script]')) {
+      let query = lower.slice(8).trim();
+      if (query.startsWith(':')) {
+        query = query.slice(1).trim();
+      }
+      return activeItems.filter(item =>
+        (item.Script && String(item.Script).toLowerCase().includes(query)) ||
+        (item.EquipScript && String(item.EquipScript).toLowerCase().includes(query)) ||
+        (item.UnequipScript && String(item.UnequipScript).toLowerCase().includes(query))
+      );
+    }
+
     return activeItems.filter(item =>
       String(item.Id).includes(lower) ||
       (item.Name && item.Name.toLowerCase().includes(lower)) ||
