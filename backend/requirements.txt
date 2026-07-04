@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+ruamel.yaml
+pydantic
+Pillow
+python-dotenv
