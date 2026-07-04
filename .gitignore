@@ -14,3 +14,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Vite config timestamp files
+*.timestamp-*
+
