@@ -31,8 +31,19 @@ class GRFReader:
             if version not in (0x200, 0x300):
                 print(f"[!] Warning: Unexpected GRF version (got {hex(version)}). File table might fail.")
                 
-            f.seek(offset + 46)
-            table_comp_size, table_uncomp_size = struct.unpack('<I I', f.read(8))
+            # Handle 4GB offset overflow
+            file_size = os.path.getsize(self.grf_path)
+            actual_offset = offset
+            while file_size > 4294967296 and actual_offset + 46 < file_size - 100000000:
+                actual_offset += 4294967296
+                
+            f.seek(actual_offset + 46)
+            if version == 0x300:
+                # 0x300 table header is 12 bytes
+                val1, table_comp_size, table_uncomp_size = struct.unpack('<I I I', f.read(12))
+            else:
+                table_comp_size, table_uncomp_size = struct.unpack('<I I', f.read(8))
+                
             table_data_comp = f.read(table_comp_size)
             
             try:
@@ -43,6 +54,7 @@ class GRFReader:
                 
             # Parse file table
             idx = 0
+            raw_entries = []
             while idx < len(table_data):
                 str_end = table_data.find(b'\x00', idx)
                 if str_end == -1: break
@@ -54,9 +66,14 @@ class GRFReader:
                     
                 idx = str_end + 1
                 
-                if idx + 17 > len(table_data): break
-                comp_size, comp_size_aligned, uncomp_size, flags, file_offset = struct.unpack('<I I I B I', table_data[idx:idx+17])
-                idx += 17
+                if version == 0x300:
+                    if idx + 21 > len(table_data): break
+                    comp_size, comp_size_aligned, uncomp_size, flags, file_offset = struct.unpack('<I I I B Q', table_data[idx:idx+21])
+                    idx += 21
+                else:
+                    if idx + 17 > len(table_data): break
+                    comp_size, comp_size_aligned, uncomp_size, flags, file_offset = struct.unpack('<I I I B I', table_data[idx:idx+17])
+                    idx += 17
                 
                 filename = filename.replace('\\', '/')
                 self.files[filename] = (comp_size, comp_size_aligned, uncomp_size, flags, file_offset)
@@ -64,14 +81,7 @@ class GRFReader:
             self.loaded = True
             print(f"[*] GRF Loaded: {len(self.files)} files mapped.")
             
-            # --- DEBUG BLOCK ---
-            count = 0
-            for k in self.files.keys():
-                if 'item' in k and k.endswith('.bmp'):
-                    print("SAMPLE GRF ITEM PATH:", k)
-                    count += 1
-                    if count > 5: break
-            # -------------------
+            # --- DEBUG BLOCK DISABLED ---
 
     def extract_file(self, filename: str) -> bytes:
         if not self.loaded:

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config/env';
 
 interface NewItemModalProps {
   onClose: () => void;
@@ -56,7 +57,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
       if (payload.Type !== 'Armor') delete payload.Defense;
       if (payload.Type !== 'Weapon' && payload.Type !== 'Armor') delete payload.EquipLevelMin;
 
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/items/`, payload);
+      const response = await axios.post(`${API_URL}/api/items/`, payload);
       onItemCreated(response.data);
       onClose();
     } catch (err: any) {

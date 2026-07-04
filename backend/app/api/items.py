@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Query, HTTPException
 from app.services.yaml_parser import yaml_db
+from app.services.mob_parser import mob_db
+from app.services.npc_parser import npc_db
 
 router = APIRouter()
 
@@ -13,6 +15,38 @@ async def get_status():
         "message": yaml_db.loading_status,
         "items_loaded": yaml_db.items_loaded
     }
+
+@router.get("/{item_id}/sold_by")
+async def get_item_sold_by(item_id: int):
+    """
+    Returns a list of shops that sell the given item.
+    """
+    item = yaml_db.get_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+        
+    shops = npc_db.get_shops_selling_item(item_id, item.get('AegisName'))
+    
+    result = []
+    for s in shops:
+        price = s['items'].get(item_id)
+        if price is None and item.get('AegisName') in s['items']:
+            price = s['items'][item.get('AegisName')]
+            
+        if price == -1:
+            price = item.get('Buy', 0)
+            
+        result.append({
+            "map": s['map'],
+            "x": s['x'],
+            "y": s['y'],
+            "name": s['name'],
+            "full_name": s['full_name'],
+            "sprite_id": s['sprite_id'],
+            "price": price,
+            "all_items": s['items']
+        })
+    return result
 
 @router.get("/")
 async def get_items(
@@ -40,6 +74,50 @@ async def get_items(
 
 from app.models.item import ItemUpdate
 from fastapi import HTTPException
+from typing import List, Dict
+
+@router.get("/{item_id}/dropped_by")
+async def get_item_dropped_by(item_id: int):
+    """
+    Retorna a lista de monstros que dropam este item.
+    """
+    if yaml_db.is_loading:
+        raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando.")
+        
+    # Primeiro acha o item pelo ID para pegar o AegisName
+    items = yaml_db.get_items()
+    target_item = next((i for i in items if i.get("Id") == item_id), None)
+    if not target_item:
+        raise HTTPException(status_code=404, detail=f"Item with Id {item_id} not found")
+        
+    aegis_name = target_item.get("AegisName")
+    if not aegis_name:
+        return []
+
+    # Busca no mob_db os monstros que dropam este AegisName
+    from app.services.mob_parser import mob_db
+    if mob_db.is_loading:
+        raise HTTPException(status_code=503, detail="O banco de monstros ainda está carregando.")
+        
+    mobs = mob_db.get_mobs()
+    droppers = []
+    
+    for mob in mobs:
+        drops = mob.get("Drops", [])
+        if drops:
+            for drop in drops:
+                # O formato do drop é {"Item": "AegisName", "Rate": 100}
+                if drop.get("Item") == aegis_name:
+                    droppers.append({
+                        "MobId": mob.get("Id"),
+                        "MobName": mob.get("Name"),
+                        "MobAegisName": mob.get("AegisName"),
+                        "Rate": drop.get("Rate", 0),
+                        "Type": "Normal" # Podemos refinar se tivermos StealProtected ou Mvp
+                    })
+                    
+    return droppers
+
 
 @router.put("/{item_id}")
 async def update_item(item_id: int, item_data: ItemUpdate):

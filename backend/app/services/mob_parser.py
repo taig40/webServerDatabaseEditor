@@ -2,46 +2,44 @@ from ruamel.yaml import YAML
 import os
 import threading
 
-class YamlDatabase:
+class MobDatabase:
     def __init__(self):
-        # Configuração do ruamel.yaml para preservar formatação e comentários originais
+        # Configure ruamel.yaml to preserve formatting and comments
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
         self.yaml.allow_duplicate_keys = True
         self.yaml.indent(mapping=2, sequence=4, offset=2)
         
-        # Mapeamento de: caminho_absoluto -> objeto_yaml_parseado
+        # Absolute path -> Parsed YAML object
         self.db_cache = {}
         
-        # Índice rápido para saber em qual arquivo um item mora: ID -> caminho_absoluto
-        self.item_index = {}
+        # ID -> Absolute path of the file containing the mob
+        self.mob_index = {}
         
         self.rathena_root = ""
         
-        # Estados para a Thread de Carregamento Assíncrono
+        # Async loading state
         self.is_loading = False
         self.loading_status = "Aguardando inicialização..."
-        self.items_loaded = 0
+        self.mobs_loaded = 0
 
     def load_db_async(self, main_filepath: str):
-        """Inicia o processo de leitura em uma Thread separada para não bloquear a API."""
         if self.is_loading:
             return
             
         self.is_loading = True
-        self.items_loaded = 0
-        self.loading_status = "Iniciando engine de parse YAML..."
+        self.mobs_loaded = 0
+        self.loading_status = "Iniciando engine de parse de monstros YAML..."
         
         thread = threading.Thread(target=self._load_db_sync, args=(main_filepath,))
         thread.daemon = True
         thread.start()
 
     def _load_db_sync(self, main_filepath: str):
-        """Função encapsuladora que executa na thread background."""
         try:
             self.load_db(main_filepath)
         except Exception as e:
-            print(f"[!] Erro fatal no carregamento background: {e}")
+            print(f"[!] Erro fatal no carregamento background de monstros: {e}")
             self.loading_status = f"Erro: {e}"
         finally:
             self.is_loading = False
@@ -49,16 +47,13 @@ class YamlDatabase:
                 self.loading_status = "Carregamento Finalizado."
 
     def load_db(self, main_filepath: str):
-        """
-        Carrega o arquivo principal e extrai o root_path para resolver os imports.
-        """
         main_filepath = main_filepath.replace("\\", "/")
         if not os.path.exists(main_filepath):
             self.loading_status = f"Arquivo não encontrado: {main_filepath}"
             print(f"[!] {self.loading_status}")
             return
             
-        # Deduzir a pasta raiz do rAthena
+        # Deduce rAthena root path
         path_parts = main_filepath.split("/")
         if 'db' in path_parts:
             db_index = path_parts.index('db')
@@ -66,27 +61,25 @@ class YamlDatabase:
         else:
             self.rathena_root = os.path.dirname(main_filepath)
             
-        print(f"[*] rAthena Root deduzido: {self.rathena_root}")
+        print(f"[*] rAthena Root deduzido para monstros: {self.rathena_root}")
         self._load_file(main_filepath)
         
-        # Garante que o item_db customizado sempre seja lido, 
-        # mesmo se o usuário tiver esquecido de configurar o Import no Footer
-        custom_import_path = f"{self.rathena_root}/db/import/item_db.yml".replace('\\', '/')
+        # Ensure custom mob_db is always loaded
+        custom_import_path = f"{self.rathena_root}/db/import/mob_db.yml".replace('\\', '/')
         if os.path.exists(custom_import_path) and custom_import_path not in self.db_cache:
-            print(f"[*] Forçando carregamento do arquivo customizado: {custom_import_path}")
+            print(f"[*] Forçando carregamento do arquivo de monstros customizados: {custom_import_path}")
             self._load_file(custom_import_path)
 
     def _load_file(self, filepath: str):
-        """Função recursiva que carrega um YAML, mapeia os itens e segue os imports."""
         if not os.path.exists(filepath):
-            print(f"[!] Aviso: Import não encontrado no disco: {filepath}")
+            print(f"[!] Aviso: Import de monstros não encontrado no disco: {filepath}")
             return
 
         if filepath in self.db_cache:
             return
             
         filename = os.path.basename(filepath)
-        self.loading_status = f"Lendo arquivo: {filename}..."
+        self.loading_status = f"Lendo arquivo de monstros: {filename}..."
 
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -94,18 +87,17 @@ class YamlDatabase:
                 
             self.db_cache[filepath] = data
             
-            # Indexar os itens no nosso item_index global
             count = 0
             if data and 'Body' in data and isinstance(data['Body'], list):
-                for item in data['Body']:
-                    if 'Id' in item:
-                        self.item_index[item['Id']] = filepath
+                for mob in data['Body']:
+                    if 'Id' in mob:
+                        self.mob_index[mob['Id']] = filepath
                         count += 1
-                        self.items_loaded += 1
+                        self.mobs_loaded += 1
             
-            print(f"[*] {count} itens carregados de: {filename}")
+            print(f"[*] {count} monstros carregados de: {filename}")
             
-            # Seguir as ramificações de Imports
+            # Follow imports
             if data and 'Footer' in data and 'Imports' in data['Footer']:
                 for imp in data['Footer']['Imports']:
                     if 'Path' in imp:
@@ -116,23 +108,12 @@ class YamlDatabase:
         except Exception as e:
             print(f"[!] Falha ao fazer parse de {filepath}: {e}")
 
-    def get_items(self):
-        """Retorna uma lista contínua com TODOS os itens de TODOS os arquivos."""
-        all_items = []
+    def get_mobs(self):
+        all_mobs = []
         for filepath, data in self.db_cache.items():
             if data and 'Body' in data and isinstance(data['Body'], list):
-                all_items.extend(data['Body'])
-        return all_items
-
-    def get_item(self, item_id: int):
-        if item_id not in self.item_index:
-            return None
-        target_filepath = self.item_index[item_id]
-        data = self.db_cache[target_filepath]
-        for item in data.get('Body', []):
-            if item.get('Id') == item_id:
-                return item
-        return None
+                all_mobs.extend(data['Body'])
+        return all_mobs
 
     def save_file(self, filepath: str):
         if filepath not in self.db_cache:
@@ -141,25 +122,31 @@ class YamlDatabase:
             self.yaml.dump(self.db_cache[filepath], f)
         return True
 
-    def update_item(self, item_id: int, updated_data: dict):
-        if item_id not in self.item_index:
+    def update_mob(self, mob_id: int, updated_data: dict):
+        if mob_id not in self.mob_index:
             return None
-        target_filepath = self.item_index[item_id]
+        target_filepath = self.mob_index[mob_id]
         data = self.db_cache[target_filepath]
-        for item in data.get('Body', []):
-            if item.get('Id') == item_id:
+        for mob in data.get('Body', []):
+            if mob.get('Id') == mob_id:
                 for key, value in updated_data.items():
-                    item[key] = value
+                    if value == "" or value is None:
+                        if key in mob:
+                            del mob[key]
+                    else:
+                        mob[key] = value
                 self.save_file(target_filepath)
-                return item
+                return mob
         return None
 
-    def add_custom_item(self, item_data: dict):
-        import_db_path = f"{self.rathena_root}/db/import/item_db.yml".replace("\\", "/")
+    def add_custom_mob(self, mob_data: dict):
+        import_db_path = f"{self.rathena_root}/db/import/mob_db.yml".replace("\\", "/")
         
         if import_db_path not in self.db_cache:
             if not os.path.exists(import_db_path):
-                raise FileNotFoundError(f"Arquivo de importação não encontrado: {import_db_path}")
+                os.makedirs(os.path.dirname(import_db_path), exist_ok=True)
+                with open(import_db_path, 'w', encoding='utf-8') as f:
+                    f.write("Header:\n  Type: MOB_DB\n  Version: 5\n\nBody:\n")
             self._load_file(import_db_path)
             
         data = self.db_cache.get(import_db_path)
@@ -170,11 +157,9 @@ class YamlDatabase:
         if 'Body' not in data or not isinstance(data['Body'], list):
             data['Body'] = []
             
-        # Adicionar o item no topo da lista custom
-        data['Body'].insert(0, item_data)
+        data['Body'].insert(0, mob_data)
         self.save_file(import_db_path)
-        self.item_index[item_data['Id']] = import_db_path
-        return item_data
+        self.mob_index[mob_data['Id']] = import_db_path
+        return mob_data
 
-# Singleton global
-yaml_db = YamlDatabase()
+mob_db = MobDatabase()
