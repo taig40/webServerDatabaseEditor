@@ -1,53 +1,240 @@
-import React from 'react';
-import { Database, Package, FileCode2, Settings } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Package,
+  Skull,
+  Scroll,
+  Trophy,
+  Sword,
+  ListChecks,
+  Layers,
+  Users,
+  BookOpen,
+  Star,
+  Zap,
+  FlaskConical,
+  ChevronRight,
+  ChevronLeft,
+  Database,
+  Settings,
+  ShieldCheck,
+} from 'lucide-react';
 
-const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
+// ─── Module definitions ─────────────────────────────────────────────────────
+
+export type ModuleId =
+  | 'items'
+  | 'mobs'
+  | 'client_items'
+  | 'client_quests'
+  | 'client_achievements'
+  | 'skills'
+  | 'server_quests'
+  | 'item_combos'
+  | 'mob_groups'
+  | 'skill_requirements'
+  | 'mob_skills'
+  | 'server_achievements'
+  | 'pets'
+  | 'constants';
+
+interface Module {
+  id: ModuleId;
+  label: string;
+  sublabel: string;
+  icon: React.ElementType;
+  group: 'server' | 'client' | 'misc';
+  available: boolean;
+}
+
+const MODULES: Module[] = [
+  // ── Server DB ──
+  { id: 'items',               label: 'Itens',                sublabel: 'item_db.yml',         icon: Package,      group: 'server', available: true  },
+  { id: 'mobs',                label: 'Monstros',             sublabel: 'mob_db.yml',           icon: Skull,        group: 'server', available: true  },
+  { id: 'skills',              label: 'Habilidades',          sublabel: 'skill_db.yml',         icon: Zap,          group: 'server', available: false },
+  { id: 'server_quests',       label: 'Quests',               sublabel: 'quest_db.yml',         icon: Scroll,       group: 'server', available: false },
+  { id: 'server_achievements', label: 'Conquistas',           sublabel: 'achievement_db.yml',   icon: Trophy,       group: 'server', available: false },
+  { id: 'item_combos',         label: 'Combos de Itens',      sublabel: 'item_combo_db.yml',    icon: Layers,       group: 'server', available: false },
+  { id: 'mob_groups',          label: 'Grupos de Mobs',       sublabel: 'mob_group_db.yml',     icon: Users,        group: 'server', available: false },
+  { id: 'skill_requirements',  label: 'Req. de Habilidades',  sublabel: 'skill_require_db.yml', icon: ListChecks,   group: 'server', available: false },
+  { id: 'mob_skills',          label: 'Skills de Mobs',       sublabel: 'mob_skill_db.yml',     icon: Sword,        group: 'server', available: false },
+  { id: 'pets',                label: 'Mascotes',             sublabel: 'pet_db.yml',           icon: Star,         group: 'server', available: false },
+  // ── Client DB ──
+  { id: 'client_items',        label: 'Itens (Cliente)',      sublabel: 'iteminfo.lua',         icon: BookOpen,     group: 'client', available: false },
+  { id: 'client_quests',       label: 'Quests (Cliente)',     sublabel: 'questid2display.lua',  icon: Scroll,       group: 'client', available: false },
+  { id: 'client_achievements', label: 'Conquistas (Cliente)', sublabel: 'achievementinfo.lua',  icon: ShieldCheck,  group: 'client', available: false },
+  // ── Misc ──
+  { id: 'constants',           label: 'Constantes',          sublabel: 'const.txt',            icon: FlaskConical, group: 'misc',   available: false },
+];
+
+const GROUP_LABELS: Record<string, string> = {
+  server: 'Servidor',
+  client: 'Cliente',
+  misc:   'Outros',
+};
+
+// ─── Layout Props ────────────────────────────────────────────────────────────
+
+interface LayoutProps {
+  children: React.ReactNode;
+  activeView: ModuleId;
+  onViewChange: (view: ModuleId) => void;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange }) => {
+  const [expanded, setExpanded] = useState(true);
+
+  const activeModule = MODULES.find(m => m.id === activeView)!;
+  const ActiveIcon = activeModule.icon;
+
+  const groupedModules = ['server', 'client', 'misc'].map(group => ({
+    group,
+    modules: MODULES.filter(m => m.group === group),
+  }));
+
   return (
-    <div className="flex h-screen w-full bg-dark-900 text-gray-300 font-sans overflow-hidden">
-      {/* Sidebar de Ícones */}
-      <div className="w-16 flex flex-col items-center py-4 bg-dark-800 border-r border-dark-600 gap-6">
-        <div className="text-primary cursor-pointer hover:text-white transition-colors" title="Bancos de Dados">
-          <Database size={28} />
-        </div>
-        <div className="text-gray-500 cursor-pointer hover:text-white transition-colors" title="Itens">
-          <Package size={28} />
-        </div>
-        <div className="text-gray-500 cursor-pointer hover:text-white transition-colors" title="Scripts">
-          <FileCode2 size={28} />
-        </div>
-        <div className="mt-auto text-gray-500 cursor-pointer hover:text-white transition-colors">
-          <Settings size={28} />
-        </div>
-      </div>
-      
-      {/* Secondary Sidebar (Explorer) */}
-      <div className="hidden w-64 bg-dark-800 border-r border-dark-600 flex-col shadow-lg z-10">
-        <div className="p-3 text-xs font-bold uppercase tracking-wider text-gray-400">
-          Explorer
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <div className="px-3 py-1 cursor-pointer bg-dark-700 text-white border-l-2 border-primary text-sm flex items-center gap-2">
-             <Package size={14} className="text-primary"/>
-             item_db.yml
-          </div>
-          <div className="px-3 py-1 cursor-pointer hover:bg-dark-700 text-gray-400 text-sm flex items-center gap-2">
-             <Database size={14} />
-             mob_db.yml
-          </div>
-        </div>
-      </div>
+    <div className="flex h-screen w-full bg-[#0f0f14] text-gray-300 font-sans overflow-hidden">
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col bg-dark-900 overflow-hidden">
-        {/* Abas Superiores */}
-        <div className="flex h-9 bg-dark-800 border-b border-dark-600">
-          <div className="px-4 py-2 bg-dark-900 text-white text-sm border-t-2 border-primary flex items-center gap-2 shadow-sm">
-            <Package size={14} className="text-primary"/>
-            item_db.yml
+      {/* ── Sidebar ─────────────────────────────────────────── */}
+      <aside
+        className="flex flex-col bg-[#12121a] border-r border-[#1e1e2e] transition-all duration-300 ease-in-out z-20 shadow-xl"
+        style={{ width: expanded ? '240px' : '60px', minWidth: expanded ? '240px' : '60px' }}
+      >
+        {/* Logo / Header */}
+        <div className="flex items-center h-14 border-b border-[#1e1e2e] px-3 gap-3 overflow-hidden">
+          {expanded ? (
+            <>
+              <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                <Database size={16} className="text-white" />
+              </div>
+              <div className="flex flex-col leading-tight overflow-hidden">
+                <span className="text-sm font-bold text-white truncate">rAthena</span>
+                <span className="text-[10px] text-violet-400 truncate">Database Editor</span>
+              </div>
+              <button
+                onClick={() => setExpanded(false)}
+                className="ml-auto flex-shrink-0 text-gray-500 hover:text-white transition-colors p-1 rounded"
+                title="Recolher menu"
+              >
+                <ChevronLeft size={16} />
+              </button>
+            </>
+          ) : (
+            <div className="w-full flex justify-center">
+              <button
+                onClick={() => setExpanded(true)}
+                className="text-gray-500 hover:text-white transition-colors p-2 rounded flex items-center justify-center"
+                title="Expandir menu"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 space-y-5">
+          {groupedModules.map(({ group, modules }) => (
+            <div key={group}>
+              {/* Group Label */}
+              {expanded && (
+                <div className="px-4 mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-600">
+                    {GROUP_LABELS[group]}
+                  </span>
+                </div>
+              )}
+              {!expanded && (
+                <div className="h-px bg-[#1e1e2e] mx-3 mb-2" />
+              )}
+
+              {/* Module Items */}
+              <ul className="space-y-0.5 px-2">
+                {modules.map(mod => {
+                  const Icon = mod.icon;
+                  const isActive = activeView === mod.id;
+                  const isDisabled = !mod.available;
+
+                  return (
+                    <li key={mod.id}>
+                      <button
+                        onClick={() => mod.available && onViewChange(mod.id)}
+                        disabled={isDisabled}
+                        title={!expanded ? mod.label : undefined}
+                        className={[
+                          'w-full flex items-center gap-3 rounded-lg px-2 py-2 text-left transition-all duration-150',
+                          isActive
+                            ? 'bg-gradient-to-r from-violet-600/30 to-indigo-600/10 text-white border border-violet-500/30'
+                            : isDisabled
+                            ? 'text-gray-700 cursor-not-allowed'
+                            : 'text-gray-400 hover:bg-[#1a1a28] hover:text-gray-200',
+                        ].join(' ')}
+                      >
+                        {/* Icon */}
+                        <span className={[
+                          'flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md transition-colors',
+                          isActive ? 'bg-violet-500/20 text-violet-400' : isDisabled ? 'text-gray-700' : 'text-gray-500 group-hover:text-gray-300',
+                        ].join(' ')}>
+                          <Icon size={15} />
+                        </span>
+
+                        {/* Label */}
+                        {expanded && (
+                          <div className="flex flex-col min-w-0">
+                            <span className={`text-[13px] font-medium truncate ${isActive ? 'text-white' : ''}`}>
+                              {mod.label}
+                            </span>
+                            <span className={`text-[10px] truncate font-mono ${isActive ? 'text-violet-300' : 'text-gray-600'}`}>
+                              {mod.sublabel}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Active indicator */}
+                        {isActive && expanded && (
+                          <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" />
+                        )}
+
+                        {/* "em breve" badge */}
+                        {isDisabled && expanded && (
+                          <span className="ml-auto text-[9px] uppercase tracking-wider text-gray-700 flex-shrink-0">
+                            em breve
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div className="border-t border-[#1e1e2e] p-2">
+          <button className="w-full flex items-center gap-3 px-2 py-2 rounded-lg text-gray-600 hover:text-gray-400 hover:bg-[#1a1a28] transition-colors">
+            <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center">
+              <Settings size={15} />
+            </span>
+            {expanded && <span className="text-[13px] font-medium">Configurações</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main Content ─────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col bg-[#0f0f14] overflow-hidden">
+
+        {/* Top Tab Bar */}
+        <div className="flex h-9 bg-[#12121a] border-b border-[#1e1e2e] items-end px-0">
+          <div className="flex items-center gap-2 px-4 h-9 bg-[#0f0f14] text-white text-[13px] border-t-2 border-violet-500 -mb-px shadow-sm">
+            <ActiveIcon size={13} className="text-violet-400 flex-shrink-0" />
+            <span className="font-medium">{activeModule.label}</span>
+            <span className="text-[11px] text-gray-500 font-mono">{activeModule.sublabel}</span>
           </div>
         </div>
-        
-        {/* Content Wrapper */}
+
+        {/* Content */}
         <div className="flex-1 overflow-hidden relative">
           {children}
         </div>
@@ -57,3 +244,4 @@ const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
 };
 
 export default Layout;
+export type { ModuleId };

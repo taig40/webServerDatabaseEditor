@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf
+from app.api import items, grf, mobs
 from app.services.yaml_parser import yaml_db
+from app.services.mob_parser import mob_db
 from app.services.grf_reader import grf_reader
 import os
 import shutil
@@ -25,6 +26,10 @@ def setup_and_validate_env():
             
     # 2. Carrega as variáveis
     load_dotenv(dotenv_path=env_path)
+    
+    # 2b. Deobfuscate variables in os.environ
+    from app.core.security import deobfuscate_env
+    deobfuscate_env()
     
     # 3. Lê as chaves necessárias do .env-template para validar
     required_keys = []
@@ -62,9 +67,15 @@ app = FastAPI(
 )
 
 # CORS configuration for the React frontend
+cors_origins_str = os.environ.get("CORS_ORIGINS", "")
+if cors_origins_str:
+    origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+else:
+    origins = ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict this to the frontend URL
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -82,6 +93,17 @@ async def lifespan(app: FastAPI):
     
     yaml_db.load_db_async(db_path)
     print(f"[*] Disparado o processo de parse assíncrono do YAML a partir de '{db_path}'.")
+
+    from app.services.npc_parser import npc_db
+    import asyncio
+    asyncio.create_task(npc_db.load_async())
+    
+    mob_db_path = os.environ.get("MOB_DB_PATH", "")
+    if not mob_db_path and db_path:
+        mob_db_path = db_path.replace("item_db.yml", "mob_db.yml")
+    if mob_db_path:
+        mob_db.load_db_async(mob_db_path)
+        print(f"[*] Disparado o processo de parse assíncrono de monstros a partir de '{mob_db_path}'.")
     
     if grf_path:
         grf_reader.load(grf_path)
@@ -97,6 +119,7 @@ app.router.lifespan_context = lifespan
 # Register routers
 app.include_router(items.router, prefix="/api/items", tags=["items"])
 app.include_router(grf.router, prefix="/api/grf", tags=["grf"])
+app.include_router(mobs.router, prefix="/api/mobs", tags=["mobs"])
 
 @app.get("/")
 def read_root():

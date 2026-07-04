@@ -15,7 +15,12 @@ async def get_sprite(
     if type == "item":
         png_bytes = grf_reader.get_item_icon(id)
         if png_bytes:
-            # We return it directly as an image response
+            return Response(content=png_bytes, media_type="image/png")
+            
+    elif type == "npc":
+        from app.services.sprite_thumbnail import get_first_frame_png
+        png_bytes = get_first_frame_png(id)
+        if png_bytes:
             return Response(content=png_bytes, media_type="image/png")
             
     raise HTTPException(status_code=404, detail="Sprite not found in GRF")

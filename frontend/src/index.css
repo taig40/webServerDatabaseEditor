@@ -23,3 +23,9 @@ html, body, #root {
 ::-webkit-scrollbar-thumb:hover {
   background: #4f4f4f;
 }
+
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
