@@ -50,14 +50,14 @@ const MODULES: Module[] = [
   // ── Server DB ──
   { id: 'items',               label: 'Itens',                sublabel: 'item_db.yml',         icon: Package,      group: 'server', available: true  },
   { id: 'mobs',                label: 'Monstros',             sublabel: 'mob_db.yml',           icon: Skull,        group: 'server', available: true  },
-  { id: 'skills',              label: 'Habilidades',          sublabel: 'skill_db.yml',         icon: Zap,          group: 'server', available: false },
-  { id: 'server_quests',       label: 'Quests',               sublabel: 'quest_db.yml',         icon: Scroll,       group: 'server', available: false },
+  { id: 'skills',              label: 'Habilidades',          sublabel: 'skill_db.yml',         icon: Zap,          group: 'server', available: true  },
+  { id: 'server_quests',       label: 'Quests',               sublabel: 'quest_db.yml',         icon: Scroll,       group: 'server', available: true  },
   { id: 'server_achievements', label: 'Conquistas',           sublabel: 'achievement_db.yml',   icon: Trophy,       group: 'server', available: false },
-  { id: 'item_combos',         label: 'Combos de Itens',      sublabel: 'item_combo_db.yml',    icon: Layers,       group: 'server', available: false },
+  { id: 'item_combos',         label: 'Combos de Itens',      sublabel: 'item_combos.yml',      icon: Layers,       group: 'server', available: true  },
   { id: 'mob_groups',          label: 'Grupos de Mobs',       sublabel: 'mob_group_db.yml',     icon: Users,        group: 'server', available: false },
   { id: 'skill_requirements',  label: 'Req. de Habilidades',  sublabel: 'skill_require_db.yml', icon: ListChecks,   group: 'server', available: false },
-  { id: 'mob_skills',          label: 'Skills de Mobs',       sublabel: 'mob_skill_db.yml',     icon: Sword,        group: 'server', available: false },
-  { id: 'pets',                label: 'Mascotes',             sublabel: 'pet_db.yml',           icon: Star,         group: 'server', available: false },
+  { id: 'mob_skills',          label: 'Skills de Mobs',       sublabel: 'mob_skill_db.txt',     icon: Sword,        group: 'server', available: true  },
+  { id: 'pets',                label: 'Mascotes',             sublabel: 'pet_db.yml',           icon: Star,         group: 'server', available: true  },
   // ── Client DB ──
   { id: 'client_items',        label: 'Itens (Cliente)',      sublabel: 'iteminfo.lua',         icon: BookOpen,     group: 'client', available: false },
   { id: 'client_quests',       label: 'Quests (Cliente)',     sublabel: 'questid2display.lua',  icon: Scroll,       group: 'client', available: false },
@@ -244,4 +244,3 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange }) =
 };
 
 export default Layout;
-export type { ModuleId };

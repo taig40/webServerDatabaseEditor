@@ -24,7 +24,7 @@ const MonsterEditor: React.FC = () => {
 
   // Polling loading status
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    let intervalId: any;
 
     const checkStatusAndFetch = async () => {
       try {

@@ -6,6 +6,17 @@ html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
+  color-scheme: dark;
+  background-color: #0d0d12;
+  color: #e5e7eb;
+}
+
+@layer base {
+  input, select, textarea, option {
+    background-color: #121216;
+    color: #e5e7eb;
+    border-color: #2d2d30;
+  }
 }
 
 /* Custom Scrollbar to maintain the IDE feel */

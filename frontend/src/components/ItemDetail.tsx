@@ -7,7 +7,7 @@ import NpcShopModal from './NpcShopModal';
 
 interface ItemDetailProps {
   item: any;
-  onUpdate: (itemId: number, field: string, value: any) => Promise<void>;
+  onUpdate: (itemId: number, updatedData: any, saveMode?: 'import' | 'overwrite') => Promise<boolean | void>;
 }
 
 const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
@@ -17,6 +17,8 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
   const [isLoadingShops, setIsLoadingShops] = useState(false);
   const [localItem, setLocalItem] = useState(item);
   const [selectedShop, setSelectedShop] = useState<any | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setLocalItem(item);
@@ -50,13 +52,12 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
     fetchSoldBy();
   }, [item.Id]);
 
-  const handleBlur = (field: string, val: any, isNumber = false) => {
-    let finalVal = val;
-    if (isNumber) finalVal = val === '' ? null : Number(val);
-    
-    if (finalVal !== item[field]) {
-      onUpdate(item.Id, field, finalVal);
+  const handleFieldChange = (field: string, val: any, isNumber = false) => {
+    let parsed = val;
+    if (isNumber) {
+      parsed = val === '' ? null : Number(val);
     }
+    setLocalItem((prev: any) => ({ ...prev, [field]: parsed }));
   };
 
   const getScriptString = (scriptObj: any) => {
@@ -65,10 +66,24 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
     return scriptObj.Script || '';
   };
 
-  const handleScriptBlur = (field: string, newScript: string) => {
-    const currentScript = getScriptString(item[field]);
-    if (newScript !== currentScript) {
-      onUpdate(item.Id, field, { Script: newScript });
+  const isModified = JSON.stringify(localItem) !== JSON.stringify(item);
+
+  const handleSaveClick = () => {
+    if (!isModified) return;
+    if (item._source === 'rathena') {
+      setShowSaveModal(true);
+    } else {
+      executeSave('import');
+    }
+  };
+
+  const executeSave = async (mode: 'import' | 'overwrite') => {
+    setIsSaving(true);
+    setShowSaveModal(false);
+    try {
+      await onUpdate(item.Id, localItem, mode);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -76,21 +91,43 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
     <div className="flex flex-col h-full overflow-y-auto bg-dark-900 text-gray-200">
       
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center p-6 border-b border-white/5 bg-gradient-to-r from-violet-600/10 to-transparent">
-        <div className="w-16 h-16 rounded-xl bg-dark-800 border border-white/10 flex items-center justify-center shadow-lg p-2 mr-6">
-          <img 
-            src={`${API_URL}/api/grf/sprite?type=item&id=${localItem.Id}`} 
-            alt="icon" 
-            className="max-h-full max-w-full drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
-        </div>
-        <div className="flex flex-col">
-          <h2 className="text-2xl font-bold text-white mb-1">{localItem.Name || 'Unnamed Item'}</h2>
-          <div className="flex items-center gap-4 text-sm font-mono text-gray-400">
-            <span className="flex items-center gap-1 bg-dark-800 px-2 py-0.5 rounded border border-white/10">ID: <span className="text-violet-400">{localItem.Id}</span></span>
-            <span className="flex items-center gap-1 bg-dark-800 px-2 py-0.5 rounded border border-white/10">AegisName: <span className="text-blue-400">{localItem.AegisName}</span></span>
+      <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-white/5 bg-gradient-to-r from-violet-600/10 to-transparent">
+        <div className="flex items-center">
+          <div className="w-16 h-16 rounded-xl bg-dark-800 border border-white/10 flex items-center justify-center shadow-lg p-2 mr-6">
+            <img 
+              src={`${API_URL}/api/grf/sprite?type=item&id=${localItem.Id}`} 
+              alt="icon" 
+              className="max-h-full max-w-full drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
           </div>
+          <div className="flex flex-col">
+            <h2 className="text-2xl font-bold text-white mb-1">{localItem.Name || 'Unnamed Item'}</h2>
+            <div className="flex items-center gap-4 text-sm font-mono text-gray-400">
+              <span className="flex items-center gap-1 bg-dark-800 px-2 py-0.5 rounded border border-white/10">ID: <span className="text-violet-400">{localItem.Id}</span></span>
+              <span className="flex items-center gap-1 bg-dark-800 px-2 py-0.5 rounded border border-white/10">AegisName: <span className="text-blue-400">{localItem.AegisName}</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {isModified && (
+            <span className="text-amber-400 text-xs font-mono bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20 animate-pulse">
+              ● Alterações não salvas
+            </span>
+          )}
+          <button
+            onClick={handleSaveClick}
+            disabled={!isModified || isSaving}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-lg ${
+              isModified
+                ? 'bg-primary hover:bg-blue-600 text-white cursor-pointer shadow-primary/20'
+                : 'bg-dark-800 text-gray-500 border border-dark-700 cursor-not-allowed'
+            }`}
+          >
+            <Save size={16} />
+            {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+          </button>
         </div>
       </div>
 
@@ -110,8 +147,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <input 
                 type="text" 
                 value={localItem.Type || ''}
-                onChange={e => setLocalItem({...localItem, Type: e.target.value})}
-                onBlur={e => handleBlur('Type', e.target.value)}
+                onChange={e => handleFieldChange('Type', e.target.value)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
               />
             </div>
@@ -120,8 +156,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <input 
                 type="text" 
                 value={localItem.SubType || ''}
-                onChange={e => setLocalItem({...localItem, SubType: e.target.value})}
-                onBlur={e => handleBlur('SubType', e.target.value)}
+                onChange={e => handleFieldChange('SubType', e.target.value)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
               />
             </div>
@@ -130,8 +165,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <input 
                 type="number" 
                 value={localItem.Buy ?? ''}
-                onChange={e => setLocalItem({...localItem, Buy: e.target.value})}
-                onBlur={e => handleBlur('Buy', e.target.value, true)}
+                onChange={e => handleFieldChange('Buy', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
               />
             </div>
@@ -140,8 +174,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <input 
                 type="number" 
                 value={localItem.Sell ?? ''}
-                onChange={e => setLocalItem({...localItem, Sell: e.target.value})}
-                onBlur={e => handleBlur('Sell', e.target.value, true)}
+                onChange={e => handleFieldChange('Sell', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
               />
             </div>
@@ -150,8 +183,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <input 
                 type="number" 
                 value={localItem.Weight ?? ''}
-                onChange={e => setLocalItem({...localItem, Weight: e.target.value})}
-                onBlur={e => handleBlur('Weight', e.target.value, true)}
+                onChange={e => handleFieldChange('Weight', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
               />
             </div>
@@ -159,9 +191,8 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <label className="block text-xs text-gray-500 mb-1">View ID</label>
               <input 
                 type="number" 
-                value={localItem.View || ''}
-                onChange={e => setLocalItem({...localItem, View: e.target.value})}
-                onBlur={e => handleBlur('View', e.target.value, true)}
+                value={localItem.View ?? ''}
+                onChange={e => handleFieldChange('View', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
               />
             </div>
@@ -181,8 +212,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <input 
                 type="number" 
                 value={localItem.Attack ?? ''}
-                onChange={e => setLocalItem({...localItem, Attack: e.target.value})}
-                onBlur={e => handleBlur('Attack', e.target.value, true)}
+                onChange={e => handleFieldChange('Attack', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-red-500/50 focus:outline-none transition-colors"
               />
             </div>
@@ -191,8 +221,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <input 
                 type="number" 
                 value={localItem.MagicAttack ?? ''}
-                onChange={e => setLocalItem({...localItem, MagicAttack: e.target.value})}
-                onBlur={e => handleBlur('MagicAttack', e.target.value, true)}
+                onChange={e => handleFieldChange('MagicAttack', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-blue-500/50 focus:outline-none transition-colors"
               />
             </div>
@@ -201,8 +230,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <input 
                 type="number" 
                 value={localItem.Defense ?? ''}
-                onChange={e => setLocalItem({...localItem, Defense: e.target.value})}
-                onBlur={e => handleBlur('Defense', e.target.value, true)}
+                onChange={e => handleFieldChange('Defense', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-green-500/50 focus:outline-none transition-colors"
               />
             </div>
@@ -211,8 +239,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <input 
                 type="number" 
                 value={localItem.Slots ?? ''}
-                onChange={e => setLocalItem({...localItem, Slots: e.target.value})}
-                onBlur={e => handleBlur('Slots', e.target.value, true)}
+                onChange={e => handleFieldChange('Slots', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
               />
             </div>
@@ -221,8 +248,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <input 
                 type="number" 
                 value={localItem.WeaponLevel ?? ''}
-                onChange={e => setLocalItem({...localItem, WeaponLevel: e.target.value})}
-                onBlur={e => handleBlur('WeaponLevel', e.target.value, true)}
+                onChange={e => handleFieldChange('WeaponLevel', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
               />
             </div>
@@ -231,8 +257,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <input 
                 type="number" 
                 value={localItem.EquipLevelMin ?? ''}
-                onChange={e => setLocalItem({...localItem, EquipLevelMin: e.target.value})}
-                onBlur={e => handleBlur('EquipLevelMin', e.target.value, true)}
+                onChange={e => handleFieldChange('EquipLevelMin', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
               />
             </div>
@@ -252,8 +277,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                <input 
                   type="number" 
                   value={localItem.EquipLevelMin ?? ''}
-                  onChange={e => setLocalItem({...localItem, EquipLevelMin: e.target.value})}
-                  onBlur={e => handleBlur('EquipLevelMin', e.target.value, true)}
+                  onChange={e => handleFieldChange('EquipLevelMin', e.target.value, true)}
                   className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
                />
             </div>
@@ -262,8 +286,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                <input 
                   type="number" 
                   value={localItem.EquipLevelMax ?? ''}
-                  onChange={e => setLocalItem({...localItem, EquipLevelMax: e.target.value})}
-                  onBlur={e => handleBlur('EquipLevelMax', e.target.value, true)}
+                  onChange={e => handleFieldChange('EquipLevelMax', e.target.value, true)}
                   className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
                />
             </div>
@@ -272,8 +295,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                <input 
                   type="text" 
                   value={localItem.Gender || 'Ambos'}
-                  onChange={e => setLocalItem({...localItem, Gender: e.target.value})}
-                  onBlur={e => handleBlur('Gender', e.target.value)}
+                  onChange={e => handleFieldChange('Gender', e.target.value)}
                   className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
                />
             </div>
@@ -327,12 +349,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                   defaultLanguage="c"
                   theme="vs-dark"
                   value={getScriptString(localItem.Script)}
-                  onChange={(val) => setLocalItem({...localItem, Script: { Script: val }})}
-                  onMount={(editor) => {
-                    editor.onDidBlurEditorText(() => {
-                      handleScriptBlur('Script', editor.getValue());
-                    });
-                  }}
+                  onChange={(val) => setLocalItem({...localItem, Script: val || '' })}
                   options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false }}
                 />
               </div>
@@ -347,12 +364,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                     defaultLanguage="c"
                     theme="vs-dark"
                     value={getScriptString(localItem.EquipScript)}
-                    onChange={(val) => setLocalItem({...localItem, EquipScript: { Script: val }})}
-                    onMount={(editor) => {
-                      editor.onDidBlurEditorText(() => {
-                        handleScriptBlur('EquipScript', editor.getValue());
-                      });
-                    }}
+                    onChange={(val) => setLocalItem({...localItem, EquipScript: val || '' })}
                     options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false }}
                   />
                 </div>
@@ -365,12 +377,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                     defaultLanguage="c"
                     theme="vs-dark"
                     value={getScriptString(localItem.UnEquipScript)}
-                    onChange={(val) => setLocalItem({...localItem, UnEquipScript: { Script: val }})}
-                    onMount={(editor) => {
-                      editor.onDidBlurEditorText(() => {
-                        handleScriptBlur('UnEquipScript', editor.getValue());
-                      });
-                    }}
+                    onChange={(val) => setLocalItem({...localItem, UnEquipScript: val || '' })}
                     options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false }}
                   />
                 </div>
@@ -471,6 +478,40 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
             shop={selectedShop} 
             onClose={() => setSelectedShop(null)} 
          />
+      )}
+
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-dark-900 border border-dark-600 rounded-xl shadow-2xl p-6 max-w-md w-full flex flex-col gap-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <Save className="text-primary-400" size={20} /> Salvar Alterações
+            </h3>
+            <p className="text-sm text-gray-300 leading-relaxed">
+              O item <span className="text-violet-400 font-mono font-bold">{item.Id} ({item.Name || item.AegisName})</span> pertence ao banco original do rAthena.
+              Deseja criar uma cópia customizada na pasta <code className="text-emerald-400 bg-dark-950 px-1.5 py-0.5 rounded">import/item_db.yml</code> ou sobrescrever o arquivo original?
+            </p>
+            <div className="flex flex-col gap-2 mt-2">
+              <button
+                onClick={() => executeSave('import')}
+                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>✨ Criar Cópia em db/import/ (Recomendado)</span>
+              </button>
+              <button
+                onClick={() => executeSave('overwrite')}
+                className="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg transition shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>⚠️ Sobrescrever Arquivo Original no rAthena</span>
+              </button>
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="w-full py-2 px-4 bg-dark-800 hover:bg-dark-700 text-gray-400 hover:text-white rounded-lg transition text-sm mt-1 cursor-pointer"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
