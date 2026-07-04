@@ -232,33 +232,86 @@ class YamlDatabase:
                 return result
         return None
 
+    def _apply_item_defaults(self, item_data: dict) -> dict:
+        """
+        Initializes any missing item fields with default values according to the rAthena YAML specification.
+        """
+        item = dict(item_data)
+
+        # Type default
+        if "Type" not in item or not item["Type"]:
+            item["Type"] = "Etc"
+
+        item_type = item["Type"]
+
+        # Type-dependent weapon/armor levels
+        if item_type == "Weapon" and ("WeaponLevel" not in item or item["WeaponLevel"] is None):
+            item["WeaponLevel"] = 1
+        elif item_type == "Armor" and ("ArmorLevel" not in item or item["ArmorLevel"] is None):
+            item["ArmorLevel"] = 1
+
+        # Buy & Sell calculation
+        if "Buy" in item and ("Sell" not in item or item["Sell"] is None):
+            item["Sell"] = item["Buy"] // 2
+        elif "Sell" in item and ("Buy" not in item or item["Buy"] is None):
+            item["Buy"] = item["Sell"] * 2
+
+        # Standard rAthena default values
+        defaults = {
+            "SubType": 0,
+            "Buy": 0,
+            "Sell": 0,
+            "Weight": 0,
+            "Attack": 0,
+            "MagicAttack": 0,
+            "Defense": 0,
+            "Range": 0,
+            "Slots": 0,
+            "Jobs": {"All": True},
+            "Classes": {"All": True},
+            "Gender": "Both",
+            "EquipLevelMin": 0,
+            "EquipLevelMax": 0,
+            "Refineable": False,
+            "Gradable": False,
+            "View": 0,
+        }
+
+        for key, val in defaults.items():
+            if key not in item or item[key] is None:
+                item[key] = val
+
+        return item
+
     def add_custom_item(self, item_data: dict):
         import_db_path = f"{self.rathena_root}/db/import/item_db.yml".replace("\\", "/")
-        
+
         if import_db_path not in self.db_cache:
             if not os.path.exists(import_db_path):
                 os.makedirs(os.path.dirname(import_db_path), exist_ok=True)
                 self.db_cache[import_db_path] = {'Header': {'Type': 'ITEM_DB', 'Version': 4}, 'Body': []}
             else:
                 self._load_file(import_db_path)
-            
+
         data = self.db_cache.get(import_db_path)
         if data is None:
             data = {'Header': {'Type': 'ITEM_DB', 'Version': 4}, 'Body': []}
             self.db_cache[import_db_path] = data
-            
+
         if 'Body' not in data or not isinstance(data['Body'], list):
             data['Body'] = []
-            
-        self._normalize_scripts(item_data)
-        clean_item = {k: v for k, v in item_data.items() if k != '_source'}
+
+        item_with_defaults = self._apply_item_defaults(item_data)
+        self._normalize_scripts(item_with_defaults)
+        clean_item = {k: v for k, v in item_with_defaults.items() if k != '_source'}
         data['Body'].insert(0, clean_item)
         self.save_file(import_db_path)
         self.item_index[clean_item['Id']] = import_db_path
-        
+
         result = dict(clean_item)
         result['_source'] = 'custom'
         return result
+
 
 # Singleton global
 yaml_db = YamlDatabase()

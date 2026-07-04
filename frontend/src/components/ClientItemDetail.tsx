@@ -3,8 +3,9 @@ import axios from 'axios';
 import { API_URL } from '../config/env';
 import {
   Save, BookOpen, Eye, EyeOff, Hash, Upload, RefreshCw,
-  ImageIcon, Monitor,
+  ImageIcon, Monitor, Database,
 } from 'lucide-react';
+import { GrfAssetPickerModal } from './GrfAssetPickerModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -174,6 +175,17 @@ const AssetUploadButton: React.FC<{
   );
 };
 
+const Card: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode; span2?: boolean }> =
+  ({ icon, title, children, span2 }) => (
+    <div className={`bg-[#13131f] rounded-2xl border border-white/5 p-5 shadow-lg ${span2 ? 'xl:col-span-2' : ''}`}>
+      <div className="flex items-center gap-2 mb-4 pb-2 border-b border-white/5 text-white">
+        <span className="text-cyan-400">{icon}</span>
+        <h3 className="text-sm font-semibold">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
@@ -183,6 +195,25 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
   const [isSaving, setIsSaving]   = useState(false);
   // Bust the icon URL cache after an upload
   const [iconBust, setIconBust]   = useState(Date.now());
+
+  // ── GRF Asset Picker State ────────────────────────────────────────────────
+  const [pickerOpen, setPickerOpen]   = useState(false);
+  const [pickerType, setPickerType]   = useState<'item_icon' | 'item_collection'>('item_icon');
+  const [pickerTitle, setPickerTitle] = useState('Escolher da GRF');
+
+  const openPicker = (type: 'item_icon' | 'item_collection', title: string) => {
+    setPickerType(type);
+    setPickerTitle(title);
+    setPickerOpen(true);
+  };
+
+  const handlePickerSelect = (resourceName: string) => {
+    set('identifiedResourceName', resourceName);
+    if (!fields.unIdentifiedResourceName || fields.unIdentifiedResourceName === original.unIdentifiedResourceName) {
+      set('unIdentifiedResourceName', resourceName);
+    }
+    setIconBust(Date.now());
+  };
 
   // ── Fetch from backend when item changes ──────────────────────────────────
   const fetchClientData = useCallback(async () => {
@@ -229,18 +260,6 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
 
   const iconSrc = `${API_URL}/api/grf/sprite?type=item&id=${item.Id}&_bust=${iconBust}`;
 
-  // ── Section card helper ───────────────────────────────────────────────────
-  const Card: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode; span2?: boolean }> =
-    ({ icon, title, children, span2 }) => (
-      <div className={`bg-[#13131f] rounded-2xl border border-white/5 p-5 shadow-lg ${span2 ? 'xl:col-span-2' : ''}`}>
-        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-white/5 text-white">
-          <span className="text-cyan-400">{icon}</span>
-          <h3 className="text-sm font-semibold">{title}</h3>
-        </div>
-        {children}
-      </div>
-    );
-
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-[#0f0f14] text-gray-200">
 
@@ -257,7 +276,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
             />
             <button
               onClick={() => setIconBust(Date.now())}
-              title="Recarregar ícone"
+              title="Reload Icon"
               className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 rounded-xl transition-opacity"
             >
               <RefreshCw size={16} className="text-cyan-400" />
@@ -266,7 +285,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
 
           <div>
             <h2 className="text-xl font-bold text-white leading-tight">
-              {fields.identifiedDisplayName || item.Name || 'Sem nome no cliente'}
+              {fields.identifiedDisplayName || item.Name || 'No Client Name'}
             </h2>
             <div className="flex items-center gap-3 mt-1 text-xs font-mono text-gray-500">
               <span className="bg-[#1a1a28] px-2 py-0.5 rounded border border-white/10">
@@ -276,9 +295,9 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                 {item.AegisName}
               </span>
               {fields.exists_in_lua ? (
-                <span className="text-emerald-400 text-[10px]">● No ItemInfo.lua</span>
+                <span className="text-emerald-400 text-[10px]">● In ItemInfo.lua</span>
               ) : (
-                <span className="text-amber-500 text-[10px]">● Não encontrado no ItemInfo.lua</span>
+                <span className="text-amber-500 text-[10px]">● Missing in ItemInfo.lua</span>
               )}
             </div>
           </div>
@@ -286,11 +305,11 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
 
         <div className="flex items-center gap-3">
           {isFetching && (
-            <span className="text-xs text-gray-600 font-mono animate-pulse">Carregando…</span>
+            <span className="text-xs text-gray-600 font-mono animate-pulse">Loading…</span>
           )}
           {isModified && !isFetching && (
             <span className="text-amber-400 text-xs font-mono bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20 animate-pulse">
-              ● Alterações não salvas
+              ● Unsaved Changes
             </span>
           )}
           <button
@@ -303,7 +322,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
             }`}
           >
             <Save size={15} />
-            {isSaving ? 'Salvando…' : 'Salvar'}
+            {isSaving ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
@@ -312,27 +331,27 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
       <div className="p-6 grid grid-cols-1 xl:grid-cols-2 gap-5">
 
         {/* Identified */}
-        <Card icon={<Eye size={16} />} title="Identificado">
+        <Card icon={<Eye size={16} />} title="Identified">
           <div className="space-y-3">
             <div>
-              <Label text="Display Name" />
+              <Label text="identifiedDisplayName" mono />
               <TextInput
                 value={fields.identifiedDisplayName}
                 onChange={(v) => set('identifiedDisplayName', v)}
-                placeholder="Nome exibido quando identificado"
+                placeholder="Identified Display Name"
               />
             </div>
             <div>
-              <Label text="Resource Name" mono />
+              <Label text="identifiedResourceName" mono />
               <TextInput
                 value={fields.identifiedResourceName}
                 onChange={(v) => set('identifiedResourceName', v)}
-                placeholder="Nome do arquivo de ícone (sem extensão)"
+                placeholder="Resource filename without extension"
                 mono
               />
             </div>
             <div>
-              <Label text="Description" />
+              <Label text="identifiedDescriptionName" mono />
               <DescriptionEditor
                 lines={fields.identifiedDescriptionName}
                 onChange={(v) => set('identifiedDescriptionName', v)}
@@ -342,27 +361,27 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
         </Card>
 
         {/* Unidentified */}
-        <Card icon={<EyeOff size={16} />} title="Não-Identificado">
+        <Card icon={<EyeOff size={16} />} title="Unidentified">
           <div className="space-y-3">
             <div>
-              <Label text="Display Name" />
+              <Label text="unidentifiedDisplayName" mono />
               <TextInput
                 value={fields.unIdentifiedDisplayName}
                 onChange={(v) => set('unIdentifiedDisplayName', v)}
-                placeholder="Nome exibido quando não-identificado"
+                placeholder="Unidentified Display Name"
               />
             </div>
             <div>
-              <Label text="Resource Name" mono />
+              <Label text="unidentifiedResourceName" mono />
               <TextInput
                 value={fields.unIdentifiedResourceName}
                 onChange={(v) => set('unIdentifiedResourceName', v)}
-                placeholder="Nome do arquivo não-identificado"
+                placeholder="Unidentified Resource filename"
                 mono
               />
             </div>
             <div>
-              <Label text="Description" />
+              <Label text="unidentifiedDescriptionName" mono />
               <DescriptionEditor
                 lines={fields.unIdentifiedDescriptionName}
                 onChange={(v) => set('unIdentifiedDescriptionName', v)}
@@ -372,18 +391,18 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
         </Card>
 
         {/* Extra */}
-        <Card icon={<Hash size={16} />} title="Extras">
+        <Card icon={<Hash size={16} />} title="Extra Fields">
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label text="Slots" />
+              <Label text="slotCount" mono />
               <NumberInput value={fields.slotCount} onChange={(v) => set('slotCount', v)} />
             </div>
             <div>
-              <Label text="ClassNum" />
+              <Label text="ClassNum" mono />
               <NumberInput value={fields.ClassNum} onChange={(v) => set('ClassNum', v)} />
             </div>
             <div className="flex flex-col justify-end pb-0.5">
-              <Label text="Costume" />
+              <Label text="costume" mono />
               <button
                 onClick={() => set('costume', !fields.costume)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
@@ -393,19 +412,19 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                 }`}
               >
                 <span className={`w-2 h-2 rounded-full ${fields.costume ? 'bg-violet-400' : 'bg-gray-700'}`} />
-                {fields.costume ? 'Sim' : 'Não'}
+                {fields.costume ? 'True' : 'False'}
               </button>
             </div>
           </div>
         </Card>
 
         {/* Assets */}
-        <Card icon={<ImageIcon size={16} />} title="Assets GRF">
+        <Card icon={<ImageIcon size={16} />} title="GRF Assets">
           <div className="space-y-4">
 
             {/* Icon */}
             <div>
-              <Label text="Ícone do Inventário" />
+              <Label text="Inventory Icon" />
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-[#0f0f14] border border-white/10 rounded-lg flex items-center justify-center p-1 shrink-0">
                   <img
@@ -416,11 +435,22 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <AssetUploadButton
-                    label="Upload ícone (.bmp)"
-                    endpoint={`${API_URL}/api/client_items/${item.Id}/icon`}
-                    onUploaded={() => setIconBust(Date.now())}
-                  />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <AssetUploadButton
+                      label="Upload Icon (.bmp)"
+                      endpoint={`${API_URL}/api/client_items/${item.Id}/icon`}
+                      onUploaded={() => setIconBust(Date.now())}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => openPicker('item_icon', 'Select Item Icon from GRF')}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-cyan-950/40 border border-cyan-500/30
+                        hover:border-cyan-400 hover:bg-cyan-900/40 text-cyan-300 transition-all font-medium"
+                    >
+                      <Database size={12} />
+                      Select from GRF
+                    </button>
+                  </div>
                   <p className="text-[10px] text-gray-700 font-mono">
                     data/texture/유저인터페이스/item/{fields.identifiedResourceName || '?'}.bmp
                   </p>
@@ -430,19 +460,30 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
 
             {/* Collection sprite */}
             <div>
-              <Label text="Sprite de Coleta (Collection)" />
+              <Label text="Collection Illustration" />
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-[#0f0f14] border border-white/10 rounded-lg flex items-center justify-center p-1 shrink-0">
                   <Monitor size={20} className="text-gray-700" />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <AssetUploadButton
-                    label="Upload sprite (.bmp)"
-                    endpoint={`${API_URL}/api/client_items/${item.Id}/collection`}
-                    onUploaded={() => {}}
-                  />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <AssetUploadButton
+                      label="Upload Collection (.bmp)"
+                      endpoint={`${API_URL}/api/client_items/${item.Id}/collection`}
+                      onUploaded={() => {}}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => openPicker('item_collection', 'Select Collection Sprite from GRF')}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-cyan-950/40 border border-cyan-500/30
+                        hover:border-cyan-400 hover:bg-cyan-900/40 text-cyan-300 transition-all font-medium"
+                    >
+                      <Database size={12} />
+                      Select from GRF
+                    </button>
+                  </div>
                   <p className="text-[10px] text-gray-700 font-mono">
-                    data/sprite/아이템/{fields.identifiedResourceName || '?'}.bmp
+                    data/texture/유저인터페이스/collection/{fields.identifiedResourceName || '?'}.bmp
                   </p>
                 </div>
               </div>
@@ -452,14 +493,14 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
         </Card>
 
         {/* Card Preview */}
-        <Card icon={<BookOpen size={16} />} title="Preview do Card" span2>
+        <Card icon={<BookOpen size={16} />} title="Card Preview" span2>
           <div className="flex flex-wrap gap-8">
             <div>
-              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3 font-medium">Identificado</p>
+              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3 font-medium">Identified</p>
               <ItemCard fields={fields} iconSrc={iconSrc} />
             </div>
             <div>
-              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3 font-medium">Não-identificado</p>
+              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3 font-medium">Unidentified</p>
               <ItemCard
                 fields={{
                   ...fields,
@@ -474,6 +515,16 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
         </Card>
 
       </div>
+
+      {/* ── GRF Asset Picker Modal ─────────────────────────────────────────── */}
+      <GrfAssetPickerModal
+        isOpen={pickerOpen}
+        assetType={pickerType}
+        title={pickerTitle}
+        currentResourceName={fields.identifiedResourceName}
+        onClose={() => setPickerOpen(false)}
+        onSelect={handlePickerSelect}
+      />
     </div>
   );
 };

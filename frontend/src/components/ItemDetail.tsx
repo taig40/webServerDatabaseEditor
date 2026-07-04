@@ -292,23 +292,26 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
             </div>
             <div>
                <label className="block text-xs text-gray-500 mb-1">Gender</label>
-               <input 
-                  type="text" 
-                  value={localItem.Gender || 'Ambos'}
+               <select 
+                  value={localItem.Gender || 'Both'}
                   onChange={e => handleFieldChange('Gender', e.target.value)}
-                  className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
-               />
+                  className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:border-emerald-500/50 focus:outline-none transition-colors"
+               >
+                  <option value="Both">Both</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+               </select>
             </div>
             <div>
                <label className="block text-xs text-gray-500 mb-1">Classes (Upper)</label>
                <div className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-300 truncate cursor-help" title={
-                 !localItem.Classes ? 'Todos' :
-                 localItem.Classes.All ? 'Todos' :
-                 Object.entries(localItem.Classes).filter(([_, v]) => v === true).map(([k, _]) => k).join(', ') || 'Nenhuma'
+                 !localItem.Classes ? 'All' :
+                 localItem.Classes.All ? 'All' :
+                 Object.entries(localItem.Classes).filter(([_, v]) => v === true).map(([k, _]) => k).join(', ') || 'None'
                }>
-                  {!localItem.Classes ? 'Todos' :
-                   localItem.Classes.All ? 'Todos' :
-                   Object.entries(localItem.Classes).filter(([_, v]) => v === true).map(([k, _]) => k).join(', ') || 'Nenhuma'}
+                  {!localItem.Classes ? 'All' :
+                   localItem.Classes.All ? 'All' :
+                   Object.entries(localItem.Classes).filter(([_, v]) => v === true).map(([k, _]) => k).join(', ') || 'None'}
                </div>
             </div>
           </div>
@@ -317,17 +320,17 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
              <div>
                 <label className="block text-xs text-gray-500 mb-1">Applicable Jobs</label>
                 <div className="w-full min-h-[38px] bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 break-words">
-                   {!localItem.Jobs ? 'Todos' :
-                    localItem.Jobs.All ? 'Todos' :
-                    Object.entries(localItem.Jobs).filter(([_, v]) => v === true).map(([k, _]) => k).join(', ') || 'Nenhuma'}
+                   {!localItem.Jobs ? 'All' :
+                    localItem.Jobs.All ? 'All' :
+                    Object.entries(localItem.Jobs).filter(([_, v]) => v === true).map(([k, _]) => k).join(', ') || 'None'}
                 </div>
-                <p className="text-[10px] text-gray-600 mt-1">O rAthena moderno define as classes nominalmente (ex: Crusader: true) em vez de hexadecimal.</p>
+                <p className="text-[10px] text-gray-600 mt-1">Modern rAthena specifies jobs nominally (e.g. Crusader: true).</p>
              </div>
              <div>
-                <label className="block text-xs text-gray-500 mb-1">Locations (Posições de Equip)</label>
+                <label className="block text-xs text-gray-500 mb-1">Locations (Equip Placement)</label>
                 <div className="w-full min-h-[38px] bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 break-words">
-                   {!localItem.Locations ? 'Nenhuma' :
-                    Object.entries(localItem.Locations).filter(([_, v]) => v === true).map(([k, _]) => k).join(', ') || 'Nenhuma'}
+                   {!localItem.Locations ? 'None' :
+                    Object.entries(localItem.Locations).filter(([_, v]) => v === true).map(([k, _]) => k).join(', ') || 'None'}
                 </div>
              </div>
           </div>

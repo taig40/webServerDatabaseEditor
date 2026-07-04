@@ -72,7 +72,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
       <div className="bg-dark-900 border border-dark-600 rounded-lg shadow-2xl w-[500px] flex flex-col">
         <div className="p-4 border-b border-dark-600 flex justify-between items-center">
-          <h2 className="text-xl text-white font-bold">Criar Item Customizado</h2>
+          <h2 className="text-xl text-white font-bold">Create Custom Item</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
         </div>
         
@@ -88,20 +88,20 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
               onChange={handleChange}
               className="bg-dark-800 border border-dark-600 rounded p-2 text-white focus:border-primary focus:outline-none"
             />
-            <span className="text-xs text-gray-500">Recomendado &gt; 20000 para evitar conflitos oficiais.</span>
+            <span className="text-xs text-gray-500">Recommended &gt; 20000 to avoid official item conflicts.</span>
           </div>
 
           <div className="flex flex-col space-y-1">
-            <label className="text-gray-300 text-sm font-semibold">Aegis Name</label>
+            <label className="text-gray-300 text-sm font-semibold">AegisName</label>
             <input 
               type="text" 
               name="AegisName"
-              placeholder="ex: Custom_Sword"
+              placeholder="e.g. Custom_Sword"
               value={formData.AegisName}
               onChange={handleChange}
               className="bg-dark-800 border border-dark-600 rounded p-2 text-white focus:border-primary focus:outline-none"
             />
-            <span className="text-xs text-gray-500">Nome de sistema (sem espaços).</span>
+            <span className="text-xs text-gray-500">System reference name (no spaces).</span>
           </div>
 
           <div className="flex flex-col space-y-1">
@@ -109,12 +109,12 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
             <input 
               type="text" 
               name="Name"
-              placeholder="ex: Custom Sword"
+              placeholder="e.g. Custom Sword"
               value={formData.Name}
               onChange={handleChange}
               className="bg-dark-800 border border-dark-600 rounded p-2 text-white focus:border-primary focus:outline-none"
             />
-            <span className="text-xs text-gray-500">Nome de exibição.</span>
+            <span className="text-xs text-gray-500">Display name in English.</span>
           </div>
 
           <div className="flex space-x-4">
@@ -136,7 +136,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
               </select>
             </div>
             <div className="flex flex-col space-y-1 flex-1">
-              <label className="text-gray-300 text-sm font-semibold">SubType (Opcional)</label>
+              <label className="text-gray-300 text-sm font-semibold">SubType (Optional)</label>
               <input 
                 type="text" 
                 name="SubType"
@@ -160,7 +160,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
                 />
               </div>
               <div className="flex flex-col space-y-1 flex-1">
-                <label className="text-gray-300 text-sm font-semibold">Level Mínimo</label>
+                <label className="text-gray-300 text-sm font-semibold">EquipLevelMin</label>
                 <input 
                   type="number" 
                   name="EquipLevelMin"
@@ -185,7 +185,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
                 />
               </div>
               <div className="flex flex-col space-y-1 flex-1">
-                <label className="text-gray-300 text-sm font-semibold">Level Mínimo</label>
+                <label className="text-gray-300 text-sm font-semibold">EquipLevelMin</label>
                 <input 
                   type="number" 
                   name="EquipLevelMin"
@@ -203,14 +203,14 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
               onClick={onClose}
               className="px-4 py-2 rounded bg-dark-700 hover:bg-dark-600 text-white transition"
             >
-              Cancelar
+              Cancel
             </button>
             <button 
               type="submit" 
               disabled={loading}
               className="px-4 py-2 rounded bg-primary hover:bg-blue-600 text-white font-semibold transition disabled:opacity-50"
             >
-              {loading ? 'Criando...' : 'Criar Item'}
+              {loading ? 'Creating...' : 'Create Item'}
             </button>
           </div>
         </form>
