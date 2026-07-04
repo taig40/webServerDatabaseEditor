@@ -117,11 +117,18 @@ class YamlDatabase:
             print(f"[!] Falha ao fazer parse de {filepath}: {e}")
 
     def get_items(self):
-        """Retorna uma lista contínua com TODOS os itens de TODOS os arquivos."""
+        """Retorna uma lista contínua com TODOS os itens de TODOS os arquivos, anotados com _source."""
         all_items = []
         for filepath, data in self.db_cache.items():
             if data and 'Body' in data and isinstance(data['Body'], list):
-                all_items.extend(data['Body'])
+                # Normalize path separators for cross-platform comparison
+                norm_path = filepath.replace('\\', '/')
+                is_custom = '/db/import/' in norm_path
+                for item in data['Body']:
+                    # We annotate in a shallow copy to avoid mutating the in-memory YAML object
+                    annotated = dict(item)
+                    annotated['_source'] = 'custom' if is_custom else 'rathena'
+                    all_items.append(annotated)
         return all_items
 
     def get_item(self, item_id: int):
@@ -144,15 +151,74 @@ class YamlDatabase:
     def update_item(self, item_id: int, updated_data: dict):
         if item_id not in self.item_index:
             return None
+
         target_filepath = self.item_index[item_id]
+        norm_path = target_filepath.replace('\\', '/')
+        import_db_path = f"{self.rathena_root}/db/import/item_db.yml".replace('\\', '/')
+
+        # --- If the item lives in the original rAthena db, write the override to db/import/ ---
+        if '/db/import/' not in norm_path:
+            # Read the full current item from the original file
+            original_data = self.db_cache[target_filepath]
+            original_item = None
+            for item in original_data.get('Body', []):
+                if item.get('Id') == item_id:
+                    original_item = item
+                    break
+            if original_item is None:
+                return None
+
+            # Build a plain dict copy with the updates applied
+            override_item = dict(original_item)
+            override_item.update(updated_data)
+
+            # Ensure the import file is loaded in cache
+            if import_db_path not in self.db_cache:
+                if os.path.exists(import_db_path):
+                    self._load_file(import_db_path)
+                else:
+                    # Create a minimal structure if file doesn't exist yet
+                    self.db_cache[import_db_path] = {'Header': {'Type': 'ITEM_DB', 'Version': 4}, 'Body': []}
+
+            import_data = self.db_cache[import_db_path]
+            if 'Body' not in import_data or not isinstance(import_data['Body'], list):
+                import_data['Body'] = []
+
+            # Check if an override already exists for this ID in the import file
+            existing_override = None
+            for item in import_data['Body']:
+                if item.get('Id') == item_id:
+                    existing_override = item
+                    break
+
+            if existing_override is not None:
+                # Update the existing override entry in-place
+                for key, value in updated_data.items():
+                    existing_override[key] = value
+                saved_item = dict(existing_override)
+            else:
+                # Insert the full override at the top of the import Body
+                import_data['Body'].insert(0, override_item)
+                saved_item = override_item
+
+            self.save_file(import_db_path)
+            # Re-point the index so future edits go directly to the import file
+            self.item_index[item_id] = import_db_path
+            saved_item['_source'] = 'custom'
+            return saved_item
+
+        # --- Item already lives in db/import/: update in place ---
         data = self.db_cache[target_filepath]
         for item in data.get('Body', []):
             if item.get('Id') == item_id:
                 for key, value in updated_data.items():
                     item[key] = value
                 self.save_file(target_filepath)
-                return item
+                result = dict(item)
+                result['_source'] = 'custom'
+                return result
         return None
+
 
     def add_custom_item(self, item_data: dict):
         import_db_path = f"{self.rathena_root}/db/import/item_db.yml".replace("\\", "/")

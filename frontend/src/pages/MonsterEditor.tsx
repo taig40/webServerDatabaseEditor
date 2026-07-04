@@ -8,7 +8,9 @@ import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 import MonsterAnimator from '../components/MonsterAnimator';
-import { Loader2, Shield, Heart, Sword, ShieldAlert, Award, Star } from 'lucide-react';
+import { Shield, Heart, Sword, ShieldAlert, Award, Star, Database, Sparkles } from 'lucide-react';
+
+type SourceTab = 'rathena' | 'custom';
 
 const MonsterEditor: React.FC = () => {
   const [mobs, setMobs] = useState<any[]>([]);
@@ -18,6 +20,7 @@ const MonsterEditor: React.FC = () => {
   const [searchText, setSearchText] = useState("");
   const [selectedMob, setSelectedMob] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'drops' | 'ai'>('info');
+  const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
 
   // Polling loading status
   useEffect(() => {
@@ -132,31 +135,80 @@ const MonsterEditor: React.FC = () => {
       alert("Falha ao atualizar o monstro.");
     }
   };
+  // Separate mobs by source and sort by Id
+  const rathenaMobs = useMemo(() =>
+    [...mobs.filter(m => m._source !== 'custom')].sort((a, b) => a.Id - b.Id),
+    [mobs]
+  );
+  const customMobs = useMemo(() =>
+    [...mobs.filter(m => m._source === 'custom')].sort((a, b) => a.Id - b.Id),
+    [mobs]
+  );
+
+  const activeMobs = sourceTab === 'rathena' ? rathenaMobs : customMobs;
 
   return (
     <div className="h-full flex flex-col bg-dark-900 text-gray-200">
       {/* Top Header Bar */}
-      <div className="p-4 flex justify-between items-center bg-dark-900 border-b border-dark-600">
-        <div>
-          <h2 className="text-xl text-white font-semibold flex items-center gap-2">
-            <ShieldAlert size={22} className="text-primary" />
-            Monster Database Editor
-          </h2>
-          <p className="text-xs text-gray-400 mt-1">
-            Selecione uma linha para visualizar a animação. Clique duas vezes em uma célula para edição inline.
-          </p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <input
-            type="text"
-            placeholder="Filtrar monstros..."
-            className="px-3 py-1.5 bg-dark-800 border border-dark-600 rounded text-sm text-gray-200 focus:outline-none focus:border-primary w-64"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-          <div className="text-sm bg-dark-800 px-3 py-1.5 rounded border border-dark-600 shadow text-gray-300">
-            {isLoading ? 'Lendo YAMLs...' : `${mobs.length.toLocaleString()} Monstros`}
+      <div className="p-4 flex flex-col gap-3 bg-dark-900 border-b border-dark-600">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xl text-white font-semibold flex items-center gap-2">
+              <ShieldAlert size={22} className="text-primary" />
+              Monster Database Editor
+            </h2>
+            <p className="text-xs text-gray-400 mt-1">
+              Selecione uma linha para visualizar a animação. Clique duas vezes em uma célula para edição inline.
+            </p>
           </div>
+          <div className="flex items-center space-x-4">
+            <input
+              type="text"
+              placeholder="Filtrar monstros..."
+              className="px-3 py-1.5 bg-dark-800 border border-dark-600 rounded text-sm text-gray-200 focus:outline-none focus:border-primary w-64"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+            <div className="text-sm bg-dark-800 px-3 py-1.5 rounded border border-dark-600 shadow text-gray-300">
+              {isLoading ? 'Lendo YAMLs...' : `${activeMobs.length.toLocaleString()} Monstros`}
+            </div>
+          </div>
+        </div>
+
+        {/* Source Tabs */}
+        <div className="flex gap-1 bg-dark-800/60 rounded-lg p-1 border border-white/5 self-start min-w-[280px]">
+          <button
+            onClick={() => { setSourceTab('rathena'); setSelectedMob(null); }}
+            className={`flex items-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-semibold transition-all duration-200 ${
+              sourceTab === 'rathena'
+                ? 'bg-violet-600/80 text-white shadow-md shadow-violet-900/40'
+                : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+            }`}
+          >
+            <Database size={12} />
+            rAthena
+            <span className={`ml-1 font-mono text-[10px] px-1.5 py-0.5 rounded ${
+              sourceTab === 'rathena' ? 'bg-white/15 text-white' : 'bg-dark-700 text-gray-500'
+            }`}>
+              {rathenaMobs.length.toLocaleString()}
+            </span>
+          </button>
+          <button
+            onClick={() => { setSourceTab('custom'); setSelectedMob(null); }}
+            className={`flex items-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-semibold transition-all duration-200 ${
+              sourceTab === 'custom'
+                ? 'bg-emerald-600/80 text-white shadow-md shadow-emerald-900/40'
+                : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+            }`}
+          >
+            <Sparkles size={12} />
+            Custom
+            <span className={`ml-1 font-mono text-[10px] px-1.5 py-0.5 rounded ${
+              sourceTab === 'custom' ? 'bg-white/15 text-white' : 'bg-dark-700 text-gray-500'
+            }`}>
+              {customMobs.length.toLocaleString()}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -191,7 +243,7 @@ const MonsterEditor: React.FC = () => {
             } as React.CSSProperties}
           >
             <AgGridReact
-              rowData={mobs}
+              rowData={activeMobs}
               columnDefs={columnDefs}
               defaultColDef={defaultColDef}
               onCellValueChanged={onCellValueChanged}

@@ -112,7 +112,12 @@ class MobDatabase:
         all_mobs = []
         for filepath, data in self.db_cache.items():
             if data and 'Body' in data and isinstance(data['Body'], list):
-                all_mobs.extend(data['Body'])
+                norm_path = filepath.replace('\\', '/')
+                is_custom = '/db/import/' in norm_path
+                for mob in data['Body']:
+                    annotated = dict(mob)
+                    annotated['_source'] = 'custom' if is_custom else 'rathena'
+                    all_mobs.append(annotated)
         return all_mobs
 
     def save_file(self, filepath: str):
@@ -125,7 +130,66 @@ class MobDatabase:
     def update_mob(self, mob_id: int, updated_data: dict):
         if mob_id not in self.mob_index:
             return None
+
         target_filepath = self.mob_index[mob_id]
+        norm_path = target_filepath.replace('\\', '/')
+        import_db_path = f"{self.rathena_root}/db/import/mob_db.yml".replace('\\', '/')
+
+        # --- If the mob lives in the original rAthena db, write the override to db/import/ ---
+        if '/db/import/' not in norm_path:
+            original_data = self.db_cache[target_filepath]
+            original_mob = None
+            for mob in original_data.get('Body', []):
+                if mob.get('Id') == mob_id:
+                    original_mob = mob
+                    break
+            if original_mob is None:
+                return None
+
+            # Build a plain dict copy with the updates applied
+            override_mob = dict(original_mob)
+            for key, value in updated_data.items():
+                if value == "" or value is None:
+                    override_mob.pop(key, None)
+                else:
+                    override_mob[key] = value
+
+            # Ensure the import file is loaded in cache
+            if import_db_path not in self.db_cache:
+                if os.path.exists(import_db_path):
+                    self._load_file(import_db_path)
+                else:
+                    os.makedirs(os.path.dirname(import_db_path), exist_ok=True)
+                    self.db_cache[import_db_path] = {'Header': {'Type': 'MOB_DB', 'Version': 5}, 'Body': []}
+
+            import_data = self.db_cache[import_db_path]
+            if 'Body' not in import_data or not isinstance(import_data['Body'], list):
+                import_data['Body'] = []
+
+            # Check if an override already exists in the import file
+            existing_override = None
+            for mob in import_data['Body']:
+                if mob.get('Id') == mob_id:
+                    existing_override = mob
+                    break
+
+            if existing_override is not None:
+                for key, value in updated_data.items():
+                    if value == "" or value is None:
+                        existing_override.pop(key, None)
+                    else:
+                        existing_override[key] = value
+                saved_mob = dict(existing_override)
+            else:
+                import_data['Body'].insert(0, override_mob)
+                saved_mob = override_mob
+
+            self.save_file(import_db_path)
+            self.mob_index[mob_id] = import_db_path
+            saved_mob['_source'] = 'custom'
+            return saved_mob
+
+        # --- Mob already lives in db/import/: update in place ---
         data = self.db_cache[target_filepath]
         for mob in data.get('Body', []):
             if mob.get('Id') == mob_id:
@@ -136,8 +200,11 @@ class MobDatabase:
                     else:
                         mob[key] = value
                 self.save_file(target_filepath)
-                return mob
+                result = dict(mob)
+                result['_source'] = 'custom'
+                return result
         return None
+
 
     def add_custom_mob(self, mob_data: dict):
         import_db_path = f"{self.rathena_root}/db/import/mob_db.yml".replace("\\", "/")

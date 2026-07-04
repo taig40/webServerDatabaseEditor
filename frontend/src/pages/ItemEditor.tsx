@@ -2,10 +2,12 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { Virtuoso } from 'react-virtuoso';
 import { API_URL } from '../config/env';
-import { Search, Plus, Package } from 'lucide-react';
+import { Search, Plus, Package, Database, Sparkles } from 'lucide-react';
 
 import NewItemModal from '../components/NewItemModal';
 import ItemDetail from '../components/ItemDetail';
+
+type SourceTab = 'rathena' | 'custom';
 
 const ItemEditor: React.FC = () => {
   const [items, setItems] = useState<any[]>([]);
@@ -18,6 +20,9 @@ const ItemEditor: React.FC = () => {
   // Estado para o campo de busca
   const [searchText, setSearchText] = useState("");
   
+  // Aba de origem
+  const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
+
   // Modal de novo item
   const [isModalOpen, setIsModalOpen] = useState(false);
   
@@ -60,15 +65,27 @@ const ItemEditor: React.FC = () => {
     return () => clearInterval(intervalId);
   }, []);
 
+  // Separate items by source, then sort by Id
+  const rathenaItems = useMemo(() =>
+    [...items.filter(i => i._source !== 'custom')].sort((a, b) => a.Id - b.Id),
+    [items]
+  );
+  const customItems = useMemo(() =>
+    [...items.filter(i => i._source === 'custom')].sort((a, b) => a.Id - b.Id),
+    [items]
+  );
+
+  const activeItems = sourceTab === 'rathena' ? rathenaItems : customItems;
+
   const filteredItems = useMemo(() => {
-    if (!searchText) return items;
+    if (!searchText) return activeItems;
     const lower = searchText.toLowerCase();
-    return items.filter(item => 
-      String(item.Id).includes(lower) || 
+    return activeItems.filter(item =>
+      String(item.Id).includes(lower) ||
       (item.Name && item.Name.toLowerCase().includes(lower)) ||
       (item.AegisName && item.AegisName.toLowerCase().includes(lower))
     );
-  }, [items, searchText]);
+  }, [activeItems, searchText]);
 
   const selectedItem = useMemo(() => {
     if (selectedItemId === null) return null;
@@ -88,7 +105,6 @@ const ItemEditor: React.FC = () => {
     } catch (error) {
       console.error("[webSDE] Falha ao salvar", error);
       alert("Erro de conexão ao salvar a alteração no YAML.");
-      // Poderíamos reverter o estado aqui se necessário guardando o valor antigo.
     }
   }, []);
 
@@ -116,6 +132,7 @@ const ItemEditor: React.FC = () => {
              setItems(prev => [newItem, ...prev]);
              setSelectedItemId(newItem.Id);
              setIsModalOpen(false);
+             setSourceTab('custom');
           }}
         />
       )}
@@ -135,6 +152,38 @@ const ItemEditor: React.FC = () => {
               title="Novo Item"
             >
               <Plus size={16} />
+            </button>
+          </div>
+
+          {/* Source Tabs */}
+          <div className="flex gap-1 mb-3 bg-dark-900/60 rounded-lg p-1 border border-white/5">
+            <button
+              onClick={() => { setSourceTab('rathena'); setSelectedItemId(null); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all duration-200 ${
+                sourceTab === 'rathena'
+                  ? 'bg-violet-600/80 text-white shadow-md shadow-violet-900/40'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+              }`}
+            >
+              <Database size={12} />
+              rAthena
+              <span className={`ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded ${sourceTab === 'rathena' ? 'bg-white/15 text-white' : 'bg-dark-700 text-gray-500'}`}>
+                {rathenaItems.length.toLocaleString()}
+              </span>
+            </button>
+            <button
+              onClick={() => { setSourceTab('custom'); setSelectedItemId(null); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all duration-200 ${
+                sourceTab === 'custom'
+                  ? 'bg-emerald-600/80 text-white shadow-md shadow-emerald-900/40'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+              }`}
+            >
+              <Sparkles size={12} />
+              Custom
+              <span className={`ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded ${sourceTab === 'custom' ? 'bg-white/15 text-white' : 'bg-dark-700 text-gray-500'}`}>
+                {customItems.length.toLocaleString()}
+              </span>
             </button>
           </div>
           
@@ -162,12 +211,15 @@ const ItemEditor: React.FC = () => {
               style={{ height: '100%' }}
               itemContent={(index, item) => {
                 const isSelected = selectedItemId === item.Id;
+                const isCustom = item._source === 'custom';
                 return (
                   <div 
                     onClick={() => setSelectedItemId(item.Id)}
                     className={`flex items-center gap-3 p-3 cursor-pointer border-b border-white/5 transition-all duration-150 ${
                       isSelected 
-                        ? 'bg-gradient-to-r from-violet-600/20 to-transparent border-l-2 border-l-violet-500' 
+                        ? isCustom
+                          ? 'bg-gradient-to-r from-emerald-600/20 to-transparent border-l-2 border-l-emerald-500'
+                          : 'bg-gradient-to-r from-violet-600/20 to-transparent border-l-2 border-l-violet-500'
                         : 'hover:bg-dark-800/50 border-l-2 border-l-transparent'
                     }`}
                   >
@@ -184,7 +236,7 @@ const ItemEditor: React.FC = () => {
                       <span className={`text-sm truncate font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
                         {item.Name || item.AegisName || 'Unknown'}
                       </span>
-                      <span className={`text-[11px] truncate font-mono ${isSelected ? 'text-violet-300' : 'text-gray-500'}`}>
+                      <span className={`text-[11px] truncate font-mono ${isSelected ? (isCustom ? 'text-emerald-300' : 'text-violet-300') : 'text-gray-500'}`}>
                         {item.Id} - {item.AegisName}
                       </span>
                     </div>
