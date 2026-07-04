@@ -7,6 +7,7 @@ import MobSkillEditor from './pages/MobSkillEditor';
 import ComboEditor from './pages/ComboEditor';
 import QuestEditor from './pages/QuestEditor';
 import PetEditor from './pages/PetEditor';
+import ClientItemEditor from './pages/ClientItemEditor';
 
 function App() {
   const [activeView, setActiveView] = useState<ModuleId>('items');
@@ -20,6 +21,7 @@ function App() {
       case 'item_combos':    return <ComboEditor />;
       case 'server_quests':  return <QuestEditor />;
       case 'pets':           return <PetEditor />;
+      case 'client_items':   return <ClientItemEditor />;
       default:               return (
         <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-600">
           <span className="text-5xl">🚧</span>
