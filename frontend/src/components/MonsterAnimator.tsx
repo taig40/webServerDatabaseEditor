@@ -29,9 +29,10 @@ interface MonsterAnimatorProps {
   mobId: number;
   mobName: string;
   size?: 'sm' | 'md' | 'lg';
+  spriteKey?: number;
 }
 
-const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size = 'md' }) => {
+const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size = 'md', spriteKey = 0 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +60,8 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
       animationFrameIdRef.current = null;
     }
 
-    // Call local FastAPI backend
-    fetch(`${API_URL}/api/mobs/${mobId}/animation`)
+    // Call local FastAPI backend — spriteKey forces cache bust after upload
+    fetch(`${API_URL}/api/mobs/${mobId}/animation?_t=${spriteKey}`)
       .then(res => {
         if (!res.ok) throw new Error("Animação não encontrada");
         return res.json();
@@ -94,7 +95,7 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
         cancelAnimationFrame(animationFrameIdRef.current);
       }
     };
-  }, [mobId]);
+  }, [mobId, spriteKey]);
 
   useEffect(() => {
     if (!spritesheetImg || !animData || !canvasRef.current) return;

@@ -1,14 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items
+from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
-from app.services.grf_reader import grf_reader
+from app.services.grf_reader import grf_reader, MAX_GRF_SLOTS
 from app.services.skill_parser import skill_db
 from app.services.mob_skill_parser import mob_skill_db
 from app.services.combo_parser import combo_db
 from app.services.quest_parser import quest_db
 from app.services.pet_parser import pet_db
+from app.services.achievement_parser import achievement_db
 import os
 import shutil
 import sys
@@ -32,9 +33,23 @@ def setup_and_validate_env():
     # 2. Carrega as variáveis
     load_dotenv(dotenv_path=env_path)
     
-    # 2b. Deobfuscate variables in os.environ
-    from app.core.security import deobfuscate_env
-    deobfuscate_env()
+    # 2c. Preencher caminhos de banco de dados automaticamente a partir de SERVER_DB_BASE_PATH se preenchido
+    db_base_path = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
+    if db_base_path:
+        print(f"[*] Usando pasta base de DB: '{db_base_path}'")
+        db_defaults = {
+            "ITEM_DB_PATH": "re/item_db.yml",
+            "MOB_DB_PATH": "re/mob_db.yml",
+            "SKILL_DB_PATH": "re/skill_db.yml",
+            "MOB_SKILL_DB_PATH": "re/mob_skill_db.txt",
+            "COMBO_DB_PATH": "re/item_combos.yml",
+            "QUEST_DB_PATH": "re/quest_db.yml",
+            "PET_DB_PATH": "re/pet_db.yml",
+            "ACHIEVEMENT_DB_PATH": "re/achievement_db.yml",
+        }
+        for env_key, filename in db_defaults.items():
+            if not os.environ.get(env_key, "").strip():
+                os.environ[env_key] = os.path.join(db_base_path, filename).replace("\\", "/")
     
     # 3. Lê as chaves necessárias do .env-template para validar
     required_keys = []
@@ -48,18 +63,34 @@ def setup_and_validate_env():
                         required_keys.append(key)
                         
     # 4. Verifica se cada variável está preenchida (diferente de vazia)
+    # GRF slots, override path and legacy GRF_PATH are all optional (at least one is enough)
+    optional_keys = {
+        "GRF_OVERRIDE_PATH", "GRF_PATH",
+        *[f"GRF_{i}" for i in range(10)],
+    }
     missing_keys = []
     for key in required_keys:
+        if key in optional_keys:
+            continue
         val = os.environ.get(key, "").strip()
         if not val:
+            if key == "SERVER_DB_BASE_PATH" and os.environ.get("ITEM_DB_PATH", "").strip():
+                continue
             missing_keys.append(key)
+
+    # Warn if no GRF is configured at all (non-fatal)
+    has_any_grf = any(os.environ.get(f"GRF_{i}", "").strip() for i in range(10))
+    has_legacy_grf = bool(os.environ.get("GRF_PATH", "").strip())
+    if not has_any_grf and not has_legacy_grf:
+        print("[!] Aviso: Nenhum arquivo GRF configurado (GRF_0..GRF_9). "
+              "Sprites e ícones não serão exibidos. Configure na página de Configurações.")
             
     if missing_keys:
         print(f"\n[ERRO] Configuração incompleta no arquivo .env do Backend!")
         print(f"As seguintes variáveis estão vazias ou ausentes e precisam ser preenchidas:")
         for key in missing_keys:
             print(f"  - {key}")
-        print(f"Por favor, edite o arquivo '{env_path}' e preencha-as antes de rodar o servidor.\n")
+        print(f"Por favor, edite o arquivo '{env_path}' ou use a página de Configurações do site.\n")
         sys.exit(1)
 
 # Executa o setup e validação antes de subir a app
@@ -110,9 +141,21 @@ async def lifespan(app: FastAPI):
         mob_db.load_db_async(mob_db_path)
         print(f"[*] Disparado o processo de parse assíncrono de monstros a partir de '{mob_db_path}'.")
     
-    if grf_path:
+    if grf_path or any(os.environ.get(f"GRF_{i}", "").strip() for i in range(MAX_GRF_SLOTS)):
         override_path = os.environ.get("GRF_OVERRIDE_PATH", "")
-        grf_reader.load(grf_path, override_path=override_path)
+
+        # Build GRF list from GRF_0 ... GRF_9
+        grf_list = []
+        for i in range(MAX_GRF_SLOTS):
+            slot_path = os.environ.get(f"GRF_{i}", "").strip()
+            if slot_path:
+                grf_list.append({"priority": i, "path": slot_path})
+
+        # Migration: honour legacy GRF_PATH if no GRF_N slots are set
+        if not grf_list and grf_path:
+            grf_list.append({"priority": 0, "path": grf_path})
+
+        grf_reader.load_multi(grf_list, override_path=override_path)
         
     if iteminfo_path:
         iteminfo_db.load_background(iteminfo_path)
@@ -141,6 +184,11 @@ async def lifespan(app: FastAPI):
     if pet_db_path:
         pet_db.load_db_async(pet_db_path)
         print(f"[*] Disparado o processo de parse assíncrono de mascotes a partir de '{pet_db_path}'.")
+
+    achievement_db_path = os.environ.get("ACHIEVEMENT_DB_PATH", "")
+    if achievement_db_path:
+        achievement_db.load_db_async(achievement_db_path)
+        print(f"[*] Disparado o processo de parse assíncrono de conquistas a partir de '{achievement_db_path}'.")
         
     yield
 
@@ -157,6 +205,8 @@ app.include_router(combos.router,       prefix="/api/combos",       tags=["combo
 app.include_router(quests.router,       prefix="/api/quests",       tags=["quests"])
 app.include_router(pets.router,         prefix="/api/pets",         tags=["pets"])
 app.include_router(client_items.router, prefix="/api/client_items", tags=["client_items"])
+app.include_router(settings_api.router, prefix="/api/settings",    tags=["settings"])
+app.include_router(achievements.router,  prefix="/api/achievements", tags=["achievements"])
 
 @app.get("/")
 def read_root():

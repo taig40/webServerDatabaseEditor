@@ -1,0 +1,570 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+import {
+  Settings, Database, FolderOpen, Server, Globe, RefreshCw, Save,
+  Plus, Trash2, ChevronUp, ChevronDown, CheckCircle2, XCircle,
+  AlertTriangle, Loader2, HardDrive, Layers, ShieldCheck
+} from 'lucide-react';
+import { API_URL } from '../config/env';
+
+const MAX_GRF = 10;
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function SectionCard({
+  icon: Icon, title, subtitle, iconClass = 'text-violet-400', children
+}: {
+  icon: React.ElementType; title: string; subtitle?: string;
+  iconClass?: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-[#16161f] border border-white/5 rounded-2xl p-6 shadow-xl">
+      <div className="flex items-center gap-2.5 mb-5 pb-4 border-b border-white/5">
+        <Icon size={17} className={iconClass} />
+        <div>
+          <h3 className="text-white font-semibold text-sm">{title}</h3>
+          {subtitle && <p className="text-gray-600 text-[11px] mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function PathField({
+  label, sublabel, value, onChange, placeholder
+}: {
+  label: string; sublabel?: string; value: string;
+  onChange: (v: string) => void; placeholder?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">{label}</label>
+      {sublabel && <p className="text-[11px] text-gray-600 -mt-1">{sublabel}</p>}
+      <div className="relative">
+        <FolderOpen size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder || 'Caminho completo...'}
+          className="w-full bg-[#0f0f14] border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm text-gray-200 font-mono placeholder-gray-700 focus:outline-none focus:border-violet-500/60 transition-colors"
+        />
+      </div>
+    </div>
+  );
+}
+
+// Status badge from /validate endpoint
+function StatusBadge({ status }: { status?: { status: string } }) {
+  if (!status) return null;
+  if (status.status === 'ok') return <span className="flex items-center gap-1 text-[10px] text-green-400"><CheckCircle2 size={11} /> OK</span>;
+  if (status.status === 'empty') return <span className="flex items-center gap-1 text-[10px] text-gray-600"><XCircle size={11} /> Vazio</span>;
+  return <span className="flex items-center gap-1 text-[10px] text-red-400"><AlertTriangle size={11} /> Não encontrado</span>;
+}
+
+// ── GRF Entry Row ──────────────────────────────────────────────────────────────
+
+interface GRFEntry { priority: number; path: string; }
+
+function GRFRow({
+  entry, index, total, onChange, onRemove, onMoveUp, onMoveDown, validationStatus
+}: {
+  entry: GRFEntry; index: number; total: number;
+  onChange: (v: string) => void;
+  onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  validationStatus?: { status: string };
+}) {
+  const priorityColors = [
+    'bg-violet-600', 'bg-indigo-600', 'bg-blue-600', 'bg-cyan-600', 'bg-teal-600',
+    'bg-green-700', 'bg-yellow-700', 'bg-orange-700', 'bg-red-700', 'bg-gray-700',
+  ];
+  const priorityLabels = ['Máxima', '', '', '', '', '', '', '', '', 'Mínima'];
+  const bgColor = priorityColors[entry.priority] || 'bg-gray-700';
+
+  return (
+    <div className="flex items-center gap-3 group">
+      {/* Priority badge */}
+      <div className={`flex-shrink-0 flex flex-col items-center justify-center w-9 h-9 rounded-lg ${bgColor} shadow`}>
+        <span className="text-white text-[11px] font-bold leading-none">{entry.priority}</span>
+        {priorityLabels[entry.priority] && (
+          <span className="text-white/60 text-[8px] leading-none mt-0.5">{priorityLabels[entry.priority]}</span>
+        )}
+      </div>
+
+      {/* Path input */}
+      <div className="relative flex-1">
+        <FolderOpen size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+        <input
+          type="text"
+          value={entry.path}
+          onChange={e => onChange(e.target.value)}
+          placeholder={`GRF ${entry.priority}: caminho para o arquivo .grf ou pasta...`}
+          className="w-full bg-[#0f0f14] border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-xs text-gray-200 font-mono placeholder-gray-700 focus:outline-none focus:border-violet-500/60 transition-colors"
+        />
+      </div>
+
+      {/* Validation status */}
+      <div className="w-20 flex-shrink-0">
+        <StatusBadge status={validationStatus} />
+      </div>
+
+      {/* Move / Remove buttons */}
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={onMoveUp}
+          disabled={index === 0}
+          className="p-1 text-gray-600 hover:text-white disabled:opacity-20 transition-colors"
+        >
+          <ChevronUp size={13} />
+        </button>
+        <button
+          onClick={onMoveDown}
+          disabled={index === total - 1}
+          className="p-1 text-gray-600 hover:text-white disabled:opacity-20 transition-colors"
+        >
+          <ChevronDown size={13} />
+        </button>
+        <button
+          onClick={onRemove}
+          className="p-1 text-gray-700 hover:text-red-400 transition-colors"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────────
+
+const SettingsPage: React.FC = () => {
+  const [serverDbBasePath, setServerDbBasePath] = useState('');
+  const [iteminfoPath, setIteminfoPath] = useState('');
+  const [grfList, setGrfList] = useState<GRFEntry[]>([]);
+  const [grfOverridePath, setGrfOverridePath] = useState('');
+  const [corsOrigins, setCorsOrigins] = useState('');
+  const [serverEncoding, setServerEncoding] = useState('utf-8');
+  const [clientEncoding, setClientEncoding] = useState('euc-kr');
+  const [achievementsLuaPath, setAchievementsLuaPath] = useState('');
+  const [encodingOptions, setEncodingOptions] = useState<{ value: string; label: string }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [reloadStatus, setReloadStatus] = useState<null | { reloaded_dbs: string[]; grf_count: number }>(null);
+  const [validation, setValidation] = useState<Record<string, { status: string }>>({});
+  const [isValidating, setIsValidating] = useState(false);
+
+  // Load current settings
+  useEffect(() => {
+    setIsLoading(true);
+    axios.get(`${API_URL}/api/settings`)
+      .then(r => {
+        const d = r.data;
+        setServerDbBasePath(d.server_db_base_path || '');
+        setIteminfoPath(d.iteminfo_path || '');
+        setGrfList(d.grf_list || []);
+        setGrfOverridePath(d.grf_override_path || '');
+        setCorsOrigins(d.cors_origins || '');
+        setServerEncoding(d.server_encoding || 'utf-8');
+        setClientEncoding(d.client_encoding || 'euc-kr');
+        setAchievementsLuaPath(d.achievements_lua_path || '');
+        setEncodingOptions(d.encoding_options || []);
+      })
+      .catch(() => { })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const validate = useCallback(() => {
+    setIsValidating(true);
+    axios.get(`${API_URL}/api/settings/validate`)
+      .then(r => setValidation(r.data))
+      .catch(() => { })
+      .finally(() => setIsValidating(false));
+  }, []);
+
+  // GRF list helpers
+  const addGRF = () => {
+    if (grfList.length >= MAX_GRF) return;
+    // Find next free priority slot
+    const used = new Set(grfList.map(g => g.priority));
+    let next = 0;
+    while (used.has(next) && next < MAX_GRF) next++;
+    setGrfList(prev => [...prev, { priority: next, path: '' }]);
+  };
+
+  const removeGRF = (idx: number) => {
+    setGrfList(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateGRFPath = (idx: number, path: string) => {
+    setGrfList(prev => prev.map((g, i) => i === idx ? { ...g, path } : g));
+  };
+
+  const moveGRF = (idx: number, dir: -1 | 1) => {
+    const arr = [...grfList];
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= arr.length) return;
+    // Swap priorities
+    const tmpPriority = arr[idx].priority;
+    arr[idx] = { ...arr[idx], priority: arr[newIdx].priority };
+    arr[newIdx] = { ...arr[newIdx], priority: tmpPriority };
+    // Swap positions
+    [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+    setGrfList(arr);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setSaveStatus('idle');
+    try {
+      // Re-number priorities by visual order
+      const normalised = grfList
+        .filter(g => g.path.trim())
+        .map((g, i) => ({ priority: i, path: g.path.trim() }));
+
+      await axios.put(`${API_URL}/api/settings`, {
+        server_db_base_path: serverDbBasePath,
+        iteminfo_path: iteminfoPath,
+        grf_list: normalised,
+        grf_override_path: grfOverridePath,
+        cors_origins: corsOrigins,
+        server_encoding: serverEncoding,
+        client_encoding: clientEncoding,
+        achievements_lua_path: achievementsLuaPath,
+      });
+      setGrfList(normalised);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch {
+      setSaveStatus('error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReload = async () => {
+    setIsReloading(true);
+    setReloadStatus(null);
+    try {
+      const r = await axios.post(`${API_URL}/api/settings/reload`);
+      setReloadStatus(r.data);
+    } catch {
+      setReloadStatus(null);
+    } finally {
+      setIsReloading(false);
+    }
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full gap-3 text-gray-500">
+        <Loader2 size={20} className="animate-spin" />
+        <span className="text-sm">Carregando configurações...</span>
+      </div>
+    );
+  }
+
+  const sortedGRFs = [...grfList].sort((a, b) => a.priority - b.priority);
+
+  return (
+    <div className="flex flex-col h-full bg-[#0f0f14] overflow-y-auto">
+
+      {/* Header */}
+      <div className="flex-shrink-0 flex items-center justify-between px-8 py-6 border-b border-white/5 bg-gradient-to-r from-violet-600/10 to-transparent">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
+            <Settings size={18} className="text-violet-400" />
+          </div>
+          <div>
+            <h1 className="text-white font-bold text-xl">Configurações</h1>
+            <p className="text-gray-500 text-sm">Configure os caminhos do servidor, client e arquivos GRF</p>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-3">
+          {/* Validate */}
+          <button
+            onClick={validate}
+            disabled={isValidating}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-dark-800/60 text-gray-400 hover:text-white hover:border-white/20 text-sm font-medium transition-all"
+          >
+            {isValidating ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+            Validar Caminhos
+          </button>
+
+          {/* Save */}
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${saveStatus === 'saved'
+                ? 'bg-green-600/80 text-white'
+                : saveStatus === 'error'
+                  ? 'bg-red-700/80 text-white'
+                  : 'bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-900/30'
+              }`}
+          >
+            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            {isSaving ? 'Salvando...' : saveStatus === 'saved' ? 'Salvo!' : 'Salvar'}
+          </button>
+
+          {/* Reload */}
+          <button
+            onClick={handleReload}
+            disabled={isReloading}
+            title="Recarrega todos os bancos de dados e a GRF sem reiniciar o servidor"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-emerald-600/30 bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 text-sm font-semibold transition-all"
+          >
+            {isReloading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            Recarregar Servidor
+          </button>
+        </div>
+      </div>
+
+      {/* Reload result */}
+      {reloadStatus && (
+        <div className="mx-8 mt-4 bg-emerald-950/60 border border-emerald-700/40 rounded-xl p-4">
+          <p className="text-emerald-400 text-sm font-semibold mb-2">
+            ✓ Servidor recarregado — {reloadStatus.grf_count} GRF(s) ativa(s)
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {reloadStatus.reloaded_dbs.map((db, i) => (
+              <span key={i} className="text-[11px] bg-emerald-900/40 border border-emerald-700/30 text-emerald-300 px-2 py-0.5 rounded font-mono">
+                {db}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="flex-1 px-8 py-6 grid grid-cols-1 xl:grid-cols-2 gap-6 content-start">
+
+        {/* ── Server DB ── */}
+        <SectionCard icon={Database} title="Banco de Dados do Servidor" subtitle="Arquivos .yml e .txt do rAthena" iconClass="text-violet-400">
+          <div className="flex flex-col gap-4">
+            <PathField
+              label="Pasta base (SERVER_DB_BASE_PATH)"
+              sublabel="Os arquivos de DB serão buscados automaticamente em <base>/re/ e /import/"
+              value={serverDbBasePath}
+              onChange={setServerDbBasePath}
+              placeholder="Ex: C:\rathena\db"
+            />
+            {validation['SERVER_DB_BASE_PATH'] && (
+              <div className="flex items-center gap-2 text-[11px]">
+                <StatusBadge status={validation['SERVER_DB_BASE_PATH']} />
+                <span className="text-gray-600">{validation['SERVER_DB_BASE_PATH']?.status === 'ok' ? 'Pasta encontrada' : 'Pasta não encontrada'}</span>
+              </div>
+            )}
+          </div>
+        </SectionCard>
+
+        {/* ── Client ── */}
+        <SectionCard icon={Server} title="Cliente Ragnarok Online" subtitle="Arquivos do client do jogador" iconClass="text-blue-400">
+          <div className="flex flex-col gap-4">
+            <PathField
+              label="ItemInfo (ITEMINFO_PATH)"
+              sublabel="System/itemInfo.lua ou itemInfo_true.lua do seu client"
+              value={iteminfoPath}
+              onChange={setIteminfoPath}
+              placeholder="Ex: C:\kRO\System\LuaFiles514\itemInfo.lua"
+            />
+            {validation['ITEMINFO_PATH'] && (
+              <div className="flex items-center gap-2 text-[11px]">
+                <StatusBadge status={validation['ITEMINFO_PATH']} />
+              </div>
+            )}
+
+            <PathField
+              label="Conquistas LUA (ACHIEVEMENTS_LUA_PATH)"
+              sublabel="System/achievements.lub ou achievement_list.lub do seu client"
+              value={achievementsLuaPath}
+              onChange={setAchievementsLuaPath}
+              placeholder="Deixe em branco para detectar automaticamente relativo ao ItemInfo"
+            />
+            {validation['ACHIEVEMENTS_LUA_PATH'] && (
+              <div className="flex items-center gap-2 text-[11px]">
+                <StatusBadge status={validation['ACHIEVEMENTS_LUA_PATH']} />
+              </div>
+            )}
+          </div>
+        </SectionCard>
+
+        {/* ── GRF Files ── */}
+        <div className="xl:col-span-2">
+          <SectionCard
+            icon={HardDrive}
+            title="Arquivos GRF"
+            subtitle={`DATA.INI style — até ${MAX_GRF} GRFs com prioridade. GRF_0 = maior prioridade, GRF_9 = menor.`}
+            iconClass="text-orange-400"
+          >
+            {/* Legend */}
+            <div className="flex items-center gap-4 mb-4 text-[11px] text-gray-600">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-violet-600 inline-block" />
+                Prioridade 0 (máxima)
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-gray-700 inline-block" />
+                Prioridade 9 (mínima)
+              </div>
+              <div className="flex items-center gap-1.5 ml-2 text-gray-500">
+                Aceita: arquivo <span className="font-mono text-violet-300">.grf</span> ou pasta <span className="font-mono text-violet-300">data\</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 mb-4">
+              {sortedGRFs.length === 0 ? (
+                <div className="text-center py-8 text-gray-700 border border-dashed border-white/5 rounded-xl text-sm">
+                  Nenhuma GRF configurada. Clique em "Adicionar GRF" para começar.
+                </div>
+              ) : (
+                sortedGRFs.map((entry, idx) => (
+                  <GRFRow
+                    key={entry.priority}
+                    entry={entry}
+                    index={idx}
+                    total={sortedGRFs.length}
+                    onChange={path => updateGRFPath(grfList.indexOf(entry), path)}
+                    onRemove={() => removeGRF(grfList.indexOf(entry))}
+                    onMoveUp={() => moveGRF(idx, -1)}
+                    onMoveDown={() => moveGRF(idx, 1)}
+                    validationStatus={validation[`GRF_${entry.priority}`]}
+                  />
+                ))
+              )}
+            </div>
+
+            {grfList.length < MAX_GRF && (
+              <button
+                onClick={addGRF}
+                className="flex items-center gap-2 text-xs text-violet-400 hover:text-violet-300 py-2 px-3 rounded-lg bg-violet-600/10 hover:bg-violet-600/20 border border-violet-600/20 transition-colors"
+              >
+                <Plus size={13} /> Adicionar GRF ({grfList.length}/{MAX_GRF})
+              </button>
+            )}
+
+            {grfList.length >= MAX_GRF && (
+              <p className="text-xs text-amber-500/80 mt-2 flex items-center gap-1.5">
+                <AlertTriangle size={12} />
+                Limite máximo de {MAX_GRF} GRFs atingido (igual ao cliente oficial do RO)
+              </p>
+            )}
+
+            {/* Override path */}
+            <div className="mt-5 pt-5 border-t border-white/5">
+              <PathField
+                label="Override Path (GRF_OVERRIDE_PATH)"
+                sublabel="Pasta onde o editor salva sprites e ícones customizados. Necessário ao usar .grf binários."
+                value={grfOverridePath}
+                onChange={setGrfOverridePath}
+                placeholder="Ex: C:\kRO\data\"
+              />
+              {validation['GRF_OVERRIDE_PATH'] && (
+                <div className="flex items-center gap-2 mt-2 text-[11px]">
+                  <StatusBadge status={validation['GRF_OVERRIDE_PATH']} />
+                </div>
+              )}
+            </div>
+          </SectionCard>
+        </div>
+
+        {/* ── Encoding ── */}
+        <div className="xl:col-span-2">
+          <SectionCard
+            icon={Globe}
+            title="Encoding"
+            subtitle="Define o encoding de texto para leitura dos arquivos do servidor e do cliente"
+            iconClass="text-cyan-400"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Server encoding */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">
+                  Encoding do Servidor
+                </label>
+                <p className="text-[11px] text-gray-600 -mt-1">
+                  Usado para ler arquivos <span className="font-mono text-violet-300">mob_skill_db.txt</span> e outros arquivos de texto
+                </p>
+                <div className="relative mt-0.5">
+                  <select
+                    value={serverEncoding}
+                    onChange={e => setServerEncoding(e.target.value)}
+                    className="w-full appearance-none bg-[#0f0f14] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500/60 transition-colors cursor-pointer pr-8"
+                  >
+                    {(encodingOptions.length > 0 ? encodingOptions : [
+                      { value: 'utf-8', label: 'UTF-8 (padrão)' },
+                      { value: 'euc-kr', label: 'EUC-KR / CP949 (clientes coreanos kRO)' },
+                      { value: 'cp1252', label: 'Windows-1252 / CP1252 (servidores ocidentais)' },
+                    ]).map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">▾</div>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] font-mono bg-dark-900/60 border border-white/5 px-2 py-0.5 rounded text-violet-300">
+                    SERVER_ENCODING={serverEncoding}
+                  </span>
+                </div>
+              </div>
+
+              {/* Client encoding */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">
+                  Encoding do Cliente
+                </label>
+                <p className="text-[11px] text-gray-600 -mt-1">
+                  Usado para ler <span className="font-mono text-violet-300">itemInfo.lua</span> e nomes de arquivos dentro da GRF
+                </p>
+                <div className="relative mt-0.5">
+                  <select
+                    value={clientEncoding}
+                    onChange={e => setClientEncoding(e.target.value)}
+                    className="w-full appearance-none bg-[#0f0f14] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500/60 transition-colors cursor-pointer pr-8"
+                  >
+                    {(encodingOptions.length > 0 ? encodingOptions : [
+                      { value: 'utf-8', label: 'UTF-8 (padrão)' },
+                      { value: 'euc-kr', label: 'EUC-KR / CP949 (clientes coreanos kRO)' },
+                      { value: 'cp1252', label: 'Windows-1252 / CP1252 (servidores ocidentais)' },
+                    ]).map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">▾</div>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] font-mono bg-dark-900/60 border border-white/5 px-2 py-0.5 rounded text-cyan-300">
+                    CLIENT_ENCODING={clientEncoding}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+        </div>
+
+        {/* ── Advanced ── */}
+        <div className="xl:col-span-2">
+          <SectionCard icon={Globe} title="Configurações Avançadas" iconClass="text-gray-400">
+            <PathField
+              label="CORS Origins"
+              sublabel="Origens permitidas para o frontend (separadas por v\u00edrgula)"
+              value={corsOrigins}
+              onChange={setCorsOrigins}
+              placeholder="http://localhost:5173, http://127.0.0.1:5173"
+            />
+          </SectionCard>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+export default SettingsPage;

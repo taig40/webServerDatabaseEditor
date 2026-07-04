@@ -127,7 +127,7 @@ class MobDatabase:
             self.yaml.dump(self.db_cache[filepath], f)
         return True
 
-    def update_mob(self, mob_id: int, updated_data: dict):
+    def update_mob(self, mob_id: int, updated_data: dict, save_mode: str = 'import'):
         if mob_id not in self.mob_index:
             return None
 
@@ -135,7 +135,7 @@ class MobDatabase:
         norm_path = target_filepath.replace('\\', '/')
         import_db_path = f"{self.rathena_root}/db/import/mob_db.yml".replace('\\', '/')
 
-        # --- If the mob lives in the original rAthena db, write the override to db/import/ ---
+        # --- If the mob lives in the original rAthena db ---
         if '/db/import/' not in norm_path:
             original_data = self.db_cache[target_filepath]
             original_mob = None
@@ -146,7 +146,19 @@ class MobDatabase:
             if original_mob is None:
                 return None
 
-            # Build a plain dict copy with the updates applied
+            if save_mode == 'overwrite':
+                # Write directly into the original file
+                for key, value in updated_data.items():
+                    if value == "" or value is None:
+                        original_mob.pop(key, None)
+                    else:
+                        original_mob[key] = value
+                self.save_file(target_filepath)
+                result = dict(original_mob)
+                result['_source'] = 'rathena'
+                return result
+
+            # Default: 'import' mode — write override to db/import/
             override_mob = dict(original_mob)
             for key, value in updated_data.items():
                 if value == "" or value is None:
@@ -166,7 +178,6 @@ class MobDatabase:
             if 'Body' not in import_data or not isinstance(import_data['Body'], list):
                 import_data['Body'] = []
 
-            # Check if an override already exists in the import file
             existing_override = None
             for mob in import_data['Body']:
                 if mob.get('Id') == mob_id:
