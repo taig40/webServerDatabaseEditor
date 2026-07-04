@@ -42,11 +42,54 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
   const animationFrameIdRef = useRef<number | null>(null);
   const lastFrameTimeRef = useRef<number>(0);
 
+  const [autoScale, setAutoScale] = useState<number>(1.0);
+
   const canvasDimensions = {
     sm: { width: 120, height: 120 },
     md: { width: 220, height: 220 },
     lg: { width: 320, height: 320 },
   }[size];
+
+  // Calculate dynamic autoScale when animData changes
+  useEffect(() => {
+    if (!animData) return;
+    let minX = 99999, maxX = -99999, minY = 99999, maxY = -99999;
+    
+    animData.frames.forEach(frame => {
+      if (frame.patches) {
+        frame.patches.forEach(patch => {
+          const scaleX = Math.abs(patch.scale_x);
+          const scaleY = Math.abs(patch.scale_y);
+          const halfW = (patch.w / 2) * scaleX;
+          const halfH = (patch.h / 2) * scaleY;
+          const x1 = patch.x - halfW;
+          const x2 = patch.x + halfW;
+          const y1 = patch.y - halfH;
+          const y2 = patch.y + halfH;
+          if (x1 < minX) minX = x1;
+          if (x2 > maxX) maxX = x2;
+          if (y1 < minY) minY = y1;
+          if (y2 > maxY) maxY = y2;
+        });
+      }
+    });
+
+    const mobW = maxX - minX;
+    const mobH = maxY - minY;
+
+    if (mobW > 0 && mobH > 0) {
+      // Scale to fit 75% of the canvas height/width
+      const scaleLimitX = (canvasDimensions.width * 0.75) / mobW;
+      const scaleLimitY = (canvasDimensions.height * 0.75) / mobH;
+      let computed = Math.min(scaleLimitX, scaleLimitY);
+      
+      // Limit to keep look aesthetic (e.g. Porings not too massive, Bosses not microscopic)
+      computed = Math.min(Math.max(computed, 0.35), size === 'sm' ? 1.0 : 1.5);
+      setAutoScale(computed);
+    } else {
+      setAutoScale(1.0);
+    }
+  }, [animData, size, canvasDimensions.width, canvasDimensions.height]);
 
   useEffect(() => {
     let active = true;
@@ -122,11 +165,11 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
       if (frame && frame.patches) {
         frame.patches.forEach(patch => {
           ctx.save();
-          // Center anchor resting at 70% height
-          ctx.translate(canvas.width / 2, canvas.height * 0.7);
+          // Center anchor resting at 75% height
+          ctx.translate(canvas.width / 2, canvas.height * 0.75);
 
-          const scaleX = patch.mirror === 1 ? -patch.scale_x : patch.scale_x;
-          const scaleY = patch.scale_y;
+          const scaleX = (patch.mirror === 1 ? -patch.scale_x : patch.scale_x) * autoScale;
+          const scaleY = patch.scale_y * autoScale;
           ctx.scale(scaleX, scaleY);
 
           if (patch.rotation !== 0) {
@@ -165,6 +208,13 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
   }, [spritesheetImg, animData]);
 
   if (loading) {
+    if (size === 'sm') {
+      return (
+        <div className="w-full h-full flex items-center justify-center text-gray-500">
+          <Loader2 className="animate-spin text-violet-400" size={14} />
+        </div>
+      );
+    }
     return (
       <div 
         style={canvasDimensions}
@@ -177,6 +227,13 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
   }
 
   if (error || !animData) {
+    if (size === 'sm') {
+      return (
+        <div className="w-full h-full flex items-center justify-center text-[9px] text-gray-600 bg-dark-900/50 font-bold" title="Sem sprite no kRO">
+          N/A
+        </div>
+      );
+    }
     return (
       <div 
         style={canvasDimensions}
@@ -186,6 +243,17 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
         <span className="text-xs font-semibold">{mobName}</span>
         <span className="text-[10px] text-gray-600">Sem sprite no kRO</span>
       </div>
+    );
+  }
+
+  if (size === 'sm') {
+    return (
+      <canvas 
+        ref={canvasRef}
+        width={canvasDimensions.width}
+        height={canvasDimensions.height}
+        className="w-full h-full object-contain pixelated"
+      />
     );
   }
 
