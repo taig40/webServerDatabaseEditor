@@ -19,10 +19,6 @@ const ScriptCellEditor = forwardRef((props: ICellEditorParams, ref) => {
     return {
       // Retorna o valor final para o ag-grid quando a edição parar
       getValue() {
-        if (typeof props.value === 'object' && props.value !== null) {
-           // Preserva o resto do objeto (como EquipScript)
-           return { ...props.value, Script: value };
-        }
         return value;
       },
       // Diz ao ag-grid para renderizar nosso editor num "popup"

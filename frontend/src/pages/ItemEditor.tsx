@@ -30,7 +30,7 @@ const ItemEditor: React.FC = () => {
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    let intervalId: any;
 
     const checkStatusAndFetch = async () => {
       try {
@@ -92,19 +92,29 @@ const ItemEditor: React.FC = () => {
     return items.find(i => i.Id === selectedItemId) || null;
   }, [items, selectedItemId]);
 
-  const handleUpdateItem = useCallback(async (itemId: number, field: string, value: any) => {
+  const handleUpdateItem = useCallback(async (itemId: number, updatedData: any, saveMode: 'import' | 'overwrite' = 'import') => {
     try {
+      // Remove metadata keys before sending to backend
+      const payload = { ...updatedData };
+      delete payload._source;
+      delete payload.Id;
+
       // Otimisticamente atualiza o estado
-      setItems(prev => prev.map(it => it.Id === itemId ? { ...it, [field]: value } : it));
+      setItems(prev => prev.map(it => it.Id === itemId ? { ...it, ...updatedData } : it));
       
       // Salva no backend
-      await axios.put(`${API_URL}/api/items/${itemId}`, {
-        [field]: value
-      });
-      console.log(`[webSDE] Item ${itemId} atualizado (${field}) com sucesso!`);
+      const res = await axios.put(`${API_URL}/api/items/${itemId}?save_mode=${saveMode}`, payload);
+      
+      // Update item with exact backend response (including new _source if changed)
+      if (res.data) {
+        setItems(prev => prev.map(it => it.Id === itemId ? { ...it, ...res.data } : it));
+      }
+      console.log(`[webSDE] Item ${itemId} atualizado com sucesso! (Modo: ${saveMode})`);
+      return true;
     } catch (error) {
       console.error("[webSDE] Falha ao salvar", error);
       alert("Erro de conexão ao salvar a alteração no YAML.");
+      return false;
     }
   }, []);
 

@@ -98,6 +98,8 @@ class YamlDatabase:
             count = 0
             if data and 'Body' in data and isinstance(data['Body'], list):
                 for item in data['Body']:
+                    if isinstance(item, dict):
+                        self._normalize_scripts(item)
                     if 'Id' in item:
                         self.item_index[item['Id']] = filepath
                         count += 1
@@ -144,20 +146,32 @@ class YamlDatabase:
     def save_file(self, filepath: str):
         if filepath not in self.db_cache:
             return False
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, 'w', encoding='utf-8') as f:
             self.yaml.dump(self.db_cache[filepath], f)
         return True
 
-    def update_item(self, item_id: int, updated_data: dict):
+    def _normalize_scripts(self, data: dict):
+        for sk in ['Script', 'EquipScript', 'UnEquipScript']:
+            if sk in data:
+                val = data[sk]
+                if isinstance(val, dict):
+                    data[sk] = val.get('Script', '')
+                elif val is None:
+                    data.pop(sk, None)
+        return data
+
+    def update_item(self, item_id: int, updated_data: dict, save_mode: str = 'import'):
         if item_id not in self.item_index:
             return None
 
+        self._normalize_scripts(updated_data)
         target_filepath = self.item_index[item_id]
         norm_path = target_filepath.replace('\\', '/')
         import_db_path = f"{self.rathena_root}/db/import/item_db.yml".replace('\\', '/')
 
-        # --- If the item lives in the original rAthena db, write the override to db/import/ ---
-        if '/db/import/' not in norm_path:
+        # --- If the item lives in the original rAthena db AND user wants to copy to import ---
+        if '/db/import/' not in norm_path and save_mode != 'overwrite':
             # Read the full current item from the original file
             original_data = self.db_cache[target_filepath]
             original_item = None
@@ -171,13 +185,14 @@ class YamlDatabase:
             # Build a plain dict copy with the updates applied
             override_item = dict(original_item)
             override_item.update(updated_data)
+            override_item.pop('_source', None)
 
             # Ensure the import file is loaded in cache
             if import_db_path not in self.db_cache:
                 if os.path.exists(import_db_path):
                     self._load_file(import_db_path)
                 else:
-                    # Create a minimal structure if file doesn't exist yet
+                    os.makedirs(os.path.dirname(import_db_path), exist_ok=True)
                     self.db_cache[import_db_path] = {'Header': {'Type': 'ITEM_DB', 'Version': 4}, 'Body': []}
 
             import_data = self.db_cache[import_db_path]
@@ -192,55 +207,58 @@ class YamlDatabase:
                     break
 
             if existing_override is not None:
-                # Update the existing override entry in-place
                 for key, value in updated_data.items():
                     existing_override[key] = value
                 saved_item = dict(existing_override)
             else:
-                # Insert the full override at the top of the import Body
                 import_data['Body'].insert(0, override_item)
                 saved_item = override_item
 
             self.save_file(import_db_path)
-            # Re-point the index so future edits go directly to the import file
             self.item_index[item_id] = import_db_path
             saved_item['_source'] = 'custom'
             return saved_item
 
-        # --- Item already lives in db/import/: update in place ---
+        # --- Item already lives in db/import/ OR user requested overwrite in original rAthena file ---
         data = self.db_cache[target_filepath]
         for item in data.get('Body', []):
             if item.get('Id') == item_id:
                 for key, value in updated_data.items():
                     item[key] = value
+                item.pop('_source', None)
                 self.save_file(target_filepath)
                 result = dict(item)
-                result['_source'] = 'custom'
+                result['_source'] = 'custom' if '/db/import/' in norm_path else 'rathena'
                 return result
         return None
-
 
     def add_custom_item(self, item_data: dict):
         import_db_path = f"{self.rathena_root}/db/import/item_db.yml".replace("\\", "/")
         
         if import_db_path not in self.db_cache:
             if not os.path.exists(import_db_path):
-                raise FileNotFoundError(f"Arquivo de importação não encontrado: {import_db_path}")
-            self._load_file(import_db_path)
+                os.makedirs(os.path.dirname(import_db_path), exist_ok=True)
+                self.db_cache[import_db_path] = {'Header': {'Type': 'ITEM_DB', 'Version': 4}, 'Body': []}
+            else:
+                self._load_file(import_db_path)
             
         data = self.db_cache.get(import_db_path)
         if data is None:
-            data = {}
+            data = {'Header': {'Type': 'ITEM_DB', 'Version': 4}, 'Body': []}
             self.db_cache[import_db_path] = data
             
         if 'Body' not in data or not isinstance(data['Body'], list):
             data['Body'] = []
             
-        # Adicionar o item no topo da lista custom
-        data['Body'].insert(0, item_data)
+        self._normalize_scripts(item_data)
+        clean_item = {k: v for k, v in item_data.items() if k != '_source'}
+        data['Body'].insert(0, clean_item)
         self.save_file(import_db_path)
-        self.item_index[item_data['Id']] = import_db_path
-        return item_data
+        self.item_index[clean_item['Id']] = import_db_path
+        
+        result = dict(clean_item)
+        result['_source'] = 'custom'
+        return result
 
 # Singleton global
 yaml_db = YamlDatabase()

@@ -1,9 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf, mobs
+from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
 from app.services.grf_reader import grf_reader
+from app.services.skill_parser import skill_db
+from app.services.mob_skill_parser import mob_skill_db
+from app.services.combo_parser import combo_db
+from app.services.quest_parser import quest_db
+from app.services.pet_parser import pet_db
 import os
 import shutil
 import sys
@@ -111,6 +116,31 @@ async def lifespan(app: FastAPI):
     if iteminfo_path:
         iteminfo_db.load_background(iteminfo_path)
         
+    skill_db_path = os.environ.get("SKILL_DB_PATH", "")
+    if skill_db_path:
+        skill_db.load_db_async(skill_db_path)
+        print(f"[*] Disparado o processo de parse assíncrono de skills a partir de '{skill_db_path}'.")
+
+    mob_skill_db_path = os.environ.get("MOB_SKILL_DB_PATH", "")
+    if mob_skill_db_path:
+        mob_skill_db.load_db_async(mob_skill_db_path)
+        print(f"[*] Disparado o processo de parse assíncrono de mob skills a partir de '{mob_skill_db_path}'.")
+
+    combo_db_path = os.environ.get("COMBO_DB_PATH", "")
+    if combo_db_path:
+        combo_db.load_db_async(combo_db_path)
+        print(f"[*] Disparado o processo de parse assíncrono de combos a partir de '{combo_db_path}'.")
+
+    quest_db_path = os.environ.get("QUEST_DB_PATH", "")
+    if quest_db_path:
+        quest_db.load_db_async(quest_db_path)
+        print(f"[*] Disparado o processo de parse assíncrono de quests a partir de '{quest_db_path}'.")
+
+    pet_db_path = os.environ.get("PET_DB_PATH", "")
+    if pet_db_path:
+        pet_db.load_db_async(pet_db_path)
+        print(f"[*] Disparado o processo de parse assíncrono de mascotes a partir de '{pet_db_path}'.")
+        
     yield
 
 # Atualiza a app para usar o lifespan correto (FastAPI moderno)
@@ -120,6 +150,11 @@ app.router.lifespan_context = lifespan
 app.include_router(items.router, prefix="/api/items", tags=["items"])
 app.include_router(grf.router, prefix="/api/grf", tags=["grf"])
 app.include_router(mobs.router, prefix="/api/mobs", tags=["mobs"])
+app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
+app.include_router(mob_skills.router, prefix="/api/mob_skills", tags=["mob_skills"])
+app.include_router(combos.router, prefix="/api/combos", tags=["combos"])
+app.include_router(quests.router, prefix="/api/quests", tags=["quests"])
+app.include_router(pets.router, prefix="/api/pets", tags=["pets"])
 
 @app.get("/")
 def read_root():

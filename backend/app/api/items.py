@@ -120,7 +120,11 @@ async def get_item_dropped_by(item_id: int):
 
 
 @router.put("/{item_id}")
-async def update_item(item_id: int, item_data: ItemUpdate):
+async def update_item(
+    item_id: int, 
+    item_data: ItemUpdate,
+    save_mode: str = Query("import", description="Modo de salvamento: 'import' para cópia em db/import/ ou 'overwrite' para sobrescrever")
+):
     """
     Updates an item in the YAML database and saves to disk.
     Preserves all comments and original formatting.
@@ -132,7 +136,7 @@ async def update_item(item_id: int, item_data: ItemUpdate):
     if "Id" in updated_dict:
         del updated_dict["Id"]
         
-    updated_item = yaml_db.update_item(item_id, updated_dict)
+    updated_item = yaml_db.update_item(item_id, updated_dict, save_mode=save_mode)
     
     if not updated_item:
         raise HTTPException(status_code=404, detail=f"Item with Id {item_id} not found")
