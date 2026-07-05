@@ -15,6 +15,7 @@ class NpcShopParser:
         print(f"[webSDE] Parsing NPC shops from: {self.npc_folder} ...")
         self.shops = []
         self.item_to_shops = {}
+        temp_duplicates = []
         
         # Load all .txt files recursively
         search_pattern = os.path.join(self.npc_folder, "**", "*.txt")
@@ -28,13 +29,31 @@ class NpcShopParser:
                         if not line or line.startswith("//"):
                             continue
                         
-                        # Check for shop or cashshop
-                        if '\tshop\t' in line or '\tcashshop\t' in line or '\titemshop\t' in line:
-                            self._parse_shop_line(line, file_path, line_num + 1)
+                        # Check for shop, cashshop, itemshop or duplicate
+                        if '\tshop\t' in line or '\tcashshop\t' in line or '\titemshop\t' in line or '\tduplicate(' in line:
+                            self._parse_shop_line(line, file_path, line_num + 1, temp_duplicates)
             except Exception as e:
                 # print(f"Error parsing {file_path}: {e}")
                 pass
                 
+        # Resolve duplicates
+        resolved_count = 0
+        for dup in temp_duplicates:
+            target = dup['target_npc']
+            matched_shop = None
+            for shop in self.shops:
+                if shop['full_name'] == target or shop['name'] == target:
+                    matched_shop = shop
+                    break
+            
+            if matched_shop:
+                dup['items'] = matched_shop['items'].copy()
+                dup['type'] = matched_shop['type']
+                self.shops.append(dup)
+                resolved_count += 1
+                
+        print(f"[webSDE] Resolved {resolved_count} duplicate shops.")
+        
         # Build inverse index
         for shop in self.shops:
             for item_id in shop['items'].keys():
@@ -50,15 +69,20 @@ class NpcShopParser:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self.load)
 
-    def _parse_shop_line(self, line: str, file_path: str, line_num: int):
-        # prontera,156,212,4<TAB>shop<TAB>Weapon Dealer#123<TAB>114,1202:150,1203:200
+    def _parse_shop_line(self, line: str, file_path: str, line_num: int, temp_duplicates: list):
         parts = line.split('\t')
         
         # Finding the shop type index
         shop_idx = -1
+        target_npc = None
         for i, p in enumerate(parts):
-            if p in ('shop', 'cashshop', 'itemshop'):
+            p_clean = p.strip()
+            if p_clean in ('shop', 'cashshop', 'itemshop'):
                 shop_idx = i
+                break
+            elif p_clean.startswith('duplicate(') and p_clean.endswith(')'):
+                shop_idx = i
+                target_npc = p_clean[10:-1].strip()
                 break
                 
         if shop_idx == -1 or shop_idx < 1 or shop_idx + 2 >= len(parts):
@@ -78,57 +102,72 @@ class NpcShopParser:
         # Parse name (remove hidden #id)
         display_name = name_part.split('#')[0]
         
-        # Parse items_part: sprite_id,item_id:price,item_id:price
-        # Note: sprite_id can be negative (e.g. -1 for invisible) or string (e.g. 1_M_WEAPONDEALER)
-        # However, it's typically comma separated from the items.
-        
-        # Sometimes there's spaces instead of comma between sprite_id and first item?
-        # Standard: sprite_id,item:price,item:price
-        items_str_list = items_part.split(',')
-        sprite_id_str = items_str_list[0].strip()
-        
-        sprite_id = None
-        if sprite_id_str.lstrip('-').isdigit():
-            sprite_id = int(sprite_id_str)
-        else:
-            sprite_id = sprite_id_str # could be a string AegisName for monster sprite!
+        if target_npc:
+            # It's a duplicate. The items_part contains sprite_id, optional trigger args
+            sprite_id_str = items_part.split(',')[0].strip()
             
-        shop_items = {}
-        for item_data in items_str_list[1:]:
-            item_data = item_data.strip()
-            if not item_data: continue
-            
-            # item_id:price
-            if ':' in item_data:
-                it, price = item_data.split(':', 1)
-                if it.isdigit():
-                    shop_items[int(it)] = int(price) if price.lstrip('-').isdigit() else -1
-                else:
-                    # It could be an AegisName! (e.g. Red_Potion:-1)
-                    # For simplicity, we store the string, and the API can resolve it later,
-                    # or we can resolve it using yaml_db if we want, but storing as string is fine.
-                    shop_items[it] = int(price) if price.lstrip('-').isdigit() else -1
+            sprite_id = None
+            if sprite_id_str.lstrip('-').isdigit():
+                sprite_id = int(sprite_id_str)
             else:
-                # No price specified? rAthena doesn't usually do this, but fallback:
-                if item_data.isdigit():
-                    shop_items[int(item_data)] = -1
+                sprite_id = sprite_id_str
+                
+            shop_obj = {
+                'map': map_name,
+                'x': x,
+                'y': y,
+                'type': 'duplicate',
+                'name': display_name,
+                'full_name': name_part,
+                'sprite_id': sprite_id,
+                'items': {}, # will be filled when resolving target_npc
+                'target_npc': target_npc,
+                'file': os.path.basename(file_path),
+                'line': line_num
+            }
+            temp_duplicates.append(shop_obj)
+        else:
+            # Parse items_part: sprite_id,item_id:price,item_id:price
+            items_str_list = items_part.split(',')
+            sprite_id_str = items_str_list[0].strip()
+            
+            sprite_id = None
+            if sprite_id_str.lstrip('-').isdigit():
+                sprite_id = int(sprite_id_str)
+            else:
+                sprite_id = sprite_id_str
+                
+            shop_items = {}
+            for item_data in items_str_list[1:]:
+                item_data = item_data.strip()
+                if not item_data: continue
+                
+                # item_id:price
+                if ':' in item_data:
+                    it, price = item_data.split(':', 1)
+                    if it.isdigit():
+                        shop_items[int(it)] = int(price) if price.lstrip('-').isdigit() else -1
+                    else:
+                        shop_items[it] = int(price) if price.lstrip('-').isdigit() else -1
                 else:
-                    shop_items[item_data] = -1
-                    
-        shop_obj = {
-            'map': map_name,
-            'x': x,
-            'y': y,
-            'type': shop_type,
-            'name': display_name,
-            'full_name': name_part,
-            'sprite_id': sprite_id,
-            'items': shop_items,
-            'file': os.path.basename(file_path),
-            'line': line_num
-        }
-        
-        self.shops.append(shop_obj)
+                    if item_data.isdigit():
+                        shop_items[int(item_data)] = -1
+                    else:
+                        shop_items[item_data] = -1
+                        
+            shop_obj = {
+                'map': map_name,
+                'x': x,
+                'y': y,
+                'type': shop_type,
+                'name': display_name,
+                'full_name': name_part,
+                'sprite_id': sprite_id,
+                'items': shop_items,
+                'file': os.path.basename(file_path),
+                'line': line_num
+            }
+            self.shops.append(shop_obj)
 
     def get_shops_selling_item(self, item_id: int, item_aegis: str = None):
         """Returns a list of shops that sell the given item ID or AegisName."""
