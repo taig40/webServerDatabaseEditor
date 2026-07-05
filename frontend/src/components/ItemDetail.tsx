@@ -443,33 +443,34 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
            <div className="flex items-center gap-2 mb-4 text-white border-b border-white/5 pb-2">
             <Store size={18} className="text-cyan-400" />
             <h3 className="font-semibold">Vendido Por (Lojas)</h3>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
+           </div>
+           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
              {isLoadingShops ? (
-                 <span className="text-sm text-gray-500">Buscando lojas pelo mundo...</span>
+                 <span className="text-sm text-gray-500 col-span-full">Buscando lojas pelo mundo...</span>
              ) : soldBy.length === 0 ? (
-                 <span className="text-sm text-gray-500">Este item não é vendido em nenhuma loja padrão.</span>
+                 <span className="text-sm text-gray-500 col-span-full">Este item não é vendido em nenhuma loja padrão.</span>
              ) : (
                  soldBy.map((shop, idx) => (
                      <button
                         key={idx}
                         onClick={() => setSelectedShop(shop)}
-                        className="flex items-center gap-2 bg-dark-900 border border-white/10 px-3 py-2 rounded-lg hover:border-cyan-500/50 hover:bg-cyan-900/10 transition-all shadow-sm"
+                        className="flex items-center gap-3 bg-dark-900 border border-white/10 p-3.5 rounded-xl hover:border-cyan-500/50 hover:bg-cyan-500/5 hover:ring-2 hover:ring-cyan-500/10 transition-all shadow-sm w-full"
                      >
-                         <div className="w-6 h-6 rounded-full bg-dark-950 flex items-center justify-center shrink-0 overflow-hidden">
+                         <div className="w-11 h-11 rounded-lg bg-dark-950 flex items-center justify-center shrink-0 overflow-hidden border border-white/5 shadow-inner">
                              <img 
                                 src={`${API_URL}/api/grf/sprite?type=npc&id=${shop.sprite_id}`}
-                                className="max-w-full max-h-full object-contain"
+                                className="max-w-full max-h-full object-contain transform scale-125 hover:scale-150 transition-transform duration-200"
                                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
                              />
                          </div>
-                         <div className="flex flex-col text-left">
-                            <span className="text-xs font-semibold text-gray-200">{shop.name}</span>
-                            <span className="text-[10px] text-gray-500 font-mono">{shop.map}</span>
+                         <div className="flex flex-col text-left min-w-0">
+                            <span className="text-xs font-semibold text-gray-200 truncate">{shop.name}</span>
+                            <span className="text-[10px] text-cyan-400/80 font-mono mt-0.5 truncate">
+                              {shop.map} {shop.x > 0 || shop.y > 0 ? `(${shop.x}, ${shop.y})` : ''}
+                            </span>
                          </div>
-                     </button>
-                 ))
+                      </button>
+                  ))
              )}
           </div>
         </div>

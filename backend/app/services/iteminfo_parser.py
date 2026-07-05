@@ -248,7 +248,6 @@ class ItemInfoParser:
         if not entry:
             return None
         return entry.get("identifiedResourceName") or entry.get("unIdentifiedResourceName")
-
     def get_client_item(self, item_id: int) -> Optional[dict]:
         """Returns the full field dict for item_id, or None if not found."""
         if not self.loaded:

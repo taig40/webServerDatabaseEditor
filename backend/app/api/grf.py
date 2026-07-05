@@ -5,21 +5,30 @@ router = APIRouter()
 
 @router.get("/sprite")
 async def get_sprite(
-    type: str = Query(..., description="Type of sprite (item, mob)"), 
-    id: int = Query(..., description="ID of the entity (e.g. 501 for Red Potion)")
+    type: str = Query(..., description="Type of sprite (item, mob, npc)"), 
+    id: str = Query(..., description="ID or AegisName of the entity")
 ):
     """
     Returns the PNG representation of an entity's sprite or icon in real-time.
     If 'type' is 'item', we search the GRF for the item's BMP icon and convert it to PNG.
     """
     if type == "item":
-        png_bytes = grf_reader.get_item_icon(id)
+        try:
+            item_id = int(id)
+            png_bytes = grf_reader.get_item_icon(item_id)
+        except ValueError:
+            png_bytes = None
         if png_bytes:
             return Response(content=png_bytes, media_type="image/png")
             
     elif type == "npc":
         from app.services.sprite_thumbnail import get_first_frame_png
-        png_bytes = get_first_frame_png(id)
+        try:
+            npc_id = int(id)
+            png_bytes = get_first_frame_png(npc_id)
+        except ValueError:
+            # It's a string resource name, e.g. "1_M_WEAPONDEALER"
+            png_bytes = get_first_frame_png(0, fallback_aegis=id)
         if png_bytes:
             return Response(content=png_bytes, media_type="image/png")
             

@@ -407,12 +407,14 @@ class GRFReader:
 
         from app.services.iteminfo_parser import iteminfo_db
 
-        # Build map of resource_name -> (item_id, display_name)
+        # Build map of resource_name -> (item_id, display_name).
+        # Prefer identifiedResourceName; fall back to unIdentifiedResourceName
+        # for items that only have the unidentified resource set.
         res_map = {}
         if iteminfo_db.loaded:
             for item_id, entry in iteminfo_db.item_map.items():
-                rname = entry.get("identifiedResourceName")
-                dname = entry.get("identifiedDisplayName", "")
+                rname = entry.get("identifiedResourceName") or entry.get("unIdentifiedResourceName")
+                dname = entry.get("identifiedDisplayName", "") or entry.get("unIdentifiedDisplayName", "")
                 if rname:
                     res_map[rname.lower()] = (item_id, dname)
 

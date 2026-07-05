@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, Check, Loader2 } from 'lucide-react';
+import { API_URL } from '../config/env';
 
 interface ReferencePickerProps {
   isOpen: boolean;
@@ -26,10 +27,10 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
     setLoading(true);
     const endpoint =
       type === 'item'
-        ? 'http://localhost:8000/api/items/?limit=2000'
+        ? `${API_URL}/api/items/?limit=50000`
         : type === 'mob'
-        ? 'http://localhost:8000/api/mobs/?limit=2000'
-        : 'http://localhost:8000/api/skills/?limit=2000';
+        ? `${API_URL}/api/mobs/?limit=50000`
+        : `${API_URL}/api/skills/?limit=50000`;
 
     fetch(endpoint)
       .then((res) => res.json())
@@ -49,7 +50,7 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
     const idStr = String(item.Id || item.Mob || item.mob_id || '').toLowerCase();
     const nameStr = String(item.Name || item.Name_English || item.AegisName || item.Title || '').toLowerCase();
     return idStr.includes(q) || nameStr.includes(q);
-  }).slice(0, 100);
+  }).slice(0, 300);
 
   const getTypeLabel = () => {
     if (type === 'item') return 'Item';
