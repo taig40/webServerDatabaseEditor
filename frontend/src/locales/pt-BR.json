@@ -243,5 +243,91 @@
     "error_spritesheet": "Erro ao carregar spritesheet",
     "no_sprite_kro": "Sem sprite no kRO",
     "frames_count": "{count} frames"
+  },
+  "combo_editor": {
+    "status": {
+      "loading_list": "Carregando banco de combos...",
+      "error_fetching": "Erro ao carregar combos."
+    },
+    "save_success": "Combo de itens salvo com sucesso em db/import/item_combos.yml!",
+    "save_error": "Erro ao salvar combo.",
+    "create_error": "Erro ao criar novo combo.",
+    "no_script": "Sem script",
+    "sidebar": {
+      "title": "Combos de Itens",
+      "new_combo": "Novo Combo",
+      "search_placeholder": "Buscar por item ou script..."
+    },
+    "detail": {
+      "title": "Combo de Itens",
+      "index": "Índice Posicional: {index}",
+      "save_button": "Salvar em db/import/item_combos.yml"
+    },
+    "source": {
+      "custom": "Custom Import",
+      "rathena": "rAthena Original"
+    },
+    "variants": {
+      "title": "Variantes de Combinações de Itens",
+      "variant_header": "Variante #{index} (mínimo 2 itens)",
+      "add_item": "Adicionar Item ao Combo"
+    },
+    "script": {
+      "label": "Bônus do Combo (Script)"
+    },
+    "no_selection": {
+      "title": "Nenhum Combo Selecionado",
+      "subtitle": "Selecione uma combinação de itens na lista ao lado para editar."
+    }
+  },
+  "client_item_editor": {
+    "loading_title": "Carregando Itens",
+    "save_error": "Erro ao salvar as alterações no ItemInfo.lua.",
+    "sidebar": {
+      "title": "Client Items (ItemInfo)",
+      "items_count": "{count} itens"
+    },
+    "no_selection": {
+      "title": "Nenhum Item Selecionado",
+      "subtitle": "Selecione um item da lista ao lado para editar suas informações de client."
+    }
+  },
+  "client_item_detail": {
+    "description_placeholder": "Uma linha por entrada da descrição.\nUse \\n para quebra de linha no jogo.",
+    "upload_error": "Erro no upload: {error}",
+    "sending": "Enviando...",
+    "picker_default_title": "Escolher da GRF",
+    "reload_icon": "Recarregar Ícone",
+    "no_client_name": "Sem Nome no Client",
+    "status": {
+      "in_lua": "● No ItemInfo.lua",
+      "missing_in_lua": "● Faltando no ItemInfo.lua",
+      "fetching": "Carregando..."
+    },
+    "unsaved_changes": "Alterações não salvas",
+    "sections": {
+      "identified": "Identificado",
+      "unidentified": "Não Identificado",
+      "extra_fields": "Campos Extras",
+      "grf_assets": "Assets da GRF",
+      "card_preview": "Visualização do Card"
+    },
+    "labels": {
+      "inventory_icon": "Ícone do Inventário",
+      "collection_illustration": "Ilustração de Coleção"
+    },
+    "buttons": {
+      "upload_icon": "Upload de Ícone (.bmp)",
+      "upload_collection": "Upload de Coleção (.bmp)",
+      "select_grf": "Selecionar da GRF"
+    },
+    "picker": {
+      "select_icon": "Selecionar Ícone do Item na GRF",
+      "select_collection": "Selecionar Sprite de Coleção na GRF"
+    },
+    "previews": {
+      "identified": "Identificado",
+      "unidentified": "Não Identificado"
+    }
   }
 }
