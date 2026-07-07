@@ -8,7 +8,8 @@
     "success": "Success",
     "error": "Error",
     "reload": "Reload",
-    "reloading": "Reloading..."
+    "reloading": "Reloading...",
+    "line": "Line"
   },
   "settings": {
     "title": "Application Settings",
@@ -328,6 +329,364 @@
     "previews": {
       "identified": "Identified",
       "unidentified": "Unidentified"
+    }
+  },
+  "skill_editor": {
+    "status": {
+      "connecting": "Connecting to Backend...",
+      "error_fetching": "Error loading skills database.",
+      "checking": "Checking server...",
+      "loading_list": "Loading skills database..."
+    },
+    "save_success": "Skill saved successfully to db/import/skill_db.yml!",
+    "save_error": "Error saving skill.",
+    "sidebar": {
+      "title": "Skills",
+      "search_placeholder": "Search by ID or AegisName..."
+    },
+    "detail": {
+      "save_button": "Save to db/import/skill_db.yml"
+    },
+    "source": {
+      "custom": "Custom Import",
+      "rathena": "rAthena Original"
+    },
+    "tabs": {
+      "general": "Identification & General",
+      "combat": "Damage & Combat",
+      "timing": "Cast, Delay & Cooldown",
+      "requirements": "Requirements & Costs",
+      "unit": "Ground Effects (Unit)"
+    },
+    "fields": {
+      "aegis_name": "AegisName (Internal code)",
+      "description": "Displayed Description",
+      "max_level": "Max Level (MaxLevel)",
+      "type": "Skill Type (Type)",
+      "target_type": "Target (TargetType)",
+      "range": "Range (Range)",
+      "range_cells": "Range (Cells)",
+      "hit_count": "Hit Count (HitCount)",
+      "splash_area": "Splash Area (SplashArea)",
+      "knockback": "Knockback (Cells)",
+      "hit": "Hit Type (Hit)",
+      "cast_time": "Cast Time (ms)",
+      "fixed_cast": "Fixed Cast Time (FixedCastTime) (ms)",
+      "animation_delay": "After Cast Act Delay (AfterCastActDelay) (ms)",
+      "cooldown": "Cooldown (ms)",
+      "duration1": "Duration 1 (ms)",
+      "duration2": "Duration 2 (ms)",
+      "sp_cost": "SP Cost (SpCost)",
+      "hp_cost": "HP Cost (HpCost)",
+      "zeny_cost": "Zeny Cost (ZenyCost)",
+      "unit_title": "Ground Effect Setup (Unit / Splash / Area)",
+      "unit_subtitle": "Define properties of skills or magic that remain on the ground after cast (e.g., Fire Wall, Sanctuary).",
+      "active_instance": "Max Active Instances (ActiveInstance)",
+      "max_unit_instances": "Max Instances on Ground"
+    },
+    "no_selection": {
+      "title": "No Skill Selected",
+      "subtitle": "Select a skill from the list on the side to view and edit its parameters."
+    }
+  },
+  "mob_skill_editor": {
+    "status": {
+      "loading": "Loading monster skills...",
+      "error_fetching": "Error loading monster skills."
+    },
+    "save_success": "Saved successfully!",
+    "save_error": "Error saving.",
+    "create_error": "Error creating new skill.",
+    "delete_confirm": "Do you want to remove this skill from the monster?",
+    "delete_error": "Error deleting skill.",
+    "sidebar": {
+      "title": "Monster Skills",
+      "search_placeholder": "Search monster...",
+      "add_mob": "Add New Monster",
+      "monster_number": "Monster #{id}"
+    },
+    "list": {
+      "title": "Monster Skills",
+      "select_mob": "Select a monster.",
+      "no_skills": "No registered skills."
+    },
+    "detail": {
+      "title": "Edit Skill",
+      "sections": {
+        "identification": "Identification",
+        "behavior": "Behavior",
+        "condition": "Condition",
+        "additional_params": "Additional Parameters (Val1 – Val5)",
+        "expression": "Expression & Chat"
+      }
+    },
+    "fields": {
+      "skill_id": "Skill ID",
+      "skill_id_hint": "Server skill ID.",
+      "skill_lv": "Skill Level",
+      "skill_lv_hint": "Skill level (1-10).",
+      "state": "State",
+      "state_hint": "State in which the monster must be to use the skill.",
+      "target": "Target",
+      "target_hint": "Target of the skill.",
+      "cancelable": "Cancelable",
+      "cancelable_hint": "Whether the cast can be interrupted.",
+      "cast_time": "CastTime (ms)",
+      "cast_time_hint": "Cast time in milliseconds.",
+      "delay": "Delay (ms)",
+      "delay_hint": "Interval in ms before attempting to use the skill again.",
+      "condition_type": "ConditionType",
+      "condition_type_hint": "Condition type to activate the skill.",
+      "condition_val": "ConditionValue",
+      "condition_val_hint": "Numerical value of the condition (HP%, skill ID, count, etc.)",
+      "valid_status": "Valid status for the ConditionValue field:",
+      "hp_condition_warning": "⚠ For this condition: val1 = upper limit of HP% (e.g., 50 for 50%)",
+      "emotion": "Emotion",
+      "emotion_hint": "Emotion displayed when using the skill. -1 = none.",
+      "chat": "Chat",
+      "chat_hint": "NPC message broadcasted when using the skill (optional).",
+      "chat_placeholder": "(empty)"
+    },
+    "conditions": {
+      "always": "No condition. ConditionValue ignored.",
+      "onspawn": "On spawn/respawn. ConditionValue ignored.",
+      "myhpltmaxrate": "When HP drops below ConditionValue%.",
+      "myhpinrate": "When HP is between ConditionValue% (lower) and val1% (upper).",
+      "mystatuson": "If mob has status in ConditionValue (use status name above).",
+      "mystatusoff": "If mob lost status in ConditionValue.",
+      "friendhpltmaxrate": "When ally HP drops below ConditionValue%.",
+      "friendhpinrate": "Ally HP between ConditionValue% and val1%.",
+      "friendstatuson": "If ally has status.",
+      "friendstatusoff": "If ally lost status.",
+      "attackpcgt": "When attackers > ConditionValue.",
+      "attackpcge": "When attackers >= ConditionValue.",
+      "slavelt": "When slaves < ConditionValue.",
+      "slavele": "When slaves <= ConditionValue.",
+      "closedattacked": "On melee hit. ConditionValue ignored.",
+      "longrangeattacked": "On ranged hit (bow/gun). ConditionValue ignored.",
+      "skillused": "When skill ID in ConditionValue is used on mob.",
+      "afterskill": "After mob uses skill ID in ConditionValue.",
+      "casttargeted": "Target enters cast range. ConditionValue ignored.",
+      "rudeattacked": "On rude attack. ConditionValue ignored.",
+      "mobnearbygt": "When monsters in range > ConditionValue.",
+      "groundattacked": "On ground-targeted skill hit. ConditionValue ignored.",
+      "damagedgt": "When single attack damage > ConditionValue.",
+      "alchemist": "Special AI, not trickcasting, wounded. ConditionValue ignored.",
+      "trickcasting": "Once mob starts NPC_RANDOMMOVE until disabled. ConditionValue ignored."
+    },
+    "no_selection": {
+      "title": "No Skill Selected",
+      "subtitle": "Select a skill in the middle column to edit."
+    }
+  },
+  "quest_editor": {
+    "status": {
+      "loading": "Loading quest database...",
+      "error_fetching": "Error loading quests."
+    },
+    "save_success": "Quest saved successfully to db/import/quest_db.yml!",
+    "save_error": "Error saving quest.",
+    "create_default_title": "New Custom Quest",
+    "create_error": "Error creating new quest.",
+    "sidebar": {
+      "title": "Quests",
+      "add_quest": "New Quest",
+      "search_placeholder": "Search by ID or Title...",
+      "quest_number": "Quest #{id}",
+      "targets_count": "{count} Targets"
+    },
+    "source": {
+      "custom": "Custom Import",
+      "rathena": "rAthena Original"
+    },
+    "detail": {
+      "quest_id_line": "Quest ID: #{id}",
+      "save_button": "Save to db/import/quest_db.yml"
+    },
+    "fields": {
+      "quest_id": "Quest ID",
+      "title": "Quest Title (Title)",
+      "time_limit": "Time Limit (Seconds — TimeLimit)"
+    },
+    "targets": {
+      "title": "Target Monsters (Targets)",
+      "mob_id": "Mob ID",
+      "search_mob": "🔍 Search Mob",
+      "count": "Amount (Count)",
+      "race": "Race (Race)",
+      "race_placeholder": "e.g., Formless"
+    },
+    "drops": {
+      "title": "Quest Drop Items (Drops)",
+      "mob_id": "Mob ID",
+      "item_id": "Item ID",
+      "search_mob": "🔍 Mob",
+      "search_item": "🔍 Item",
+      "rate": "Rate (10000 = 100%)"
+    },
+    "no_selection": {
+      "title": "No Quest Selected",
+      "subtitle": "Select a quest from the list on the side to view and edit its targets and drops."
+    }
+  },
+  "pet_editor": {
+    "status": {
+      "loading": "Loading pet database...",
+      "error_fetching": "Error loading pets."
+    },
+    "save_success": "Pet saved successfully to db/import/pet_db.yml!",
+    "save_error": "Error saving pet.",
+    "create_error": "Error creating new pet.",
+    "sidebar": {
+      "title": "Pets",
+      "add_pet": "New Pet",
+      "search_placeholder": "Search by monster name (Mob)...",
+      "egg_item": "Egg: {egg}"
+    },
+    "detail": {
+      "subtitle": "Pet (Monster AegisName)",
+      "save_button": "Save to db/import/pet_db.yml"
+    },
+    "source": {
+      "custom": "Custom Import",
+      "rathena": "rAthena Original"
+    },
+    "tabs": {
+      "general": "Items & Identification",
+      "hunger": "Hunger & Intimacy",
+      "combat": "Combat & Capture",
+      "scripts": "Bonus Scripts"
+    },
+    "fields": {
+      "mob": "Target Monster (Mob — AegisName)",
+      "tame_item": "Tame Item (TameItem)",
+      "egg_item": "Pet Egg Item (EggItem)",
+      "equip_item": "Pet Accessory (EquipItem)",
+      "food_item": "Pet Food (FoodItem)",
+      "fullness": "Initial Fullness (Fullness)",
+      "hungry_delay": "Hunger Delay (HungryDelay — sec)",
+      "hunger_increase": "Increase on Feed (HungerIncrease)",
+      "intimacy_start": "Initial Intimacy (IntimacyStart)",
+      "intimacy_fed": "Bonus on Feed (IntimacyFed)",
+      "intimacy_hungry": "Hungry Penalty (IntimacyHungry)",
+      "capture_rate": "Capture Rate (CaptureRate)",
+      "attack_rate": "Attack Rate (AttackRate)",
+      "retaliate_rate": "Retaliate Rate (RetaliateRate)",
+      "change_target_rate": "Target Swap Rate (ChangeTargetRate)",
+      "script": "Main Pet Script (Script)",
+      "support_script": "Support Script (SupportScript)"
+    },
+    "no_selection": {
+      "title": "No Pet Selected",
+      "subtitle": "Select a pet from the list on the side to view and edit details."
+    }
+  },
+  "achievement_editor": {
+    "status": {
+      "loading": "Loading achievements...",
+      "error_fetching": "Error loading achievements."
+    },
+    "save_success": "Achievement saved successfully!",
+    "save_error": "Error saving achievement: {error}",
+    "create_fill_fields": "Fill in ID and Name.",
+    "create_success": "Achievement created successfully!",
+    "create_error": "Error creating achievement: {error}",
+    "badges": {
+      "ok": "Ok",
+      "divergent": "Divergent",
+      "server_only": "YML Only",
+      "client_only": "Lua Only"
+    },
+    "sidebar": {
+      "title": "Achievements",
+      "create_btn": "Create Achievement",
+      "search_placeholder": "Search ID, name or title...",
+      "filter_sync_all": "Sync: All",
+      "filter_group_all": "Group: All",
+      "no_achievements": "No achievements found."
+    },
+    "detail": {
+      "not_exists": "nonexistent",
+      "generate_lua": "Generate Client Lua",
+      "save_changes": "Save Changes",
+      "loading_btn": "Saving..."
+    },
+    "visual_texts": {
+      "title": "Display & Texts (achievements.lub)",
+      "display_title": "Game Display Title",
+      "display_title_placeholder": "Translated title...",
+      "summary": "Summary (Short Description)",
+      "summary_placeholder": "Short summary of the mission...",
+      "detailed_desc": "Detailed Description",
+      "detailed_desc_placeholder": "Full instructions to complete the achievement...",
+      "checklist_label": "Client Checklist (resource)",
+      "add_line": "+ Add Line",
+      "new_objective": "New objective..."
+    },
+    "server_yml": {
+      "title": "Server Logic & Conditions (YML)",
+      "group": "Group",
+      "group_placeholder": "e.g., Adventure, Quest, Eat...",
+      "score": "Points (Score)",
+      "condition_expr": "Condition Expression",
+      "condition_expr_hint": "(rAthena Script Code)",
+      "condition_expr_placeholder": "e.g., \" BaseLevel >= 99 \" or \" Class == JOB_NOVICE \"",
+      "targets": "Target Monsters (Targets)",
+      "add_target": "+ Add Target",
+      "mob_placeholder": "Mob name...",
+      "search_btn": "Search",
+      "qty": "Qty",
+      "map": "Map (AG_CHATTING / AG_MAP)",
+      "map_placeholder": "e.g., prontera, payon..."
+    },
+    "rewards": {
+      "title": "Completion Rewards & Prizes",
+      "item": "Reward Item",
+      "item_placeholder": "Item name (Aegis)...",
+      "search_btn": "Search",
+      "client_id": "Client ID (LUA):",
+      "none": "none",
+      "qty": "Item Quantity",
+      "title_reward": "Reward Title (Title ID)",
+      "bonus_script": "Bonus Script (Server Script)",
+      "bonus_script_placeholder": "e.g., getexp 500,0; specialeffect 100;"
+    },
+    "no_selection": "Select an achievement from the list to edit",
+    "create_modal": {
+      "title": "Create New Achievement",
+      "subtitle": "Creates the synchronized record in server YML and client Lua.",
+      "unique_id": "Unique ID",
+      "initial_group": "Initial Group",
+      "server_name": "Server Name (Aegis)",
+      "client_title": "Client Title (Lua)",
+      "create_btn": "Create Record",
+      "cancel": "Cancel"
+    }
+  },
+  "components": {
+    "script_cell_editor": {
+      "title": "Script Editor",
+      "item": "Item:",
+      "cancel": "Cancel",
+      "save": "Save",
+      "save_script": "Save Script"
+    },
+    "repeatable_group": {
+      "empty": "No items added.",
+      "add": "Add",
+      "remove": "Remove item"
+    },
+    "reference_picker": {
+      "select": "Select {type}",
+      "search_placeholder": "Search by ID or Name...",
+      "loading": "Loading catalog...",
+      "no_results": "No results found for \"{query}\".",
+      "select_btn": "Select",
+      "types": {
+        "item": "Item",
+        "mob": "Monster",
+        "skill": "Skill"
+      }
     }
   }
 }

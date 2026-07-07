@@ -6,13 +6,15 @@ import { Search, Zap, Database, Sparkles, Save, Shield, Clock, Sliders, Box, Lay
 import { LevelArrayEditor } from '../components/LevelArrayEditor';
 import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 type SourceTab = 'rathena' | 'custom';
 
 export const SkillEditor: React.FC = () => {
+  const t = useLanguageStore(state => state.t);
   const [skills, setSkills] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingStatus, setLoadingStatus] = useState("Conectando ao Backend...");
+  const [loadingStatus, setLoadingStatus] = useState(t('skill_editor.status.connecting'));
   const [searchText, setSearchText] = useState("");
   const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
   const [selectedSkillId, setSelectedSkillId] = useState<number | null>(null);
@@ -29,27 +31,33 @@ export const SkillEditor: React.FC = () => {
         setIsLoading(false);
       } catch (err) {
         console.error("Erro ao carregar skills:", err);
-        setLoadingStatus("Erro ao carregar banco de habilidades.");
+        setLoadingStatus(t('skill_editor.status.error_fetching'));
       }
     };
 
     const checkStatus = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/skills/status`);
-        setLoadingStatus(res.data.message);
+        let msg = res.data.message;
+        if (msg === "Conectando ao Backend...") {
+          msg = t('skill_editor.status.connecting');
+        } else if (msg === "Carregando banco de habilidades...") {
+          msg = t('skill_editor.status.loading_list');
+        }
+        setLoadingStatus(msg);
         if (!res.data.is_loading && res.data.message !== "Aguardando inicialização...") {
           if (intervalId) clearInterval(intervalId);
           fetchSkills();
         }
       } catch (err) {
-        setLoadingStatus("Verificando servidor...");
+        setLoadingStatus(t('skill_editor.status.checking'));
       }
     };
 
     checkStatus();
     intervalId = setInterval(checkStatus, 1500);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [t]);
 
   const rathenaSkills = useMemo(() => skills.filter(s => s._source === 'rathena'), [skills]);
   const customSkills = useMemo(() => skills.filter(s => s._source === 'custom'), [skills]);
@@ -101,10 +109,10 @@ export const SkillEditor: React.FC = () => {
       const saved = res.data;
       setSkills(prev => prev.map(s => s.Id === saved.Id ? { ...saved, _source: 'custom' } : s));
       setSourceTab('custom');
-      alert("Habilidade salva com sucesso em db/import/skill_db.yml!");
+      alert(t('skill_editor.save_success'));
     } catch (err) {
       console.error("Erro ao salvar skill:", err);
-      alert("Erro ao salvar habilidade.");
+      alert(t('skill_editor.save_error'));
     } finally {
       setIsSaving(false);
     }
@@ -117,7 +125,7 @@ export const SkillEditor: React.FC = () => {
         <div className="p-4 border-b border-white/5 bg-gradient-to-b from-[#1a1a24] to-[#12121a]">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-gray-200 font-semibold text-lg flex items-center gap-2">
-              <Zap size={18} className="text-amber-500" /> Habilidades
+              <Zap size={18} className="text-amber-500" /> {t('skill_editor.sidebar.title')}
             </h2>
           </div>
 
@@ -155,7 +163,7 @@ export const SkillEditor: React.FC = () => {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
               type="text"
-              placeholder="Buscar por ID ou AegisName..."
+              placeholder={t('skill_editor.sidebar.search_placeholder')}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="w-full bg-dark-900 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-amber-500/50"
@@ -190,7 +198,7 @@ export const SkillEditor: React.FC = () => {
                   >
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className={`text-sm truncate font-medium ${isSelected ? 'text-white font-semibold' : 'text-gray-300'}`}>
-                        {skill.Description || skill.Name || `Skill #${skill.Id}`}
+                        {skill.Description || skill.Name || `${t('skill_editor.sidebar.title')} #${skill.Id}`}
                       </span>
                       <span className={`text-[11px] truncate font-mono ${isSelected ? (isCustom ? 'text-emerald-300' : 'text-amber-300') : 'text-gray-500'}`}>
                         #{skill.Id} — {skill.Name}
@@ -219,7 +227,7 @@ export const SkillEditor: React.FC = () => {
                     ID: {selectedSkill.Id}
                   </span>
                   <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${selectedSkill._source === 'custom' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-dark-800 text-gray-400'}`}>
-                    {selectedSkill._source === 'custom' ? 'Custom Import' : 'rAthena Original'}
+                    {selectedSkill._source === 'custom' ? t('skill_editor.source.custom') : t('skill_editor.source.rathena')}
                   </span>
                 </div>
                 <h1 className="text-xl font-bold text-white mt-1">
@@ -234,18 +242,18 @@ export const SkillEditor: React.FC = () => {
                 className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-amber-900/30 transition-all disabled:opacity-50"
               >
                 <Save size={16} />
-                <span>{isSaving ? "Salvar em db/import/..." : "Salvar em db/import/..."}</span>
+                <span>{isSaving ? t('common.saving') : t('skill_editor.detail.save_button')}</span>
               </button>
             </div>
 
             {/* Sub-tabs */}
             <div className="flex border-b border-dark-800 bg-dark-900/40 px-4 gap-4">
               {[
-                { id: 'geral', label: 'Identificação e Geral', icon: Sliders },
-                { id: 'dano', label: 'Dano e Combate', icon: Shield },
-                { id: 'tempo', label: 'Cast, Delay e Cooldown', icon: Clock },
-                { id: 'requisitos', label: 'Requisitos e Custos', icon: Layers },
-                { id: 'unidade', label: 'Efeitos no Solo (Unit)', icon: Box },
+                { id: 'geral', label: t('skill_editor.tabs.general'), icon: Sliders },
+                { id: 'dano', label: t('skill_editor.tabs.combat'), icon: Shield },
+                { id: 'tempo', label: t('skill_editor.tabs.timing'), icon: Clock },
+                { id: 'requisitos', label: t('skill_editor.tabs.requirements'), icon: Layers },
+                { id: 'unidade', label: t('skill_editor.tabs.unit'), icon: Box },
               ].map(tab => {
                 const Icon = tab.icon;
                 return (
@@ -270,7 +278,7 @@ export const SkillEditor: React.FC = () => {
               {activeTab === 'geral' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">AegisName (Código interno)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.aegis_name')}</label>
                     <input
                       type="text"
                       value={selectedSkill.Name || ''}
@@ -279,7 +287,7 @@ export const SkillEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Descrição Exibida</label>
+                    <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.description')}</label>
                     <input
                       type="text"
                       value={selectedSkill.Description || ''}
@@ -288,7 +296,7 @@ export const SkillEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Nível Máximo (MaxLevel)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.max_level')}</label>
                     <input
                       type="number"
                       value={selectedSkill.MaxLevel || 1}
@@ -297,7 +305,7 @@ export const SkillEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Tipo da Habilidade (Type)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.type')}</label>
                     <select
                       value={selectedSkill.Type || 'None'}
                       onChange={(e) => handleUpdateField('Type', e.target.value)}
@@ -307,7 +315,7 @@ export const SkillEditor: React.FC = () => {
                     </select>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Alvo (TargetType)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.target_type')}</label>
                     <select
                       value={selectedSkill.TargetType || 'Passive'}
                       onChange={(e) => handleUpdateField('TargetType', e.target.value)}
@@ -317,9 +325,9 @@ export const SkillEditor: React.FC = () => {
                     </select>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Alcance (Range)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.range')}</label>
                     <LevelArrayEditor
-                      label="Alcance (Células)"
+                      label={t('skill_editor.fields.range_cells')}
                       value={selectedSkill.Range}
                       maxLevel={selectedSkill.MaxLevel || 10}
                       valueKey="Size"
@@ -333,28 +341,28 @@ export const SkillEditor: React.FC = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <LevelArrayEditor
-                      label="Contagem de Acertos (HitCount)"
+                      label={t('skill_editor.fields.hit_count')}
                       value={selectedSkill.HitCount}
                       maxLevel={selectedSkill.MaxLevel || 10}
                       valueKey="Count"
                       onChange={(val) => handleUpdateField('HitCount', val)}
                     />
                     <LevelArrayEditor
-                      label="Área de Splash (SplashArea)"
+                      label={t('skill_editor.fields.splash_area')}
                       value={selectedSkill.SplashArea}
                       maxLevel={selectedSkill.MaxLevel || 10}
                       valueKey="Area"
                       onChange={(val) => handleUpdateField('SplashArea', val)}
                     />
                     <LevelArrayEditor
-                      label="Empurrão — Knockback (Células)"
+                      label={t('skill_editor.fields.knockback')}
                       value={selectedSkill.Knockback}
                       maxLevel={selectedSkill.MaxLevel || 10}
                       valueKey="Amount"
                       onChange={(val) => handleUpdateField('Knockback', val)}
                     />
                     <div className="flex flex-col gap-1 bg-dark-900/50 p-3 rounded border border-dark-800">
-                      <label className="text-xs font-medium text-gray-300 mb-1">Tipo de Acerto (Hit)</label>
+                      <label className="text-xs font-medium text-gray-300 mb-1">{t('skill_editor.fields.hit')}</label>
                       <select
                         value={selectedSkill.Hit || 'Normal'}
                         onChange={(e) => handleUpdateField('Hit', e.target.value)}
@@ -370,42 +378,42 @@ export const SkillEditor: React.FC = () => {
               {activeTab === 'tempo' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <LevelArrayEditor
-                    label="Tempo de Conjuração — CastTime (ms)"
+                    label={t('skill_editor.fields.cast_time')}
                     value={selectedSkill.CastTime}
                     maxLevel={selectedSkill.MaxLevel || 10}
                     valueKey="Time"
                     onChange={(val) => handleUpdateField('CastTime', val)}
                   />
                   <LevelArrayEditor
-                    label="Cast Fixo — FixedCastTime (ms)"
+                    label={t('skill_editor.fields.fixed_cast')}
                     value={selectedSkill.FixedCastTime}
                     maxLevel={selectedSkill.MaxLevel || 10}
                     valueKey="Time"
                     onChange={(val) => handleUpdateField('FixedCastTime', val)}
                   />
                   <LevelArrayEditor
-                    label="Pós-conjuração (Animação) — AfterCastActDelay (ms)"
+                    label={t('skill_editor.fields.animation_delay')}
                     value={selectedSkill.AfterCastActDelay}
                     maxLevel={selectedSkill.MaxLevel || 10}
                     valueKey="Time"
                     onChange={(val) => handleUpdateField('AfterCastActDelay', val)}
                   />
                   <LevelArrayEditor
-                    label="Tempo de Recarga — Cooldown (ms)"
+                    label={t('skill_editor.fields.cooldown')}
                     value={selectedSkill.Cooldown}
                     maxLevel={selectedSkill.MaxLevel || 10}
                     valueKey="Time"
                     onChange={(val) => handleUpdateField('Cooldown', val)}
                   />
                   <LevelArrayEditor
-                    label="Duração 1 (ms)"
+                    label={t('skill_editor.fields.duration1')}
                     value={selectedSkill.Duration1}
                     maxLevel={selectedSkill.MaxLevel || 10}
                     valueKey="Time"
                     onChange={(val) => handleUpdateField('Duration1', val)}
                   />
                   <LevelArrayEditor
-                    label="Duração 2 (ms)"
+                    label={t('skill_editor.fields.duration2')}
                     value={selectedSkill.Duration2}
                     maxLevel={selectedSkill.MaxLevel || 10}
                     valueKey="Time"
@@ -418,21 +426,21 @@ export const SkillEditor: React.FC = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <LevelArrayEditor
-                      label="Custo de SP (SpCost)"
+                      label={t('skill_editor.fields.sp_cost')}
                       value={selectedSkill.Requires?.SpCost}
                       maxLevel={selectedSkill.MaxLevel || 10}
                       valueKey="Amount"
                       onChange={(val) => handleUpdateNestedField('Requires', 'SpCost', val)}
                     />
                     <LevelArrayEditor
-                      label="Custo de HP (HpCost)"
+                      label={t('skill_editor.fields.hp_cost')}
                       value={selectedSkill.Requires?.HpCost}
                       maxLevel={selectedSkill.MaxLevel || 10}
                       valueKey="Amount"
                       onChange={(val) => handleUpdateNestedField('Requires', 'HpCost', val)}
                     />
                     <LevelArrayEditor
-                      label="Custo de Zeny (ZenyCost)"
+                      label={t('skill_editor.fields.zeny_cost')}
                       value={selectedSkill.Requires?.ZenyCost}
                       maxLevel={selectedSkill.MaxLevel || 10}
                       valueKey="Amount"
@@ -444,15 +452,15 @@ export const SkillEditor: React.FC = () => {
 
               {activeTab === 'unidade' && (
                 <div className="bg-dark-900/40 p-4 rounded-lg border border-dark-800 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-300">Configuração de Efeito no Solo (Unit / Splash / Area)</h3>
+                  <h3 className="text-sm font-semibold text-gray-300">{t('skill_editor.fields.unit_title')}</h3>
                   <p className="text-xs text-gray-500">
-                    Defina propriedades de magias ou habilidades que permanecem no chão após conjuradas (ex: Barreira de Fogo, Santuário).
+                    {t('skill_editor.fields.unit_subtitle')}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-gray-400">Instâncias Ativas Máximas (ActiveInstance)</label>
+                      <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.active_instance')}</label>
                       <LevelArrayEditor
-                        label="Max Instâncias no Solo"
+                        label={t('skill_editor.fields.max_unit_instances')}
                         value={selectedSkill.ActiveInstance}
                         maxLevel={selectedSkill.MaxLevel || 10}
                         valueKey="Max"
@@ -467,8 +475,8 @@ export const SkillEditor: React.FC = () => {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <Zap size={64} className="mb-4 opacity-20 text-amber-500" />
-            <h3 className="text-xl font-medium text-gray-400">Nenhuma Habilidade Selecionada</h3>
-            <p className="text-sm mt-2">Selecione uma habilidade na lista ao lado para ver e editar seus parâmetros.</p>
+            <h3 className="text-xl font-medium text-gray-400">{t('skill_editor.no_selection.title')}</h3>
+            <p className="text-sm mt-2">{t('skill_editor.no_selection.subtitle')}</p>
           </div>
         )}
       </div>

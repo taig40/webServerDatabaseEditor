@@ -8,7 +8,8 @@
     "success": "Sucesso",
     "error": "Erro",
     "reload": "Recarregar",
-    "reloading": "Recarregando..."
+    "reloading": "Recarregando...",
+    "line": "Linha"
   },
   "settings": {
     "title": "Configurações do Sistema",
@@ -328,6 +329,364 @@
     "previews": {
       "identified": "Identificado",
       "unidentified": "Não Identificado"
+    }
+  },
+  "skill_editor": {
+    "status": {
+      "connecting": "Conectando ao Backend...",
+      "error_fetching": "Erro ao carregar banco de habilidades.",
+      "checking": "Verificando servidor...",
+      "loading_list": "Carregando banco de habilidades..."
+    },
+    "save_success": "Habilidade salva com sucesso em db/import/skill_db.yml!",
+    "save_error": "Erro ao salvar habilidade.",
+    "sidebar": {
+      "title": "Habilidades",
+      "search_placeholder": "Buscar por ID ou AegisName..."
+    },
+    "detail": {
+      "save_button": "Salvar em db/import/skill_db.yml"
+    },
+    "source": {
+      "custom": "Custom Import",
+      "rathena": "rAthena Original"
+    },
+    "tabs": {
+      "general": "Identificação e Geral",
+      "combat": "Dano e Combate",
+      "timing": "Cast, Delay e Cooldown",
+      "requirements": "Requisitos e Custos",
+      "unit": "Efeitos no Solo (Unit)"
+    },
+    "fields": {
+      "aegis_name": "AegisName (Código interno)",
+      "description": "Descrição Exibida",
+      "max_level": "Nível Máximo (MaxLevel)",
+      "type": "Tipo da Habilidade (Type)",
+      "target_type": "Alvo (TargetType)",
+      "range": "Alcance (Range)",
+      "range_cells": "Alcance (Células)",
+      "hit_count": "Contagem de Acertos (HitCount)",
+      "splash_area": "Área de Splash (SplashArea)",
+      "knockback": "Empurrão — Knockback (Células)",
+      "hit": "Tipo de Acerto (Hit)",
+      "cast_time": "Tempo de Conjuração — CastTime (ms)",
+      "fixed_cast": "Cast Fixo — FixedCastTime (ms)",
+      "animation_delay": "Pós-conjuração (Animação) — AfterCastActDelay (ms)",
+      "cooldown": "Tempo de Recarga — Cooldown (ms)",
+      "duration1": "Duração 1 (ms)",
+      "duration2": "Duração 2 (ms)",
+      "sp_cost": "Custo de SP (SpCost)",
+      "hp_cost": "Custo de HP (HpCost)",
+      "zeny_cost": "Custo de Zeny (ZenyCost)",
+      "unit_title": "Configuração de Efeito no Solo (Unit / Splash / Area)",
+      "unit_subtitle": "Defina propriedades de magias ou habilidades que permanecem no chão após conjuradas (ex: Barreira de Fogo, Santuário).",
+      "active_instance": "Instâncias Ativas Máximas (ActiveInstance)",
+      "max_unit_instances": "Max Instâncias no Solo"
+    },
+    "no_selection": {
+      "title": "Nenhuma Habilidade Selecionada",
+      "subtitle": "Selecione uma habilidade na lista ao lado para ver e editar seus parâmetros."
+    }
+  },
+  "mob_skill_editor": {
+    "status": {
+      "loading": "Carregando habilidades de monstros...",
+      "error_fetching": "Erro ao carregar habilidades de monstros."
+    },
+    "save_success": "Salvo com sucesso!",
+    "save_error": "Erro ao salvar.",
+    "create_error": "Erro ao criar nova habilidade.",
+    "delete_confirm": "Deseja remover esta habilidade do monstro?",
+    "delete_error": "Erro ao deletar habilidade.",
+    "sidebar": {
+      "title": "Habilidade de Monstros",
+      "search_placeholder": "Buscar monstro...",
+      "add_mob": "Adicionar Novo Monstro",
+      "monster_number": "Monstro #{id}"
+    },
+    "list": {
+      "title": "Skills do Monstro",
+      "select_mob": "Selecione um monstro.",
+      "no_skills": "Sem habilidades cadastradas."
+    },
+    "detail": {
+      "title": "Editar Habilidade",
+      "sections": {
+        "identification": "Identificação",
+        "behavior": "Comportamento",
+        "condition": "Condição",
+        "additional_params": "Parâmetros Adicionais (Val1 – Val5)",
+        "expression": "Expressão & Chat"
+      }
+    },
+    "fields": {
+      "skill_id": "Skill ID",
+      "skill_id_hint": "ID da habilidade do servidor.",
+      "skill_lv": "Skill Level",
+      "skill_lv_hint": "Nível da habilidade (1-10).",
+      "state": "State",
+      "state_hint": "Estado em que o monstro deve estar para usar a skill.",
+      "target": "Target",
+      "target_hint": "Alvo da habilidade.",
+      "cancelable": "Cancelable",
+      "cancelable_hint": "Se o cast pode ser interrompido.",
+      "cast_time": "CastTime (ms)",
+      "cast_time_hint": "Tempo de conjuração em milissegundos.",
+      "delay": "Delay (ms)",
+      "delay_hint": "Intervalo em ms antes de tentar usar a skill novamente.",
+      "condition_type": "ConditionType",
+      "condition_type_hint": "Tipo de condição para ativar a skill.",
+      "condition_val": "ConditionValue",
+      "condition_val_hint": "Valor numérico da condição (HP%, ID de skill, contagem, etc.)",
+      "valid_status": "Status válidos para o campo ConditionValue:",
+      "hp_condition_warning": "⚠ Para esta condição: val1 = limite superior de HP% (ex: 50 para 50%)",
+      "emotion": "Emotion",
+      "emotion_hint": "Emoção exibida ao usar a skill. -1 = nenhuma.",
+      "chat": "Chat",
+      "chat_hint": "Mensagem NPC emitida ao usar a skill (opcional).",
+      "chat_placeholder": "(vazio)"
+    },
+    "conditions": {
+      "always": "Sem condição. ConditionValue ignorado.",
+      "onspawn": "Ao invocar/renascer. ConditionValue ignorado.",
+      "myhpltmaxrate": "Quando o HP cai abaixo de ConditionValue%.",
+      "myhpinrate": "Quando o HP está entre ConditionValue% (mínimo) e val1% (máximo).",
+      "mystatuson": "Se o monstro possuir o status em ConditionValue (use os nomes de status acima).",
+      "mystatusoff": "Se o monstro perder o status em ConditionValue.",
+      "friendhpltmaxrate": "Quando o HP de um aliado cai abaixo de ConditionValue%.",
+      "friendhpinrate": "HP do aliado entre ConditionValue% e val1%.",
+      "friendstatuson": "Se o aliado possuir o status.",
+      "friendstatusoff": "Se o aliado perder o status.",
+      "attackpcgt": "Quando atacantes > ConditionValue.",
+      "attackpcge": "Quando atacantes >= ConditionValue.",
+      "slavelt": "Quando escravos (slaves) < ConditionValue.",
+      "slavele": "Quando escravos (slaves) <= ConditionValue.",
+      "closedattacked": "Ao receber ataque físico corpo-a-corpo. ConditionValue ignorado.",
+      "longrangeattacked": "Ao receber ataque físico à distância. ConditionValue ignorado.",
+      "skillused": "Quando a skill ID em ConditionValue é usada no monstro.",
+      "afterskill": "Após o monstro usar a skill ID em ConditionValue.",
+      "casttargeted": "O alvo entra na distância de cast. ConditionValue ignorado.",
+      "rudeattacked": "Ao ser atacado rudemente. ConditionValue ignorado.",
+      "mobnearbygt": "Quando monstros na área > ConditionValue.",
+      "groundattacked": "Ao ser atingido por magia de solo. ConditionValue ignorado.",
+      "damagedgt": "Quando o dano de um único golpe > ConditionValue.",
+      "alchemist": "IA especial de Alquimista, ferido. ConditionValue ignorado.",
+      "trickcasting": "Uma vez que o monstro inicia NPC_RANDOMMOVE até ser desativado. ConditionValue ignorado."
+    },
+    "no_selection": {
+      "title": "Nenhuma Habilidade Selecionada",
+      "subtitle": "Selecione uma skill na coluna do meio para editar."
+    }
+  },
+  "quest_editor": {
+    "status": {
+      "loading": "Carregando banco de missões...",
+      "error_fetching": "Erro ao carregar quests."
+    },
+    "save_success": "Missão salva com sucesso em db/import/quest_db.yml!",
+    "save_error": "Erro ao salvar quest.",
+    "create_default_title": "Nova Missão Customizada",
+    "create_error": "Erro ao criar nova missão.",
+    "sidebar": {
+      "title": "Missões (Quests)",
+      "add_quest": "Nova Missão",
+      "search_placeholder": "Buscar por ID ou Título...",
+      "quest_number": "Quest #{id}",
+      "targets_count": "{count} Alvos"
+    },
+    "source": {
+      "custom": "Custom Import",
+      "rathena": "rAthena Original"
+    },
+    "detail": {
+      "quest_id_line": "ID da Missão: #{id}",
+      "save_button": "Salvar em db/import/quest_db.yml"
+    },
+    "fields": {
+      "quest_id": "ID da Missão",
+      "title": "Título da Missão (Title)",
+      "time_limit": "Limite de Tempo (Segundos — TimeLimit)"
+    },
+    "targets": {
+      "title": "Monstros Alvo (Targets)",
+      "mob_id": "Mob ID",
+      "search_mob": "🔍 Buscar Mob",
+      "count": "Quantidade (Count)",
+      "race": "Raça (Race)",
+      "race_placeholder": "Ex: Formless"
+    },
+    "drops": {
+      "title": "Itens de Drop de Missão (Drops)",
+      "mob_id": "Mob ID",
+      "item_id": "Item ID",
+      "search_mob": "🔍 Mob",
+      "search_item": "🔍 Item",
+      "rate": "Rate (10000 = 100%)"
+    },
+    "no_selection": {
+      "title": "Nenhuma Missão Selecionada",
+      "subtitle": "Selecione uma missão na lista ao lado para ver e editar seus alvos e drops."
+    }
+  },
+  "pet_editor": {
+    "status": {
+      "loading": "Carregando banco de mascotes...",
+      "error_fetching": "Erro ao carregar pets."
+    },
+    "save_success": "Mascote (Pet) salvo com sucesso em db/import/pet_db.yml!",
+    "save_error": "Erro ao salvar mascote.",
+    "create_error": "Erro ao criar novo mascote.",
+    "sidebar": {
+      "title": "Mascotes (Pets)",
+      "add_pet": "Novo Mascote",
+      "search_placeholder": "Buscar por nome do monstro (Mob)...",
+      "egg_item": "Ovo: {egg}"
+    },
+    "detail": {
+      "subtitle": "Mascote (AegisName do Monstro)",
+      "save_button": "Salvar em db/import/pet_db.yml"
+    },
+    "source": {
+      "custom": "Custom Import",
+      "rathena": "rAthena Original"
+    },
+    "tabs": {
+      "general": "Itens & Identificação",
+      "hunger": "Fome & Intimidade",
+      "combat": "Combate & Captura",
+      "scripts": "Scripts de Bônus"
+    },
+    "fields": {
+      "mob": "Monstro Alvo (Mob — AegisName)",
+      "tame_item": "Item de Domar (TameItem)",
+      "egg_item": "Ovo do Mascote (EggItem)",
+      "equip_item": "Acessório de Pet (EquipItem)",
+      "food_item": "Comida do Mascote (FoodItem)",
+      "fullness": "Saciedade Inicial (Fullness)",
+      "hungry_delay": "Intervalo de Fome (HungryDelay — seg)",
+      "hunger_increase": "Aumento ao Alimentar (HungerIncrease)",
+      "intimacy_start": "Intimidade Inicial (IntimacyStart)",
+      "intimacy_fed": "Bônus ao Alimentar (IntimacyFed)",
+      "intimacy_hungry": "Penalidade de Fome (IntimacyHungry)",
+      "capture_rate": "Taxa de Captura (CaptureRate)",
+      "attack_rate": "Taxa de Ataque (AttackRate)",
+      "retaliate_rate": "Taxa de Retaliação (RetaliateRate)",
+      "change_target_rate": "Troca de Alvo (ChangeTargetRate)",
+      "script": "Script Principal do Mascote (Script)",
+      "support_script": "Script de Suporte (SupportScript)"
+    },
+    "no_selection": {
+      "title": "Nenhum Mascote Selecionado",
+      "subtitle": "Selecione um mascote na lista ao lado para ver e editar detalhes."
+    }
+  },
+  "achievement_editor": {
+    "status": {
+      "loading": "Carregando conquistas...",
+      "error_fetching": "Erro ao carregar conquistas."
+    },
+    "save_success": "Conquista salva com sucesso!",
+    "save_error": "Erro ao salvar conquista: {error}",
+    "create_fill_fields": "Preencha ID e Nome.",
+    "create_success": "Conquista criada com sucesso!",
+    "create_error": "Erro ao criar conquista: {error}",
+    "badges": {
+      "ok": "Ok",
+      "divergent": "Divergente",
+      "server_only": "Só YML",
+      "client_only": "Só Lua"
+    },
+    "sidebar": {
+      "title": "Conquistas",
+      "create_btn": "Criar Conquista",
+      "search_placeholder": "Buscar ID, nome ou título...",
+      "filter_sync_all": "Sincronia: Todos",
+      "filter_group_all": "Grupo: Todos",
+      "no_achievements": "Nenhuma conquista encontrada."
+    },
+    "detail": {
+      "not_exists": "não existente",
+      "generate_lua": "Gerar Lua do Cliente",
+      "save_changes": "Salvar Alterações",
+      "loading_btn": "Salvando..."
+    },
+    "visual_texts": {
+      "title": "Visualização & Textos (achievements.lub)",
+      "display_title": "Título Exibido no Jogo",
+      "display_title_placeholder": "Título traduzido...",
+      "summary": "Sumário (Resumo Curto)",
+      "summary_placeholder": "Resumo curto da missão...",
+      "detailed_desc": "Descrição Detalhada",
+      "detailed_desc_placeholder": "Instruções completas para completar a conquista...",
+      "checklist_label": "Checklist do Cliente (resource)",
+      "add_line": "+ Adicionar Linha",
+      "new_objective": "Novo objetivo..."
+    },
+    "server_yml": {
+      "title": "Lógica & Condições do Servidor (YML)",
+      "group": "Grupo",
+      "group_placeholder": "Ex: Adventure, Quest, Eat...",
+      "score": "Pontos (Score)",
+      "condition_expr": "Expressão de Condição",
+      "condition_expr_hint": "(Código Script rAthena)",
+      "condition_expr_placeholder": "Ex: \" BaseLevel >= 99 \" ou \" Class == JOB_NOVICE \"",
+      "targets": "Monstros Alvos (Targets)",
+      "add_target": "+ Adicionar Alvo",
+      "mob_placeholder": "Nome do mob...",
+      "search_btn": "Buscar",
+      "qty": "Qtd",
+      "map": "Mapa (AG_CHATTING / AG_MAP)",
+      "map_placeholder": "Ex: prontera, payon..."
+    },
+    "rewards": {
+      "title": "Premiações & Recompensas ao Completar",
+      "item": "Item da Recompensa",
+      "item_placeholder": "Nome do item (Aegis)...",
+      "search_btn": "Buscar",
+      "client_id": "ID no cliente (LUA):",
+      "none": "nenhuma",
+      "qty": "Quantidade do Item",
+      "title_reward": "Título da Recompensa (Title ID)",
+      "bonus_script": "Script de Bônus (Server Script)",
+      "bonus_script_placeholder": "Ex: getexp 500,0; specialeffect 100;"
+    },
+    "no_selection": "Selecione uma conquista na lista para editar",
+    "create_modal": {
+      "title": "Criar Nova Conquista",
+      "subtitle": "Cria o registro sincronizado no YML do servidor e na Lua do cliente.",
+      "unique_id": "ID Único",
+      "initial_group": "Grupo Inicial",
+      "server_name": "Nome do Servidor (Aegis)",
+      "client_title": "Título no Cliente (Lua)",
+      "create_btn": "Criar Registro",
+      "cancel": "Cancelar"
+    }
+  },
+  "components": {
+    "script_cell_editor": {
+      "title": "Editor de Script",
+      "item": "Item:",
+      "cancel": "Cancelar",
+      "save": "Salvar",
+      "save_script": "Salvar Script"
+    },
+    "repeatable_group": {
+      "empty": "Nenhum item adicionado.",
+      "add": "Adicionar",
+      "remove": "Remover item"
+    },
+    "reference_picker": {
+      "select": "Selecionar {type}",
+      "search_placeholder": "Buscar por ID ou Nome...",
+      "loading": "Carregando catálogo...",
+      "no_results": "Nenhum resultado encontrado para \"{query}\".",
+      "select_btn": "Selecionar",
+      "types": {
+        "item": "Item",
+        "mob": "Monstro",
+        "skill": "Habilidade"
+      }
     }
   }
 }
