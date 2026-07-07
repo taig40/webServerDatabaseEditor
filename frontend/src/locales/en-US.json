@@ -719,6 +719,58 @@
         "mob": "Monster",
         "skill": "Skill"
       }
+    },
+    "modals": {
+      "new_mob": {
+        "title": "Create Custom Monster",
+        "error_id": "ID must be greater than 0.",
+        "error_required": "AegisName and Name are required.",
+        "error_create": "Error creating monster.",
+        "fields": {
+          "id": "Monster ID",
+          "id_tip": "Recommended > 4000 for custom ones.",
+          "level": "Level",
+          "aegis_name": "AegisName",
+          "aegis_name_tip": "System reference name (no spaces).",
+          "name": "Name (EN)",
+          "hp": "HP",
+          "race": "Race",
+          "size": "Size",
+          "element": "Element",
+          "element_level": "Element Level"
+        },
+        "create_btn": "Create Monster",
+        "creating": "Creating..."
+      },
+      "new_item": {
+        "title": "Create Custom Item",
+        "error_id": "ID must be greater than 0.",
+        "error_required": "AegisName and Name are required.",
+        "error_create": "Error creating item.",
+        "fields": {
+          "id": "Item ID",
+          "id_tip": "Recommended > 20000 to avoid official item conflicts.",
+          "aegis_name": "AegisName",
+          "aegis_name_tip": "System reference name (no spaces).",
+          "name": "Name",
+          "name_tip": "Display name in English.",
+          "type": "Type",
+          "subtype": "SubType (Optional)",
+          "atk": "Attack (ATK)",
+          "def": "Defense (DEF)",
+          "equip_level": "EquipLevelMin"
+        },
+        "create_btn": "Create Item",
+        "creating": "Creating..."
+      },
+      "npc_shop": {
+        "title": "Shop NPC",
+        "copy_success": "Copied!",
+        "copy_tooltip": "Copy /navi",
+        "copy_btn_title": "Click to copy /navi command",
+        "inventory": "Shop Inventory",
+        "default_price": "Default Price (item_db)"
+      }
     }
   }
 }

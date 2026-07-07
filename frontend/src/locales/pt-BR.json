@@ -719,6 +719,58 @@
         "mob": "Monstro",
         "skill": "Habilidade"
       }
+    },
+    "modals": {
+      "new_mob": {
+        "title": "Criar Monstro Customizado",
+        "error_id": "ID deve ser maior que 0.",
+        "error_required": "AegisName e Name são obrigatórios.",
+        "error_create": "Erro ao criar monstro.",
+        "fields": {
+          "id": "ID do Monstro",
+          "id_tip": "Recomendado > 4000 para customizados.",
+          "level": "Level",
+          "aegis_name": "AegisName",
+          "aegis_name_tip": "Nome de referência do sistema (sem espaços).",
+          "name": "Nome (EN)",
+          "hp": "HP",
+          "race": "Raça",
+          "size": "Tamanho",
+          "element": "Elemento",
+          "element_level": "Nível do Elemento"
+        },
+        "create_btn": "Criar Monstro",
+        "creating": "Criando..."
+      },
+      "new_item": {
+        "title": "Criar Item Customizado",
+        "error_id": "ID deve ser maior que 0.",
+        "error_required": "AegisName e Name são obrigatórios.",
+        "error_create": "Erro ao criar item.",
+        "fields": {
+          "id": "ID do Item",
+          "id_tip": "Recomendado > 20000 para evitar conflitos com itens oficiais.",
+          "aegis_name": "AegisName",
+          "aegis_name_tip": "Nome de referência do sistema (sem espaços).",
+          "name": "Nome",
+          "name_tip": "Nome de exibição em inglês.",
+          "type": "Tipo",
+          "subtype": "Subtipo (Opcional)",
+          "atk": "Ataque (ATK)",
+          "def": "Defesa (DEF)",
+          "equip_level": "Nível Mínimo Equip"
+        },
+        "create_btn": "Criar Item",
+        "creating": "Criando..."
+      },
+      "npc_shop": {
+        "title": "NPC de Loja",
+        "copy_success": "Copiado!",
+        "copy_tooltip": "Copiar /navi",
+        "copy_btn_title": "Clique para copiar o comando /navi",
+        "inventory": "Inventário da Loja",
+        "default_price": "Preço Padrão (item_db)"
+      }
     }
   }
 }
