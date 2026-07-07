@@ -6,13 +6,15 @@ import { Search, Layers, Plus, Database, Sparkles, Save, Trash2, Package } from 
 import { ScriptEditor } from '../components/ScriptEditor';
 import { RepeatableGroup } from '../components/RepeatableGroup';
 import { ReferencePicker } from '../components/ReferencePicker';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 type SourceTab = 'rathena' | 'custom';
 
 export const ComboEditor: React.FC = () => {
+  const t = useLanguageStore(state => state.t);
   const [combos, setCombos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingStatus, setLoadingStatus] = useState("Carregando banco de combos...");
+  const [loadingStatus, setLoadingStatus] = useState(t('combo_editor.status.loading_list'));
   const [searchText, setSearchText] = useState("");
   const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
   const [selectedIndex, setSelectedIndex] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export const ComboEditor: React.FC = () => {
       setIsLoading(false);
     } catch (err) {
       console.error("Erro ao carregar combos:", err);
-      setLoadingStatus("Erro ao carregar combos.");
+      setLoadingStatus(t('combo_editor.status.error_fetching'));
       setIsLoading(false);
     }
   };
@@ -140,12 +142,12 @@ export const ComboEditor: React.FC = () => {
       const res = await axios.put(`${API_URL}/api/combos/${selectedCombo._index}`, {
         data: payload
       });
-      alert("Combo de itens salvo com sucesso em db/import/item_combos.yml!");
+      alert(t('combo_editor.save_success'));
       setCombos(prev => prev.map(c => c._index === selectedCombo._index ? { ...c, _source: 'custom' } : c));
       setSourceTab('custom');
     } catch (err) {
       console.error("Erro ao salvar combo:", err);
-      alert("Erro ao salvar combo.");
+      alert(t('combo_editor.save_error'));
     } finally {
       setIsSaving(false);
     }
@@ -166,7 +168,7 @@ export const ComboEditor: React.FC = () => {
       setSourceTab('custom');
     } catch (err) {
       console.error("Erro ao criar combo:", err);
-      alert("Erro ao criar novo combo.");
+      alert(t('combo_editor.create_error'));
     }
   };
 
@@ -177,12 +179,12 @@ export const ComboEditor: React.FC = () => {
         <div className="p-4 border-b border-white/5 bg-gradient-to-b from-[#1a1a24] to-[#12121a]">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-gray-200 font-semibold text-lg flex items-center gap-2">
-              <Layers size={18} className="text-cyan-500" /> Combos de Itens
+              <Layers size={18} className="text-cyan-500" /> {t('combo_editor.sidebar.title')}
             </h2>
             <button
               onClick={handleCreateNewCombo}
               className="p-1.5 bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-400 rounded transition-colors"
-              title="Novo Combo"
+              title={t('combo_editor.sidebar.new_combo')}
             >
               <Plus size={16} />
             </button>
@@ -221,7 +223,7 @@ export const ComboEditor: React.FC = () => {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
               type="text"
-              placeholder="Buscar por item ou script..."
+              placeholder={t('combo_editor.sidebar.search_placeholder')}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="w-full bg-dark-900 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
@@ -260,7 +262,7 @@ export const ComboEditor: React.FC = () => {
                       {itemsList.length > 4 && <span className="text-[10px] text-gray-500 font-mono">+{itemsList.length - 4}</span>}
                     </div>
                     <p className="text-[11px] text-gray-400 font-mono line-clamp-1 truncate">
-                      {combo.Script || 'Sem script'}
+                      {combo.Script || t('combo_editor.no_script')}
                     </p>
                   </div>
                 );
@@ -277,13 +279,13 @@ export const ComboEditor: React.FC = () => {
             <div className="flex justify-between items-center pb-4 border-b border-dark-800">
               <div>
                 <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span>Combo de Itens</span>
+                  <span>{t('combo_editor.detail.title')}</span>
                   <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-mono ${selectedCombo._source === 'custom' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-dark-800 text-gray-400'}`}>
-                    {selectedCombo._source === 'custom' ? 'Custom Import' : 'rAthena Original'}
+                    {selectedCombo._source === 'custom' ? t('combo_editor.source.custom') : t('combo_editor.source.rathena')}
                   </span>
                 </h1>
                 <span className="text-xs font-mono text-gray-500">
-                  Índice Posicional: {selectedCombo._index}
+                  {t('combo_editor.detail.index', { index: selectedCombo._index })}
                 </span>
               </div>
               <button
@@ -293,26 +295,26 @@ export const ComboEditor: React.FC = () => {
                 className="flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-cyan-900/30 transition-all disabled:opacity-50"
               >
                 <Save size={16} />
-                <span>Salvar em db/import/item_combos.yml</span>
+                <span>{t('combo_editor.detail.save_button')}</span>
               </button>
             </div>
 
             {/* Variants Editor */}
             <RepeatableGroup
-              title="Variantes de Combinações de Itens"
+              title={t('combo_editor.variants.title')}
               items={selectedCombo._item_groups || []}
               onAdd={handleAddVariant}
               onRemove={handleRemoveVariant}
               renderItem={(variant: string[], varIdx: number) => (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-cyan-400">Variante #{varIdx + 1} (mínimo 2 itens)</span>
+                    <span className="text-xs font-bold text-cyan-400">{t('combo_editor.variants.variant_header', { index: varIdx + 1 })}</span>
                     <button
                       type="button"
                       onClick={() => { setActiveVariantIdx(varIdx); setPickerOpen(true); }}
                       className="text-xs bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 px-2.5 py-1 rounded flex items-center gap-1 transition-colors"
                     >
-                      <Plus size={14} /> Adicionar Item ao Combo
+                      <Plus size={14} /> {t('combo_editor.variants.add_item')}
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -341,7 +343,7 @@ export const ComboEditor: React.FC = () => {
 
             {/* Script Editor */}
             <ScriptEditor
-              label="Bônus do Combo (Script)"
+              label={t('combo_editor.script.label')}
               value={selectedCombo.Script || ''}
               onChange={handleUpdateScript}
               height="260px"
@@ -350,8 +352,8 @@ export const ComboEditor: React.FC = () => {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <Layers size={64} className="mb-4 opacity-20 text-cyan-500" />
-            <h3 className="text-xl font-medium text-gray-400">Nenhum Combo Selecionado</h3>
-            <p className="text-sm mt-2">Selecione uma combinação de itens na lista ao lado para editar.</p>
+            <h3 className="text-xl font-medium text-gray-400">{t('combo_editor.no_selection.title')}</h3>
+            <p className="text-sm mt-2">{t('combo_editor.no_selection.subtitle')}</p>
           </div>
         )}
       </div>

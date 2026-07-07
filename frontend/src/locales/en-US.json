@@ -243,5 +243,91 @@
     "error_spritesheet": "Error loading spritesheet",
     "no_sprite_kro": "No sprite in kRO",
     "frames_count": "{count} frames"
+  },
+  "combo_editor": {
+    "status": {
+      "loading_list": "Loading combos database...",
+      "error_fetching": "Error loading combos."
+    },
+    "save_success": "Item combo saved successfully to db/import/item_combos.yml!",
+    "save_error": "Error saving combo.",
+    "create_error": "Error creating new combo.",
+    "no_script": "No script",
+    "sidebar": {
+      "title": "Item Combos",
+      "new_combo": "New Combo",
+      "search_placeholder": "Search by item or script..."
+    },
+    "detail": {
+      "title": "Item Combo",
+      "index": "Positional Index: {index}",
+      "save_button": "Save to db/import/item_combos.yml"
+    },
+    "source": {
+      "custom": "Custom Import",
+      "rathena": "rAthena Original"
+    },
+    "variants": {
+      "title": "Item Combination Variants",
+      "variant_header": "Variant #{index} (minimum 2 items)",
+      "add_item": "Add Item to Combo"
+    },
+    "script": {
+      "label": "Combo Bonus (Script)"
+    },
+    "no_selection": {
+      "title": "No Combo Selected",
+      "subtitle": "Select an item combination from the list on the side to edit."
+    }
+  },
+  "client_item_editor": {
+    "loading_title": "Loading Items",
+    "save_error": "Error saving changes to ItemInfo.lua.",
+    "sidebar": {
+      "title": "Client Items (ItemInfo)",
+      "items_count": "{count} items"
+    },
+    "no_selection": {
+      "title": "No Item Selected",
+      "subtitle": "Select an item from the list to edit its client info."
+    }
+  },
+  "client_item_detail": {
+    "description_placeholder": "One line per description entry.\nUse \\n for newlines in-game.",
+    "upload_error": "Upload error: {error}",
+    "sending": "Sending...",
+    "picker_default_title": "Choose from GRF",
+    "reload_icon": "Reload Icon",
+    "no_client_name": "No Client Name",
+    "status": {
+      "in_lua": "● In ItemInfo.lua",
+      "missing_in_lua": "● Missing in ItemInfo.lua",
+      "fetching": "Loading..."
+    },
+    "unsaved_changes": "Unsaved Changes",
+    "sections": {
+      "identified": "Identified",
+      "unidentified": "Unidentified",
+      "extra_fields": "Extra Fields",
+      "grf_assets": "GRF Assets",
+      "card_preview": "Card Preview"
+    },
+    "labels": {
+      "inventory_icon": "Inventory Icon",
+      "collection_illustration": "Collection Illustration"
+    },
+    "buttons": {
+      "upload_icon": "Upload Icon (.bmp)",
+      "upload_collection": "Upload Collection (.bmp)",
+      "select_grf": "Select from GRF"
+    },
+    "picker": {
+      "select_icon": "Select Item Icon from GRF",
+      "select_collection": "Select Collection Sprite from GRF"
+    },
+    "previews": {
+      "identified": "Identified",
+      "unidentified": "Unidentified"
+    }
   }
 }
