@@ -801,6 +801,16 @@
       "select_group_desc": "Escolha um grupo na lista da esquerda ou clique no botão + para criar um novo.",
       "save_btn": "Salvar Alterações",
       "saved_toast": "✓ Salvo com sucesso!"
+    },
+    "size_fix_editor": {
+      "title": "Penalidades de Tamanho",
+      "subtitle": "Configure os multiplicadores de dano das classes de armas contra tamanhos de monstros.",
+      "save_btn": "Salvar Alterações",
+      "saved_toast": "✓ Modificações salvas com sucesso!",
+      "weapon_header": "Tipo de Arma",
+      "small_header": "Pequeno (Small)",
+      "medium_header": "Médio (Medium)",
+      "large_header": "Grande (Large)"
     }
   }
 }
