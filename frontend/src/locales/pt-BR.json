@@ -146,7 +146,8 @@
       "pets": "Mascotes",
       "client_items": "Itens (Cliente)",
       "client_quests": "Quests (Cliente)",
-      "constants": "Constantes"
+      "constants": "Constantes",
+      "random_options": "Opções Aleatórias"
     }
   },
   "app": {
@@ -784,6 +785,22 @@
       "description": "A aplicação falhou ao ler um arquivo de banco de dados por incompatibilidade de codificação.",
       "suggestion": "Você deve verificar as suas configurações de codificação de texto (Encoding do Servidor / Cliente).",
       "go_to_settings": "Ir para Configurações"
+    },
+    "random_options_editor": {
+      "title": "Opções Aleatórias",
+      "search_placeholder": "Buscar grupos...",
+      "new_group": "Novo Grupo",
+      "group_id": "ID do Grupo",
+      "group_name": "Constante do Grupo",
+      "options_list": "Lista de Bônus / Opções",
+      "add_option": "Adicionar Bônus",
+      "no_options": "Nenhum bônus adicionado a este grupo ainda.",
+      "option_header": "Opção",
+      "chance_header": "Chance",
+      "select_group": "Selecione um Grupo de Opções",
+      "select_group_desc": "Escolha um grupo na lista da esquerda ou clique no botão + para criar um novo.",
+      "save_btn": "Salvar Alterações",
+      "saved_toast": "✓ Salvo com sucesso!"
     }
   }
 }

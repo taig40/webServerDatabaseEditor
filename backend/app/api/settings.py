@@ -283,6 +283,10 @@ async def reload_settings():
         iteminfo_db.load_background(iteminfo_path)
         reloaded.append(f"iteminfo → {iteminfo_path}")
 
+    from app.services.randomopt_parser import randomopt_db
+    randomopt_db.initialize()
+    reloaded.append("randomopt_db")
+
     return {
         "status": "reloaded",
         "grf_count": len(grf_list),

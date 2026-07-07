@@ -18,6 +18,7 @@ import {
   Database,
   Settings,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 
 // ─── Module definitions ─────────────────────────────────────────────────────
@@ -35,7 +36,8 @@ export type ModuleId =
   | 'mob_skills'
   | 'server_achievements'
   | 'pets'
-  | 'constants';
+  | 'constants'
+  | 'random_options';
 
 interface Module {
   id: ModuleId;
@@ -58,6 +60,7 @@ const MODULES: Module[] = [
   { id: 'skill_requirements',  label: 'Req. de Habilidades',  sublabel: 'skill_require_db.yml', icon: ListChecks,   group: 'server', available: false },
   { id: 'mob_skills',          label: 'Skills de Mobs',       sublabel: 'mob_skill_db.txt',     icon: Sword,        group: 'server', available: true  },
   { id: 'pets',                label: 'Mascotes',             sublabel: 'pet_db.yml',           icon: Star,         group: 'server', available: true  },
+  { id: 'random_options',      label: 'Opções Aleatórias',    sublabel: 'item_randomopt_group.yml', icon: Sparkles,  group: 'server', available: true  },
   // ── Client DB ──
   { id: 'client_items',        label: 'Itens (Cliente)',      sublabel: 'iteminfo.lua',         icon: BookOpen,     group: 'client', available: true  },
   { id: 'client_quests',       label: 'Quests (Cliente)',     sublabel: 'questid2display.lua',  icon: Scroll,       group: 'client', available: false },
