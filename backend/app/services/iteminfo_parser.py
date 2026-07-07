@@ -93,17 +93,11 @@ class ItemInfoParser:
         t.start()
 
     def _parse_async(self, filepath: str):
-        from fastapi import HTTPException
         print(f"[*] Starting async Lua parse from '{filepath}'...")
         try:
             self._parse(filepath)
             self.loaded = True
-            self.encoding_error = None
             print(f"[*] ItemInfo Loaded: {len(self.item_map)} entries mapped.")
-        except HTTPException as e:
-            if isinstance(e.detail, dict) and e.detail.get("error_code") == "ENCODING_MISMATCH":
-                self.encoding_error = e.detail
-            print(f"[!] Failed to parse ItemInfo due to encoding mismatch: {e.detail}")
         except Exception as e:
             print(f"[!] Failed to parse ItemInfo: {e}")
         finally:
@@ -111,9 +105,21 @@ class ItemInfoParser:
 
     def _parse(self, filepath: str):
         """Line-by-line parser for iteminfo.lua. Fast and memory-efficient."""
-        # Strictly validate client encoding first
+        # Strictly validate client encoding first (record error if any, but do not block loading)
         from app.core.utils import read_file_safely
-        read_file_safely(filepath, cfg.client_encoding)
+        try:
+            read_file_safely(filepath, cfg.client_encoding)
+            self.encoding_error = None
+        except Exception as e:
+            from fastapi import HTTPException
+            if isinstance(e, HTTPException) and isinstance(e.detail, dict) and e.detail.get("error_code") == "ENCODING_MISMATCH":
+                self.encoding_error = e.detail
+            else:
+                self.encoding_error = {
+                    "error_code": "ENCODING_MISMATCH",
+                    "message": f"Erro de validação de encoding no arquivo {os.path.basename(filepath)} usando '{cfg.client_encoding}': {str(e)}",
+                    "suggestion": "Vá até a aba Configurações (Settings) para ajustar o encoding."
+                }
 
         # ALWAYS read as latin-1 (byte-transparent).
         # itemInfo.lua contains EUC-KR encoded Korean text. Latin-1 preserves
