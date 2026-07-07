@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { X, ShieldAlert } from 'lucide-react';
 import { API_URL } from '../config/env';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 interface NewMobModalProps {
   onClose: () => void;
@@ -9,6 +10,7 @@ interface NewMobModalProps {
 }
 
 const NewMobModal: React.FC<NewMobModalProps> = ({ onClose, onMobCreated }) => {
+  const t = useLanguageStore(state => state.t);
   const [formData, setFormData] = useState({
     Id: 4000,
     AegisName: '',
@@ -38,15 +40,15 @@ const NewMobModal: React.FC<NewMobModalProps> = ({ onClose, onMobCreated }) => {
     setLoading(true);
     setError('');
 
-    if (formData.Id <= 0) { setError('ID deve ser maior que 0.'); setLoading(false); return; }
-    if (!formData.AegisName || !formData.Name) { setError('AegisName e Name são obrigatórios.'); setLoading(false); return; }
+    if (formData.Id <= 0) { setError(t('components.modals.new_mob.error_id')); setLoading(false); return; }
+    if (!formData.AegisName || !formData.Name) { setError(t('components.modals.new_mob.error_required')); setLoading(false); return; }
 
     try {
       const response = await axios.post(`${API_URL}/api/mobs/`, formData);
       onMobCreated(response.data);
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Erro ao criar monstro.');
+      setError(err.response?.data?.detail || t('components.modals.new_mob.error_create'));
     } finally {
       setLoading(false);
     }
@@ -61,7 +63,7 @@ const NewMobModal: React.FC<NewMobModalProps> = ({ onClose, onMobCreated }) => {
         <div className="p-5 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-violet-600/10 to-transparent rounded-t-2xl">
           <h2 className="text-lg text-white font-bold flex items-center gap-2">
             <ShieldAlert size={18} className="text-violet-400" />
-            Criar Monstro Customizado
+            {t('components.modals.new_mob.title')}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
             <X size={18} />
@@ -77,28 +79,28 @@ const NewMobModal: React.FC<NewMobModalProps> = ({ onClose, onMobCreated }) => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass}>ID do Monstro</label>
+              <label className={labelClass}>{t('components.modals.new_mob.fields.id')}</label>
               <input type="number" name="Id" value={formData.Id} onChange={handleChange} className={inputClass} />
-              <span className="text-[10px] text-gray-600 mt-1 block">Recomendado &gt; 4000 para customizados.</span>
+              <span className="text-[10px] text-gray-600 mt-1 block">{t('components.modals.new_mob.fields.id_tip')}</span>
             </div>
             <div>
-              <label className={labelClass}>Level</label>
+              <label className={labelClass}>{t('components.modals.new_mob.fields.level')}</label>
               <input type="number" name="Level" value={formData.Level} onChange={handleChange} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>AegisName</label>
+              <label className={labelClass}>{t('components.modals.new_mob.fields.aegis_name')}</label>
               <input type="text" name="AegisName" placeholder="ex: Custom_Monster" value={formData.AegisName} onChange={handleChange} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Nome (EN)</label>
+              <label className={labelClass}>{t('components.modals.new_mob.fields.name')}</label>
               <input type="text" name="Name" placeholder="ex: Custom Monster" value={formData.Name} onChange={handleChange} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>HP</label>
+              <label className={labelClass}>{t('components.modals.new_mob.fields.hp')}</label>
               <input type="number" name="Hp" value={formData.Hp} onChange={handleChange} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Raça</label>
+              <label className={labelClass}>{t('components.modals.new_mob.fields.race')}</label>
               <select name="Race" value={formData.Race} onChange={handleChange} className={inputClass}>
                 {['Formless','Undead','Brute','Plant','Insect','Fish','Demon','Demihuman','Angel','Dragon'].map(r => (
                   <option key={r} value={r}>{r}</option>
@@ -106,13 +108,13 @@ const NewMobModal: React.FC<NewMobModalProps> = ({ onClose, onMobCreated }) => {
               </select>
             </div>
             <div>
-              <label className={labelClass}>Tamanho</label>
+              <label className={labelClass}>{t('components.modals.new_mob.fields.size')}</label>
               <select name="Size" value={formData.Size} onChange={handleChange} className={inputClass}>
                 {['Small','Medium','Large'].map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Elemento</label>
+              <label className={labelClass}>{t('components.modals.new_mob.fields.element')}</label>
               <select name="Element" value={formData.Element} onChange={handleChange} className={inputClass}>
                 {['Neutral','Water','Earth','Fire','Wind','Poison','Holy','Dark','Ghost','Undead'].map(el => (
                   <option key={el} value={el}>{el}</option>
@@ -120,7 +122,7 @@ const NewMobModal: React.FC<NewMobModalProps> = ({ onClose, onMobCreated }) => {
               </select>
             </div>
             <div>
-              <label className={labelClass}>Nível do Elemento</label>
+              <label className={labelClass}>{t('components.modals.new_mob.fields.element_level')}</label>
               <input type="number" name="ElementLevel" value={formData.ElementLevel} min={1} max={4} onChange={handleChange} className={inputClass} />
             </div>
           </div>
@@ -131,14 +133,14 @@ const NewMobModal: React.FC<NewMobModalProps> = ({ onClose, onMobCreated }) => {
               disabled={loading}
               className="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors disabled:opacity-50"
             >
-              {loading ? 'Criando...' : 'Criar Monstro'}
+              {loading ? t('components.modals.new_mob.creating') : t('components.modals.new_mob.create_btn')}
             </button>
             <button
               type="button"
               onClick={onClose}
               className="px-4 py-2.5 text-gray-400 hover:text-white bg-dark-900/60 border border-white/5 rounded-lg text-sm transition-colors"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
           </div>
         </form>
