@@ -78,6 +78,7 @@ class ItemInfoParser:
         self.item_map: dict[int, dict] = {}   # id → full field dict
         self.loaded: bool  = False
         self.loading: bool = False
+        self.encoding_error: Optional[dict] = None
 
     # ── Load ──────────────────────────────────────────────────────────────────
 
@@ -92,11 +93,17 @@ class ItemInfoParser:
         t.start()
 
     def _parse_async(self, filepath: str):
+        from fastapi import HTTPException
         print(f"[*] Starting async Lua parse from '{filepath}'...")
         try:
             self._parse(filepath)
             self.loaded = True
+            self.encoding_error = None
             print(f"[*] ItemInfo Loaded: {len(self.item_map)} entries mapped.")
+        except HTTPException as e:
+            if isinstance(e.detail, dict) and e.detail.get("error_code") == "ENCODING_MISMATCH":
+                self.encoding_error = e.detail
+            print(f"[!] Failed to parse ItemInfo due to encoding mismatch: {e.detail}")
         except Exception as e:
             print(f"[!] Failed to parse ItemInfo: {e}")
         finally:
@@ -104,6 +111,10 @@ class ItemInfoParser:
 
     def _parse(self, filepath: str):
         """Line-by-line parser for iteminfo.lua. Fast and memory-efficient."""
+        # Strictly validate client encoding first
+        from app.core.utils import read_file_safely
+        read_file_safely(filepath, cfg.client_encoding)
+
         # ALWAYS read as latin-1 (byte-transparent).
         # itemInfo.lua contains EUC-KR encoded Korean text. Latin-1 preserves
         # every byte as-is (0x00-0xFF → U+0000-U+00FF), which means resource
