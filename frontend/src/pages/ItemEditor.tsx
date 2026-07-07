@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Virtuoso } from 'react-virtuoso';
 import { API_URL } from '../config/env';
 import { Search, Plus, Package, Database, Sparkles } from 'lucide-react';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 import NewItemModal from '../components/NewItemModal';
 import ItemDetail from '../components/ItemDetail';
@@ -10,11 +11,12 @@ import ItemDetail from '../components/ItemDetail';
 type SourceTab = 'rathena' | 'custom';
 
 const ItemEditor: React.FC = () => {
+  const t = useLanguageStore(state => state.t);
   const [items, setItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Status de carregamento para arquivos YAML
-  const [loadingStatus, setLoadingStatus] = useState("Conectando ao Backend...");
+  const [loadingStatus, setLoadingStatus] = useState(t('item_editor.status.connecting'));
   const [itemsLoaded, setItemsLoaded] = useState(0);
   
   // Estado para o campo de busca
@@ -37,25 +39,31 @@ const ItemEditor: React.FC = () => {
         const statusRes = await axios.get(`${API_URL}/api/items/status`);
         const { is_loading, message, items_loaded } = statusRes.data;
         
-        setLoadingStatus(message);
+        let displayMessage = message;
+        if (message === "Conectando ao Backend...") {
+          displayMessage = t('item_editor.status.connecting');
+        } else if (message === "Carregando lista de Itens...") {
+          displayMessage = t('item_editor.status.loading_list');
+        }
+        setLoadingStatus(displayMessage);
         setItemsLoaded(items_loaded);
 
         if (!is_loading && message !== "Aguardando inicialização...") {
           if (intervalId) clearInterval(intervalId);
           
-          setLoadingStatus("Carregando lista de Itens...");
+          setLoadingStatus(t('item_editor.status.loading_list'));
           try {
              const itemsRes = await axios.get(`${API_URL}/api/items/?skip=0&limit=150000`);
              setItems(itemsRes.data.items);
              setIsLoading(false);
           } catch (err) {
              console.error("Erro ao baixar array final:", err);
-             setLoadingStatus("Erro ao receber os itens finais.");
+             setLoadingStatus(t('item_editor.status.error_final_array'));
           }
         }
       } catch (err) {
         console.error("Erro ao checar status. Servidor offline?", err);
-        setLoadingStatus("Servidor offline. Tentando reconectar...");
+        setLoadingStatus(t('item_editor.status.offline'));
       }
     };
 
@@ -126,7 +134,7 @@ const ItemEditor: React.FC = () => {
       return true;
     } catch (error) {
       console.error("[webSDE] Falha ao salvar", error);
-      alert("Erro de conexão ao salvar a alteração no YAML.");
+      alert(t('item_editor.status.save_error'));
       return false;
     }
   }, []);
@@ -138,11 +146,11 @@ const ItemEditor: React.FC = () => {
       {isLoading && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-dark-900/90 backdrop-blur-sm">
            <div className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-           <h3 className="text-2xl text-white font-semibold mb-2">Carregando Banco de Itens</h3>
+           <h3 className="text-2xl text-white font-semibold mb-2">{t('item_editor.status.loading_title')}</h3>
            <p className="text-gray-400 mb-2 font-mono text-sm">{loadingStatus}</p>
            <div className="bg-dark-800 px-4 py-2 rounded-full border border-white/10">
               <span className="text-violet-400 font-bold text-lg">{itemsLoaded.toLocaleString()}</span>
-              <span className="text-gray-500 ml-2">entradas lidas</span>
+              <span className="text-gray-500 ml-2">{t('item_editor.status.entries_read')}</span>
            </div>
         </div>
       )}
@@ -167,12 +175,12 @@ const ItemEditor: React.FC = () => {
         <div className="p-4 border-b border-white/5 bg-gradient-to-b from-[#1a1a24] to-[#12121a]">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-gray-200 font-semibold text-lg flex items-center gap-2">
-              <Package size={18} className="text-violet-500" /> Itens
+              <Package size={18} className="text-violet-500" /> {t('item_editor.title')}
             </h2>
             <button 
               onClick={() => setIsModalOpen(true)}
               className="p-1.5 bg-violet-600/20 hover:bg-violet-600/40 text-violet-400 rounded transition-colors"
-              title="Novo Item"
+              title={t('item_editor.new_item')}
             >
               <Plus size={16} />
             </button>
@@ -214,15 +222,15 @@ const ItemEditor: React.FC = () => {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
               type="text"
-              placeholder="Buscar por ID, Nome..."
+              placeholder={t('item_editor.search_placeholder')}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="w-full bg-dark-900 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-violet-500/50 transition-colors"
             />
           </div>
           <div className="text-[11px] text-gray-500 mt-2 font-mono flex justify-between">
-            <span>Resultados: {filteredItems.length.toLocaleString()}</span>
-            <span>Total: {items.length.toLocaleString()}</span>
+            <span>{t('item_editor.results', { count: filteredItems.length.toLocaleString() })}</span>
+            <span>{t('item_editor.total', { count: items.length.toLocaleString() })}</span>
           </div>
         </div>
 
@@ -257,7 +265,7 @@ const ItemEditor: React.FC = () => {
                     </div>
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className={`text-sm truncate font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
-                        {item.Name || item.AegisName || 'Unknown'}
+                        {item.Name || item.AegisName || t('item_editor.unknown')}
                       </span>
                       <span className={`text-[11px] truncate font-mono ${isSelected ? (isCustom ? 'text-emerald-300' : 'text-violet-300') : 'text-gray-500'}`}>
                         {item.Id} - {item.AegisName}
@@ -278,8 +286,8 @@ const ItemEditor: React.FC = () => {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <Package size={64} className="mb-4 opacity-20" />
-            <h3 className="text-xl font-medium text-gray-400">Nenhum Item Selecionado</h3>
-            <p className="text-sm mt-2">Selecione um item na lista ao lado para ver os detalhes e editá-lo.</p>
+            <h3 className="text-xl font-medium text-gray-400">{t('item_editor.no_selection.title')}</h3>
+            <p className="text-sm mt-2">{t('item_editor.no_selection.subtitle')}</p>
           </div>
         )}
       </div>

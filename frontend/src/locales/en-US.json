@@ -122,5 +122,126 @@
   "app": {
     "under_development": "Under development",
     "coming_soon_details": "This module will be available soon."
+  },
+  "item_editor": {
+    "title": "Items",
+    "new_item": "New Item",
+    "search_placeholder": "Search by ID, Name...",
+    "results": "Results: {count}",
+    "total": "Total: {count}",
+    "unknown": "Unknown",
+    "no_selection": {
+      "title": "No Item Selected",
+      "subtitle": "Select an item from the list to view details and edit it."
+    },
+    "status": {
+      "connecting": "Connecting to Backend...",
+      "loading_list": "Loading Item list...",
+      "error_final_array": "Error receiving final items.",
+      "offline": "Server offline. Trying to reconnect...",
+      "loading_title": "Loading Items Database",
+      "entries_read": "entries read",
+      "save_error": "Connection error when saving changes to YAML."
+    }
+  },
+  "monster_editor": {
+    "title": "Monsters",
+    "new_monster": "New Monster",
+    "search_placeholder": "Search by ID, Name...",
+    "results": "Results: {count}",
+    "total": "Total: {count}",
+    "unknown": "Unknown",
+    "no_selection": {
+      "title": "No Monster Selected",
+      "subtitle": "Select a monster from the list to view details and edit it."
+    },
+    "no_monsters_found": "No monsters found",
+    "status": {
+      "connecting": "Connecting to Backend...",
+      "loading_list": "Loading Monster list...",
+      "error_fetching": "Error fetching monsters:",
+      "error_final_array": "Error receiving final monsters.",
+      "offline": "Server offline. Reconnecting...",
+      "loading_title": "Loading Monsters Database",
+      "entries_read": "entries read",
+      "save_error": "Connection error when saving changes to YAML."
+    }
+  },
+  "monster_detail": {
+    "unsaved": "Unsaved",
+    "unnamed": "Unnamed",
+    "save_modal": {
+      "title": "Save Changes",
+      "body": "This monster belongs to the original rAthena database. How do you want to save?",
+      "create_copy": "Save in db/import/ (Recommended)",
+      "overwrite": "Overwrite original file"
+    },
+    "tabs": {
+      "status": "Status & Stats",
+      "drops": "Drop Table",
+      "ai": "AI / Behavior",
+      "skills": "Monster Skills"
+    },
+    "sprite": {
+      "error_select_both": "Select both files: .spr and .act",
+      "hover_title": "Change Sprite (ACT + SPR)",
+      "change": "Change Sprite",
+      "upload_modal": {
+        "title": "Change Monster Sprite",
+        "subtitle": "Select the monster's .spr and .act files. They will be saved to the GRF override path with the name {name}.",
+        "select_spr": "Select .spr file",
+        "select_act": "Select .act file",
+        "upload_button": "Upload"
+      }
+    },
+    "sections": {
+      "identity": "Identity",
+      "combat": "Combat",
+      "attributes": "Attributes",
+      "ranges_speed": "Ranges & Speed",
+      "experience": "Experience",
+      "normal_drops": "Normal Drops",
+      "mvp_drops": "MVP Drops"
+    },
+    "fields": {
+      "name": "Name (EN)",
+      "race": "Race",
+      "size": "Size",
+      "element": "Element",
+      "element_level": "Element Level",
+      "class": "Class (AI)",
+      "res_phys": "Physical Resistance",
+      "res_magic": "Magic Resistance",
+      "atk_range": "Attack Range",
+      "skill_range": "Skill Range",
+      "chase_range": "Chase Range",
+      "walk_speed": "Walk Speed"
+    },
+    "drops": {
+      "item": "Item (AegisName)",
+      "rate": "Rate (%)",
+      "no_drops": "No drops registered.",
+      "no_mvp_drops": "No MVP drops registered.",
+      "placeholder_item": "Item AegisName",
+      "add_drop": "Add Drop",
+      "add_mvp_drop": "Add MVP Drop"
+    },
+    "ai": {
+      "title": "AI Modes (Behavior Flags)",
+      "subtitle": "Click on the buttons to toggle the behavior flags of the monster."
+    },
+    "skills": {
+      "title": "Monster Skills",
+      "loading": "Loading skills...",
+      "no_skills": "No skills registered for this monster.",
+      "condition": "Condition",
+      "footer_tip": "To edit skills, use the \"Mob Skills\" editor. Rates are in parts per thousand (‰)."
+    }
+  },
+  "monster_animator": {
+    "animation_not_found": "Animation not found",
+    "error_spritesheet": "Error loading spritesheet",
+    "no_sprite_kro": "No sprite in kRO",
+    "frames_count": "{count} frames"
   }
 }
