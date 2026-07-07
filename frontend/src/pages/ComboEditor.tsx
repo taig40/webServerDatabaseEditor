@@ -19,10 +19,33 @@ export const ComboEditor: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeVariantIdx, setActiveVariantIdx] = useState<number | null>(null);
+  const [itemMap, setItemMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchCombos();
+    fetchItemsMap();
   }, []);
+
+  const fetchItemsMap = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/items/?limit=50000`);
+      const items = res.data.items || [];
+      const map: Record<string, string> = {};
+      items.forEach((item: any) => {
+        if (item.AegisName) {
+          map[item.AegisName.toLowerCase()] = item.Name || item.Name_English || item.AegisName;
+        }
+      });
+      setItemMap(map);
+    } catch (err) {
+      console.error("Erro ao carregar mapa de itens:", err);
+    }
+  };
+
+  const getItemDisplayName = (aegisName: string) => {
+    if (!aegisName) return '';
+    return itemMap[aegisName.toLowerCase()] || aegisName;
+  };
 
   const fetchCombos = async () => {
     try {
@@ -45,11 +68,12 @@ export const ComboEditor: React.FC = () => {
     if (!searchText.trim()) return list;
     const q = searchText.toLowerCase();
     return list.filter(c => {
-      const itemNames = (c._item_groups || []).flat().join(' ').toLowerCase();
-      const script = String(c.Script || '').toLowerCase();
-      return itemNames.includes(q) || script.includes(q);
+      const aegisNames = (c._item_groups || []).flat();
+      const friendlyNames = aegisNames.map(name => getItemDisplayName(name));
+      const searchBlob = [...aegisNames, ...friendlyNames, String(c.Script || '')].join(' ').toLowerCase();
+      return searchBlob.includes(q);
     });
-  }, [rathenaCombos, customCombos, sourceTab, searchText]);
+  }, [rathenaCombos, customCombos, sourceTab, searchText, itemMap]);
 
   const selectedCombo = useMemo(() => {
     return combos.find(c => c._index === selectedIndex) || null;
@@ -229,8 +253,8 @@ export const ComboEditor: React.FC = () => {
                   >
                     <div className="flex items-center gap-1.5 flex-wrap mb-1">
                       {itemsList.slice(0, 4).map((itm: string, i: number) => (
-                        <span key={i} className="text-[10px] bg-dark-900 border border-dark-700 font-mono text-cyan-300 px-1.5 py-0.5 rounded">
-                          {itm}
+                        <span key={i} className="text-[10px] bg-dark-900 border border-dark-700 text-cyan-300 px-1.5 py-0.5 rounded">
+                          {getItemDisplayName(itm)}
                         </span>
                       ))}
                       {itemsList.length > 4 && <span className="text-[10px] text-gray-500 font-mono">+{itemsList.length - 4}</span>}
@@ -295,7 +319,12 @@ export const ComboEditor: React.FC = () => {
                     {variant.map((itemName: string, itemIdx: number) => (
                       <div key={itemIdx} className="flex items-center gap-1.5 bg-dark-900 border border-dark-700 px-2.5 py-1 rounded-lg">
                         <Package size={14} className="text-cyan-400" />
-                        <span className="text-xs font-mono text-gray-200">{itemName}</span>
+                        <span className="text-xs text-gray-200">
+                          {getItemDisplayName(itemName)}
+                          {getItemDisplayName(itemName) !== itemName && (
+                            <span className="text-[10px] font-mono text-gray-500 ml-1.5">({itemName})</span>
+                          )}
+                        </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveItemFromVariant(varIdx, itemIdx)}
