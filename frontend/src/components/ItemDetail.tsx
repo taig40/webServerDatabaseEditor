@@ -4,6 +4,7 @@ import { Package, Shield, Sword, Box, Save, Plus, X, Users, Store } from 'lucide
 import { API_URL } from '../config/env';
 import Editor from '@monaco-editor/react';
 import NpcShopModal from './NpcShopModal';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 interface ItemDetailProps {
   item: any;
@@ -11,6 +12,7 @@ interface ItemDetailProps {
 }
 
 const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
+  const t = useLanguageStore(state => state.t);
   const [drops, setDrops] = useState<any[]>([]);
   const [soldBy, setSoldBy] = useState<any[]>([]);
   const [isLoadingDrops, setIsLoadingDrops] = useState(false);
@@ -102,7 +104,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
             />
           </div>
           <div className="flex flex-col">
-            <h2 className="text-2xl font-bold text-white mb-1">{localItem.Name || 'Unnamed Item'}</h2>
+            <h2 className="text-2xl font-bold text-white mb-1">{localItem.Name || t('item_detail.unnamed')}</h2>
             <div className="flex items-center gap-4 text-sm font-mono text-gray-400">
               <span className="flex items-center gap-1 bg-dark-800 px-2 py-0.5 rounded border border-white/10">ID: <span className="text-violet-400">{localItem.Id}</span></span>
               <span className="flex items-center gap-1 bg-dark-800 px-2 py-0.5 rounded border border-white/10">AegisName: <span className="text-blue-400">{localItem.AegisName}</span></span>
@@ -113,7 +115,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
         <div className="flex items-center gap-3">
           {isModified && (
             <span className="text-amber-400 text-xs font-mono bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20 animate-pulse">
-              ● Alterações não salvas
+              ● {t('item_detail.unsaved_changes')}
             </span>
           )}
           <button
@@ -126,7 +128,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
             }`}
           >
             <Save size={16} />
-            {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+            {isSaving ? t('common.saving') : t('item_detail.save_changes')}
           </button>
         </div>
       </div>
@@ -138,7 +140,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
         <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl">
           <div className="flex items-center gap-2 mb-4 text-white border-b border-white/5 pb-2">
             <Package size={18} className="text-violet-400" />
-            <h3 className="font-semibold">Atributos Básicos</h3>
+            <h3 className="font-semibold">{t('item_detail.basic_stats')}</h3>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
@@ -203,7 +205,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
         <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl">
           <div className="flex items-center gap-2 mb-4 text-white border-b border-white/5 pb-2">
             <Sword size={18} className="text-red-400" />
-            <h3 className="font-semibold">Combate & Equipamento</h3>
+            <h3 className="font-semibold">{t('item_detail.combat_equip')}</h3>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
@@ -268,7 +270,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
         <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl xl:col-span-2">
           <div className="flex items-center gap-2 mb-4 text-white border-b border-white/5 pb-2">
             <Users size={18} className="text-emerald-400" />
-            <h3 className="font-semibold">Restrições de Equipamento</h3>
+            <h3 className="font-semibold">{t('item_detail.restrictions')}</h3>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -340,12 +342,12 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
         <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl xl:col-span-2">
           <div className="flex items-center gap-2 mb-4 text-white border-b border-white/5 pb-2">
             <Box size={18} className="text-blue-400" />
-            <h3 className="font-semibold">Scripts & Lógica</h3>
+            <h3 className="font-semibold">{t('item_detail.scripts')}</h3>
           </div>
           
           <div className="space-y-6">
             <div>
-              <label className="block text-xs font-mono text-gray-400 mb-2">Script Principal</label>
+              <label className="block text-xs font-mono text-gray-400 mb-2">{t('item_detail.main_script')}</label>
               <div className="h-48 border border-white/10 rounded-lg overflow-hidden focus-within:border-blue-500/50 transition-colors">
                 <Editor
                   height="100%"
@@ -393,30 +395,30 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
         <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl xl:col-span-2">
            <div className="flex items-center gap-2 mb-4 text-white border-b border-white/5 pb-2">
             <Shield size={18} className="text-yellow-400" />
-            <h3 className="font-semibold">Dropado Por (Monstros)</h3>
+            <h3 className="font-semibold">{t('item_detail.dropped_by')}</h3>
           </div>
 
           <div className="overflow-x-auto rounded-lg border border-white/5">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-gray-400 uppercase bg-dark-900/50">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Mob ID</th>
-                  <th className="px-4 py-3 font-medium">Nome Original (kRO)</th>
-                  <th className="px-4 py-3 font-medium">AegisName</th>
-                  <th className="px-4 py-3 font-medium">Taxa de Drop</th>
+                  <th className="px-4 py-3 font-medium">{t('item_detail.table.mob_id')}</th>
+                  <th className="px-4 py-3 font-medium">{t('item_detail.table.name')}</th>
+                  <th className="px-4 py-3 font-medium">{t('item_detail.table.aegis_name')}</th>
+                  <th className="px-4 py-3 font-medium">{t('item_detail.table.rate')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {isLoadingDrops ? (
                   <tr>
                     <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
-                      Buscando drops no servidor...
+                      {t('item_detail.loading_drops')}
                     </td>
                   </tr>
                 ) : drops.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
-                      Nenhum monstro dropa este item nativamente.
+                      {t('item_detail.no_drops')}
                     </td>
                   </tr>
                 ) : (
@@ -442,13 +444,13 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
         <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl xl:col-span-2">
            <div className="flex items-center gap-2 mb-4 text-white border-b border-white/5 pb-2">
             <Store size={18} className="text-cyan-400" />
-            <h3 className="font-semibold">Vendido Por (Lojas)</h3>
+            <h3 className="font-semibold">{t('item_detail.sold_by')}</h3>
            </div>
            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
              {isLoadingShops ? (
-                 <span className="text-sm text-gray-500 col-span-full">Buscando lojas pelo mundo...</span>
+                 <span className="text-sm text-gray-500 col-span-full">{t('item_detail.loading_shops')}</span>
              ) : soldBy.length === 0 ? (
-                 <span className="text-sm text-gray-500 col-span-full">Este item não é vendido em nenhuma loja padrão.</span>
+                 <span className="text-sm text-gray-500 col-span-full">{t('item_detail.no_shops')}</span>
              ) : (
                  soldBy.map((shop, idx) => (
                      <button
@@ -488,30 +490,29 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="bg-dark-900 border border-dark-600 rounded-xl shadow-2xl p-6 max-w-md w-full flex flex-col gap-4">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Save className="text-primary-400" size={20} /> Salvar Alterações
+              <Save className="text-primary-400" size={20} /> {t('item_detail.save_modal.title')}
             </h3>
             <p className="text-sm text-gray-300 leading-relaxed">
-              O item <span className="text-violet-400 font-mono font-bold">{item.Id} ({item.Name || item.AegisName})</span> pertence ao banco original do rAthena.
-              Deseja criar uma cópia customizada na pasta <code className="text-emerald-400 bg-dark-950 px-1.5 py-0.5 rounded">import/item_db.yml</code> ou sobrescrever o arquivo original?
+              {t('item_detail.save_modal.body', { id: `${item.Id}`, name: `${item.Name || item.AegisName}` })}
             </p>
             <div className="flex flex-col gap-2 mt-2">
               <button
                 onClick={() => executeSave('import')}
                 className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>✨ Criar Cópia em db/import/ (Recomendado)</span>
+                <span>{t('item_detail.save_modal.create_copy')}</span>
               </button>
               <button
                 onClick={() => executeSave('overwrite')}
                 className="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg transition shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>⚠️ Sobrescrever Arquivo Original no rAthena</span>
+                <span>{t('item_detail.save_modal.overwrite')}</span>
               </button>
               <button
                 onClick={() => setShowSaveModal(false)}
                 className="w-full py-2 px-4 bg-dark-800 hover:bg-dark-700 text-gray-400 hover:text-white rounded-lg transition text-sm mt-1 cursor-pointer"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
             </div>
           </div>
