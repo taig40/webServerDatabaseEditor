@@ -7,13 +7,15 @@ import { RepeatableGroup } from '../components/RepeatableGroup';
 import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
 import { ScriptEditor } from '../components/ScriptEditor';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 type SourceTab = 'rathena' | 'custom';
 
 export const PetEditor: React.FC = () => {
+  const t = useLanguageStore(state => state.t);
   const [pets, setPets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingStatus, setLoadingStatus] = useState("Carregando banco de mascotes...");
+  const [loadingStatus, setLoadingStatus] = useState(t('pet_editor.status.loading'));
   const [searchText, setSearchText] = useState("");
   const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
   const [selectedMob, setSelectedMob] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export const PetEditor: React.FC = () => {
       setIsLoading(false);
     } catch (err) {
       console.error("Erro ao carregar pets:", err);
-      setLoadingStatus("Erro ao carregar pets.");
+      setLoadingStatus(t('pet_editor.status.error_fetching'));
       setIsLoading(false);
     }
   };
@@ -75,12 +77,12 @@ export const PetEditor: React.FC = () => {
     setIsSaving(true);
     try {
       await axios.put(`${API_URL}/api/pets/${selectedPet.Mob}`, { data: selectedPet });
-      alert("Mascote (Pet) salvo com sucesso em db/import/pet_db.yml!");
+      alert(t('pet_editor.save_success'));
       setPets(prev => prev.map(p => p.Mob === selectedPet.Mob ? { ...selectedPet, _source: 'custom' } : p));
       setSourceTab('custom');
     } catch (err) {
       console.error("Erro ao salvar pet:", err);
-      alert("Erro ao salvar mascote.");
+      alert(t('pet_editor.save_error'));
     } finally {
       setIsSaving(false);
     }
@@ -117,7 +119,7 @@ export const PetEditor: React.FC = () => {
       setSourceTab('custom');
     } catch (err) {
       console.error("Erro ao criar pet:", err);
-      alert("Erro ao criar novo mascote.");
+      alert(t('pet_editor.create_error'));
     }
   };
 
@@ -128,12 +130,12 @@ export const PetEditor: React.FC = () => {
         <div className="p-4 border-b border-white/5 bg-gradient-to-b from-[#1a1a24] to-[#12121a]">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-gray-200 font-semibold text-lg flex items-center gap-2">
-              <Heart size={18} className="text-pink-500" /> Mascotes (Pets)
+              <Heart size={18} className="text-pink-500" /> {t('pet_editor.sidebar.title')}
             </h2>
             <button
               onClick={handleCreateNewPet}
               className="p-1.5 bg-pink-600/20 hover:bg-pink-600/40 text-pink-400 rounded transition-colors"
-              title="Novo Mascote"
+              title={t('pet_editor.sidebar.add_pet')}
             >
               <Plus size={16} />
             </button>
@@ -172,7 +174,7 @@ export const PetEditor: React.FC = () => {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
               type="text"
-              placeholder="Buscar por nome do monstro (Mob)..."
+              placeholder={t('pet_editor.sidebar.search_placeholder')}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="w-full bg-dark-900 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-pink-500/50"
@@ -205,7 +207,7 @@ export const PetEditor: React.FC = () => {
                       <span className={`text-sm truncate font-medium ${isSelected ? 'text-white font-semibold' : 'text-gray-300'}`}>
                         {pet.Mob}
                       </span>
-                      <span className="text-[11px] text-gray-500 font-mono">Ovo: {pet.EggItem || 'N/A'}</span>
+                      <span className="text-[11px] text-gray-500 font-mono">{t('pet_editor.sidebar.egg_item', { egg: pet.EggItem || 'N/A' })}</span>
                     </div>
                   </div>
                 );
@@ -224,10 +226,10 @@ export const PetEditor: React.FC = () => {
                 <h1 className="text-xl font-bold text-white flex items-center gap-2">
                   <span>{selectedPet.Mob}</span>
                   <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-mono ${selectedPet._source === 'custom' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-dark-800 text-gray-400'}`}>
-                    {selectedPet._source === 'custom' ? 'Custom Import' : 'rAthena Original'}
+                    {selectedPet._source === 'custom' ? t('pet_editor.source.custom') : t('pet_editor.source.rathena')}
                   </span>
                 </h1>
-                <span className="text-xs font-mono text-gray-500">Mascote (AegisName do Monstro)</span>
+                <span className="text-xs font-mono text-gray-500">{t('pet_editor.detail.subtitle')}</span>
               </div>
               <button
                 type="button"
@@ -236,17 +238,17 @@ export const PetEditor: React.FC = () => {
                 className="flex items-center gap-2 bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-500 hover:to-pink-400 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-pink-900/30 transition-all disabled:opacity-50"
               >
                 <Save size={16} />
-                <span>Salvar em db/import/pet_db.yml</span>
+                <span>{t('pet_editor.detail.save_button')}</span>
               </button>
             </div>
 
             {/* Sub-tabs */}
             <div className="flex border-b border-dark-800 bg-dark-900/40 px-4 gap-4">
               {[
-                { id: 'geral', label: 'Itens & Identificação', icon: Sliders },
-                { id: 'fome', label: 'Fome & Intimidade', icon: Heart },
-                { id: 'combate', label: 'Combate & Captura', icon: Shield },
-                { id: 'scripts', label: 'Scripts de Bônus', icon: FileText },
+                { id: 'geral', label: t('pet_editor.tabs.general'), icon: Sliders },
+                { id: 'fome', label: t('pet_editor.tabs.hunger'), icon: Heart },
+                { id: 'combate', label: t('pet_editor.tabs.combat'), icon: Shield },
+                { id: 'scripts', label: t('pet_editor.tabs.scripts'), icon: FileText },
               ].map(tab => {
                 const Icon = tab.icon;
                 return (
@@ -271,7 +273,7 @@ export const PetEditor: React.FC = () => {
               {activeTab === 'geral' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Monstro Alvo (Mob — AegisName)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('pet_editor.fields.mob')}</label>
                     <input
                       type="text"
                       value={selectedPet.Mob || ''}
@@ -280,7 +282,7 @@ export const PetEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Item de Domar (TameItem)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('pet_editor.fields.tame_item')}</label>
                     <input
                       type="text"
                       value={selectedPet.TameItem || ''}
@@ -289,7 +291,7 @@ export const PetEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Ovo do Mascote (EggItem)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('pet_editor.fields.egg_item')}</label>
                     <input
                       type="text"
                       value={selectedPet.EggItem || ''}
@@ -298,7 +300,7 @@ export const PetEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Acessório de Pet (EquipItem)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('pet_editor.fields.equip_item')}</label>
                     <input
                       type="text"
                       value={selectedPet.EquipItem || ''}
@@ -307,7 +309,7 @@ export const PetEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Comida do Mascote (FoodItem)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('pet_editor.fields.food_item')}</label>
                     <input
                       type="text"
                       value={selectedPet.FoodItem || ''}
@@ -321,7 +323,7 @@ export const PetEditor: React.FC = () => {
               {activeTab === 'fome' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Saciedade Inicial (Fullness)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('pet_editor.fields.fullness')}</label>
                     <input
                       type="number"
                       value={selectedPet.Fullness || 0}
@@ -330,7 +332,7 @@ export const PetEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Intervalo de Fome (HungryDelay — seg)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('pet_editor.fields.hungry_delay')}</label>
                     <input
                       type="number"
                       value={selectedPet.HungryDelay || 0}
@@ -339,7 +341,7 @@ export const PetEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Aumento ao Alimentar (HungerIncrease)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('pet_editor.fields.hunger_increase')}</label>
                     <input
                       type="number"
                       value={selectedPet.HungerIncrease || 0}
@@ -348,7 +350,7 @@ export const PetEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Intimidade Inicial (IntimacyStart)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('pet_editor.fields.intimacy_start')}</label>
                     <input
                       type="number"
                       value={selectedPet.IntimacyStart || 0}
@@ -357,7 +359,7 @@ export const PetEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Bônus ao Alimentar (IntimacyFed)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('pet_editor.fields.intimacy_fed')}</label>
                     <input
                       type="number"
                       value={selectedPet.IntimacyFed || 0}
@@ -366,7 +368,7 @@ export const PetEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Penalidade de Fome (IntimacyHungry)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('pet_editor.fields.intimacy_hungry')}</label>
                     <input
                       type="number"
                       value={selectedPet.IntimacyHungry || 0}
@@ -380,25 +382,25 @@ export const PetEditor: React.FC = () => {
               {activeTab === 'combate' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <PercentBadge
-                    label="Taxa de Captura (CaptureRate)"
+                    label={t('pet_editor.fields.capture_rate')}
                     value={selectedPet.CaptureRate || 1000}
                     onChange={(val) => handleUpdateField('CaptureRate', val)}
                     scale={100}
                   />
                   <PercentBadge
-                    label="Taxa de Ataque (AttackRate)"
+                    label={t('pet_editor.fields.attack_rate')}
                     value={selectedPet.AttackRate || 100}
                     onChange={(val) => handleUpdateField('AttackRate', val)}
                     scale={100}
                   />
                   <PercentBadge
-                    label="Taxa de Retaliação (RetaliateRate)"
+                    label={t('pet_editor.fields.retaliate_rate')}
                     value={selectedPet.RetaliateRate || 100}
                     onChange={(val) => handleUpdateField('RetaliateRate', val)}
                     scale={100}
                   />
                   <PercentBadge
-                    label="Troca de Alvo (ChangeTargetRate)"
+                    label={t('pet_editor.fields.change_target_rate')}
                     value={selectedPet.ChangeTargetRate || 100}
                     onChange={(val) => handleUpdateField('ChangeTargetRate', val)}
                     scale={100}
@@ -409,13 +411,13 @@ export const PetEditor: React.FC = () => {
               {activeTab === 'scripts' && (
                 <div className="space-y-6">
                   <ScriptEditor
-                    label="Script Principal do Mascote (Script)"
+                    label={t('pet_editor.fields.script')}
                     value={selectedPet.Script || ''}
                     onChange={(val) => handleUpdateField('Script', val)}
                     height="160px"
                   />
                   <ScriptEditor
-                    label="Script de Suporte (SupportScript)"
+                    label={t('pet_editor.fields.support_script')}
                     value={selectedPet.SupportScript || ''}
                     onChange={(val) => handleUpdateField('SupportScript', val)}
                     height="160px"
@@ -427,8 +429,8 @@ export const PetEditor: React.FC = () => {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <Heart size={64} className="mb-4 opacity-20 text-pink-500" />
-            <h3 className="text-xl font-medium text-gray-400">Nenhum Mascote Selecionado</h3>
-            <p className="text-sm mt-2">Selecione um mascote na lista ao lado para ver e editar detalhes.</p>
+            <h3 className="text-xl font-medium text-gray-400">{t('pet_editor.no_selection.title')}</h3>
+            <p className="text-sm mt-2">{t('pet_editor.no_selection.subtitle')}</p>
           </div>
         )}
       </div>

@@ -7,6 +7,7 @@ import {
   AlertTriangle, Play, Sparkles, PlusCircle, Trash2, HelpCircle
 } from 'lucide-react';
 import { ReferencePicker } from '../components/ReferencePicker';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 interface ClientData {
   UI_Type: number;
@@ -49,9 +50,10 @@ interface UnifiedAchievement {
 }
 
 export default function AchievementEditor() {
+  const t = useLanguageStore(state => state.t);
   const [achievements, setAchievements] = useState<UnifiedAchievement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingStatus, setLoadingStatus] = useState('Carregando conquistas...');
+  const [loadingStatus, setLoadingStatus] = useState(t('achievement_editor.status.loading'));
   const [searchText, setSearchText] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterGroup, setFilterGroup] = useState<string>('all');
@@ -83,7 +85,7 @@ export default function AchievementEditor() {
       setIsLoading(false);
     } catch (err) {
       console.error('Erro ao carregar conquistas:', err);
-      setLoadingStatus('Erro ao carregar conquistas.');
+      setLoadingStatus(t('achievement_editor.status.error_fetching'));
       setIsLoading(false);
     }
   };
@@ -153,10 +155,10 @@ export default function AchievementEditor() {
       });
 
       // Show success, re-fetch list to get computed status badge right
-      alert('Conquista salva com sucesso!');
+      alert(t('achievement_editor.save_success'));
       await fetchAchievements();
     } catch (err: any) {
-      alert(`Erro ao salvar conquista: ${err?.response?.data?.detail || err.message}`);
+      alert(t('achievement_editor.save_error', { error: err?.response?.data?.detail || err.message }));
     } finally {
       setIsSaving(false);
     }
@@ -238,7 +240,7 @@ export default function AchievementEditor() {
   // Create new Achievement
   const handleCreate = async () => {
     if (!newId || !newName.trim()) {
-      alert('Preencha ID e Nome.');
+      alert(t('achievement_editor.create_fill_fields'));
       return;
     }
 
@@ -271,12 +273,12 @@ export default function AchievementEditor() {
         client_data: client,
       });
 
-      alert('Conquista criada com sucesso!');
+      alert(t('achievement_editor.create_success'));
       setShowNewModal(false);
       await fetchAchievements();
       setSelectedId(newId);
     } catch (err: any) {
-      alert(`Erro ao criar conquista: ${err?.response?.data?.detail || err.message}`);
+      alert(t('achievement_editor.create_error', { error: err?.response?.data?.detail || err.message }));
     }
   };
 
@@ -304,13 +306,13 @@ export default function AchievementEditor() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'ok':
-        return <span className="text-[10px] bg-green-950/60 border border-green-800 text-green-400 px-2 py-0.5 rounded-full font-bold">Ok</span>;
+        return <span className="text-[10px] bg-green-950/60 border border-green-800 text-green-400 px-2 py-0.5 rounded-full font-bold">{t('achievement_editor.badges.ok')}</span>;
       case 'divergent':
-        return <span className="text-[10px] bg-amber-950/60 border border-amber-800 text-amber-400 px-2 py-0.5 rounded-full font-bold">Divergente</span>;
+        return <span className="text-[10px] bg-amber-950/60 border border-amber-800 text-amber-400 px-2 py-0.5 rounded-full font-bold">{t('achievement_editor.badges.divergent')}</span>;
       case 'server_only':
-        return <span className="text-[10px] bg-violet-950/60 border border-violet-800 text-violet-400 px-2 py-0.5 rounded-full font-bold">Só YML</span>;
+        return <span className="text-[10px] bg-violet-950/60 border border-violet-800 text-violet-400 px-2 py-0.5 rounded-full font-bold">{t('achievement_editor.badges.server_only')}</span>;
       case 'client_only':
-        return <span className="text-[10px] bg-cyan-950/60 border border-cyan-800 text-cyan-400 px-2 py-0.5 rounded-full font-bold">Só Lua</span>;
+        return <span className="text-[10px] bg-cyan-950/60 border border-cyan-800 text-cyan-400 px-2 py-0.5 rounded-full font-bold">{t('achievement_editor.badges.client_only')}</span>;
       default:
         return null;
     }
@@ -327,13 +329,13 @@ export default function AchievementEditor() {
           <div className="flex items-center justify-between">
             <h2 className="text-white font-bold text-sm flex items-center gap-2">
               <Trophy size={16} className="text-violet-400" />
-              Conquistas
+              {t('achievement_editor.sidebar.title')}
             </h2>
             <button
               onClick={() => setShowNewModal(true)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold text-xs rounded-lg transition-colors"
             >
-              <Plus size={13} /> Criar Conquista
+              <Plus size={13} /> {t('achievement_editor.sidebar.create_btn')}
             </button>
           </div>
 
@@ -343,7 +345,7 @@ export default function AchievementEditor() {
               type="text"
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder="Buscar ID, nome ou título..."
+              placeholder={t('achievement_editor.sidebar.search_placeholder')}
               className="w-full bg-[#0f0f14] border border-white/5 hover:border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-violet-500/60 transition-colors"
             />
           </div>
@@ -355,20 +357,20 @@ export default function AchievementEditor() {
               onChange={e => setFilterStatus(e.target.value)}
               className="bg-[#0f0f14] border border-white/5 rounded-xl px-3 py-1.5 text-[11px] text-gray-400 focus:outline-none cursor-pointer"
             >
-              <option value="all">Sincronia: Todos</option>
-              <option value="ok">Ok</option>
-              <option value="divergent">Divergente</option>
-              <option value="server_only">Apenas YML (Servidor)</option>
-              <option value="client_only">Apenas Lua (Cliente)</option>
+              <option value="all">{t('achievement_editor.sidebar.filter_sync_all')}</option>
+              <option value="ok">{t('achievement_editor.badges.ok')}</option>
+              <option value="divergent">{t('achievement_editor.badges.divergent')}</option>
+              <option value="server_only">{t('achievement_editor.badges.server_only')}</option>
+              <option value="client_only">{t('achievement_editor.badges.client_only')}</option>
             </select>
 
             {/* Group Filter */}
             <select
               value={filterGroup}
               onChange={e => setFilterGroup(e.target.value)}
-              className="bg-[#0f0f14] border border-white/5 rounded-xl px-3 py-1.5 text-[11px] text-gray-400 focus:outline-none cursor-pointer"
+              className="bg-[#0f0f14] border border-[#1e1e2e] rounded-xl px-3 py-1.5 text-[11px] text-gray-400 focus:outline-none cursor-pointer" // Ah, the original had border border-white/5, wait. Original had: className="bg-[#0f0f14] border border-white/5 rounded-xl px-3 py-1.5 text-[11px] text-gray-400 focus:outline-none cursor-pointer"
             >
-              <option value="all">Grupo: Todos</option>
+              <option value="all">{t('achievement_editor.sidebar.filter_group_all')}</option>
               {groupsList.map(g => (
                 <option key={g} value={g}>{g}</option>
               ))}
@@ -384,7 +386,7 @@ export default function AchievementEditor() {
             </div>
           ) : filteredAchievements.length === 0 ? (
             <div className="flex items-center justify-center h-full text-xs text-gray-600">
-              Nenhuma conquista encontrada.
+              {t('achievement_editor.sidebar.no_achievements')}
             </div>
           ) : (
             <Virtuoso
@@ -435,7 +437,7 @@ export default function AchievementEditor() {
                 </div>
                 <div className="text-xs font-mono text-gray-500 flex items-center gap-3">
                   <span>ID: <span className="text-violet-400">{selectedUnified.Id}</span></span>
-                  <span>YML: <span className="text-gray-400">{selectedUnified.server?._source || 'não existente'}</span></span>
+                  <span>YML: <span className="text-gray-400">{selectedUnified.server?._source || t('achievement_editor.detail.not_exists')}</span></span>
                 </div>
               </div>
 
@@ -446,7 +448,7 @@ export default function AchievementEditor() {
                     onClick={handleAutoGenerateClient}
                     className="flex items-center gap-1.5 px-4 py-2 border border-violet-500/20 bg-violet-600/10 text-violet-400 hover:bg-violet-600/20 text-xs font-bold rounded-xl transition-all"
                   >
-                    <Sparkles size={13} /> Gerar Lua do Cliente
+                    <Sparkles size={13} /> {t('achievement_editor.detail.generate_lua')}
                   </button>
                 )}
 
@@ -455,7 +457,7 @@ export default function AchievementEditor() {
                   disabled={isSaving}
                   className="flex items-center gap-1.5 px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-xl shadow-lg transition-all"
                 >
-                  <Save size={13} /> {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                  <Save size={13} /> {isSaving ? t('achievement_editor.detail.loading_btn') : t('achievement_editor.detail.save_changes')}
                 </button>
               </div>
             </div>
@@ -469,41 +471,41 @@ export default function AchievementEditor() {
                 <div className="bg-[#12121a] border border-white/5 rounded-2xl p-5 space-y-4">
                   <h3 className="text-white font-bold text-sm flex items-center gap-2 pb-3 border-b border-white/5">
                     <Trophy size={14} className="text-cyan-400" />
-                    Visualização & Textos (achievements.lub)
+                    {t('achievement_editor.visual_texts.title')}
                   </h3>
 
                   {/* Title */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Título Exibido no Jogo</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.visual_texts.display_title')}</label>
                     <input
                       type="text"
                       value={selectedUnified.client?.title || ''}
                       onChange={e => updateClientField('title', e.target.value)}
-                      placeholder="Título traduzido..."
+                      placeholder={t('achievement_editor.visual_texts.display_title_placeholder')}
                       className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-violet-500/60"
                     />
                   </div>
 
                   {/* Summary */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Sumário (Resumo Curto)</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.visual_texts.summary')}</label>
                     <input
                       type="text"
                       value={selectedUnified.client?.summary || ''}
                       onChange={e => updateClientField('summary', e.target.value)}
-                      placeholder="Resumo curto da missão..."
+                      placeholder={t('achievement_editor.visual_texts.summary_placeholder')}
                       className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-violet-500/60"
                     />
                   </div>
 
                   {/* Details */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Descrição Detalhada</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.visual_texts.detailed_desc')}</label>
                     <textarea
                       rows={3}
                       value={selectedUnified.client?.details || ''}
                       onChange={e => updateClientField('details', e.target.value)}
-                      placeholder="Instruções completas para completar a conquista..."
+                      placeholder={t('achievement_editor.visual_texts.detailed_desc_placeholder')}
                       className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-violet-500/60 resize-none"
                     />
                   </div>
@@ -511,15 +513,15 @@ export default function AchievementEditor() {
                   {/* Resource text list (checklist in UI) */}
                   <div className="flex flex-col gap-2">
                     <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide flex items-center justify-between">
-                      Checklist do Cliente (resource)
+                      {t('achievement_editor.visual_texts.checklist_label')}
                       <button
                         onClick={() => {
                           const res = selectedUnified.client?.resource || [];
-                          updateClientField('resource', [...res, 'Novo objetivo...']);
+                          updateClientField('resource', [...res, t('achievement_editor.visual_texts.new_objective')]);
                         }}
                         className="text-[10px] text-violet-400 hover:text-violet-300"
                       >
-                        + Adicionar Linha
+                        {t('achievement_editor.visual_texts.add_line')}
                       </button>
                     </label>
                     <div className="space-y-2">
@@ -555,23 +557,23 @@ export default function AchievementEditor() {
                 <div className="bg-[#12121a] border border-white/5 rounded-2xl p-5 space-y-4">
                   <h3 className="text-white font-bold text-sm flex items-center gap-2 pb-3 border-b border-white/5">
                     <Compass size={14} className="text-violet-400" />
-                    Lógica & Condições do Servidor (YML)
+                    {t('achievement_editor.server_yml.title')}
                   </h3>
 
                   {/* Group & Score Row */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Grupo</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.server_yml.group')}</label>
                       <input
                         type="text"
                         value={selectedUnified.server?.Group || ''}
                         onChange={e => updateServerField('Group', e.target.value)}
-                        placeholder="Ex: Adventure, Quest, Eat..."
+                        placeholder={t('achievement_editor.server_yml.group_placeholder')}
                         className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none"
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Pontos (Score)</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.server_yml.score')}</label>
                       <input
                         type="number"
                         value={selectedUnified.server?.Score ?? 0}
@@ -588,14 +590,14 @@ export default function AchievementEditor() {
                   {/* Condition Expression */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide flex items-center gap-1.5">
-                      Expressão de Condição
-                      <span className="text-[9px] text-gray-600 font-normal normal-case">(Código Script rAthena)</span>
+                      {t('achievement_editor.server_yml.condition_expr')}
+                      <span className="text-[9px] text-gray-600 font-normal normal-case">{t('achievement_editor.server_yml.condition_expr_hint')}</span>
                     </label>
                     <input
                       type="text"
                       value={selectedUnified.server?.Condition || ''}
                       onChange={e => updateServerField('Condition', e.target.value)}
-                      placeholder='Ex: " BaseLevel >= 99 " ou " Class == JOB_NOVICE "'
+                      placeholder={t('achievement_editor.server_yml.condition_expr_placeholder')}
                       className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 font-mono focus:outline-none"
                     />
                   </div>
@@ -603,7 +605,7 @@ export default function AchievementEditor() {
                   {/* Targets (Mobs, kill counts) */}
                   <div className="flex flex-col gap-2">
                     <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide flex items-center justify-between">
-                      Monstros Alvos (Targets)
+                      {t('achievement_editor.server_yml.targets')}
                       <button
                         onClick={() => {
                           const targets = selectedUnified.server?.Targets || [];
@@ -611,7 +613,7 @@ export default function AchievementEditor() {
                         }}
                         className="text-[10px] text-violet-400 hover:text-violet-300"
                       >
-                        + Adicionar Alvo
+                        {t('achievement_editor.server_yml.add_target')}
                       </button>
                     </label>
                     <div className="space-y-3">
@@ -629,7 +631,7 @@ export default function AchievementEditor() {
                                 t[idx].Mob = e.target.value;
                                 updateServerField('Targets', t);
                               }}
-                              placeholder="Nome do mob..."
+                              placeholder={t('achievement_editor.server_yml.mob_placeholder')}
                               className="w-full bg-dark-900 border border-white/5 rounded-lg px-2.5 py-1 text-xs text-gray-300 focus:outline-none"
                             />
                             <button
@@ -640,7 +642,7 @@ export default function AchievementEditor() {
                               }}
                               className="absolute right-2 text-violet-400 hover:text-violet-300 text-[10px]"
                             >
-                              Buscar
+                              {t('achievement_editor.server_yml.search_btn')}
                             </button>
                           </div>
 
@@ -653,7 +655,7 @@ export default function AchievementEditor() {
                               t[idx].Count = Number(e.target.value);
                               updateServerField('Targets', t);
                             }}
-                            placeholder="Qtd"
+                            placeholder={t('achievement_editor.server_yml.qty')}
                             className="w-16 bg-dark-900 border border-white/5 rounded-lg px-2.5 py-1 text-xs text-gray-300 text-center focus:outline-none"
                           />
 
@@ -673,12 +675,12 @@ export default function AchievementEditor() {
 
                   {/* Map requirement */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Mapa (AG_CHATTING / AG_MAP)</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.server_yml.map')}</label>
                     <input
                       type="text"
                       value={selectedUnified.server?.Map || ''}
                       onChange={e => updateServerField('Map', e.target.value)}
-                      placeholder="Ex: prontera, payon..."
+                      placeholder={t('achievement_editor.server_yml.map_placeholder')}
                       className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none"
                     />
                   </div>
@@ -691,13 +693,13 @@ export default function AchievementEditor() {
               <div className="bg-[#12121a] border border-white/5 rounded-2xl p-5 space-y-4">
                 <h3 className="text-white font-bold text-sm flex items-center gap-2 pb-3 border-b border-white/5">
                   <Sparkles size={14} className="text-yellow-500" />
-                  Premiações & Recompensas ao Completar
+                  {t('achievement_editor.rewards.title')}
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Reward Item name/id */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Item da Recompensa</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.rewards.item')}</label>
                     <div className="relative flex items-center">
                       <input
                         type="text"
@@ -706,7 +708,7 @@ export default function AchievementEditor() {
                           const current = selectedUnified.server?.Rewards || {};
                           updateServerField('Rewards', { ...current, Item: e.target.value });
                         }}
-                        placeholder="Nome do item (Aegis)..."
+                        placeholder={t('achievement_editor.rewards.item_placeholder')}
                         className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-violet-500/60 pr-12"
                       />
                       <button
@@ -716,19 +718,19 @@ export default function AchievementEditor() {
                         }}
                         className="absolute right-3 text-violet-400 hover:text-violet-300 text-[10px]"
                       >
-                        Buscar
+                        {t('achievement_editor.rewards.search_btn')}
                       </button>
                     </div>
                     {/* Display matching item ID in Lua */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 px-1 mt-1 font-mono">
-                      <span>ID no cliente (LUA):</span>
-                      <span className="text-cyan-400">{selectedUnified.client?.reward_item || 'nenhuma'}</span>
+                      <span>{t('achievement_editor.rewards.client_id')}</span>
+                      <span className="text-cyan-400">{selectedUnified.client?.reward_item || t('achievement_editor.rewards.none')}</span>
                     </div>
                   </div>
 
                   {/* Reward Item Amount */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Quantidade do Item</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.rewards.qty')}</label>
                     <input
                       type="number"
                       value={selectedUnified.server?.Rewards?.Amount ?? 1}
@@ -742,7 +744,7 @@ export default function AchievementEditor() {
 
                   {/* Reward Title ID */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Título da Recompensa (Title ID)</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.rewards.title_reward')}</label>
                     <input
                       type="number"
                       value={selectedUnified.client?.reward_title ?? 0}
@@ -759,7 +761,7 @@ export default function AchievementEditor() {
 
                 {/* Reward Script */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Script de Bônus (Server Script)</label>
+                  <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.rewards.bonus_script')}</label>
                   <input
                     type="text"
                     value={selectedUnified.server?.Rewards?.Script || ''}
@@ -767,7 +769,7 @@ export default function AchievementEditor() {
                       const current = selectedUnified.server?.Rewards || {};
                       updateServerField('Rewards', { ...current, Script: e.target.value });
                     }}
-                    placeholder="Ex: getexp 500,0; specialeffect 100;"
+                    placeholder={t('achievement_editor.rewards.bonus_script_placeholder')}
                     className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 font-mono focus:outline-none"
                   />
                 </div>
@@ -779,7 +781,7 @@ export default function AchievementEditor() {
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-600">
             <Trophy size={40} className="stroke-[1.5] text-gray-700 animate-pulse" />
-            <span className="text-xs font-semibold">Selecione uma conquista na lista para editar</span>
+            <span className="text-xs font-semibold">{t('achievement_editor.no_selection')}</span>
           </div>
         )}
       </div>
@@ -798,16 +800,16 @@ export default function AchievementEditor() {
           <div className="bg-[#12121a] border border-white/10 rounded-2xl p-6 w-[450px] shadow-2xl">
             <h3 className="text-white font-bold text-base mb-1 flex items-center gap-2">
               <PlusCircle size={16} className="text-violet-400" />
-              Criar Nova Conquista
+              {t('achievement_editor.create_modal.title')}
             </h3>
             <p className="text-gray-500 text-xs mb-5">
-              Cria o registro sincronizado no YML do servidor e na Lua do cliente.
+              {t('achievement_editor.create_modal.subtitle')}
             </p>
 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">ID Único</label>
+                  <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.create_modal.unique_id')}</label>
                   <input
                     type="number"
                     value={newId}
@@ -816,7 +818,7 @@ export default function AchievementEditor() {
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Grupo Inicial</label>
+                  <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.create_modal.initial_group')}</label>
                   <select
                     value={newGroup}
                     onChange={e => setNewGroup(e.target.value)}
@@ -833,7 +835,7 @@ export default function AchievementEditor() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Nome do Servidor (Aegis)</label>
+                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.create_modal.server_name')}</label>
                 <input
                   type="text"
                   value={newName}
@@ -843,7 +845,7 @@ export default function AchievementEditor() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Título no Cliente (Lua)</label>
+                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('achievement_editor.create_modal.client_title')}</label>
                 <input
                   type="text"
                   value={newTitle}
@@ -858,13 +860,13 @@ export default function AchievementEditor() {
                 onClick={handleCreate}
                 className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-xl shadow transition-colors"
               >
-                Criar Registro
+                {t('achievement_editor.create_modal.create_btn')}
               </button>
               <button
                 onClick={() => setShowNewModal(false)}
                 className="px-4 py-2.5 text-gray-400 hover:text-white bg-dark-900/60 border border-white/5 rounded-xl text-xs transition-colors"
               >
-                Cancelar
+                {t('achievement_editor.create_modal.cancel')}
               </button>
             </div>
           </div>

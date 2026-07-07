@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, Check, Loader2 } from 'lucide-react';
 import { API_URL } from '../config/env';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 interface ReferencePickerProps {
   isOpen: boolean;
@@ -52,10 +53,12 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
     return idStr.includes(q) || nameStr.includes(q);
   }).slice(0, 300);
 
+  const t = useLanguageStore(state => state.t);
+
   const getTypeLabel = () => {
-    if (type === 'item') return 'Item';
-    if (type === 'mob') return 'Monstro';
-    return 'Habilidade';
+    if (type === 'item') return t('components.reference_picker.types.item');
+    if (type === 'mob') return t('components.reference_picker.types.mob');
+    return t('components.reference_picker.types.skill');
   };
 
   return createPortal(
@@ -70,7 +73,7 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-dark-700 bg-dark-800/80">
           <h3 className="text-white font-semibold text-lg flex items-center gap-2">
-            Selecionar {title || getTypeLabel()}
+            {t('components.reference_picker.select', { type: title || getTypeLabel() })}
           </h3>
           <button
             type="button"
@@ -89,7 +92,7 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar por ID ou Nome..."
+              placeholder={t('components.reference_picker.search_placeholder')}
               autoFocus
               className="w-full bg-dark-900 border border-dark-700 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
             />
@@ -101,11 +104,11 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
               <Loader2 className="animate-spin text-primary-500" size={28} />
-              <span className="text-sm">Carregando catálogo...</span>
+              <span className="text-sm">{t('components.reference_picker.loading')}</span>
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12 text-gray-500 text-sm italic">
-              Nenhum resultado encontrado para "{query}".
+              {t('components.reference_picker.no_results', { query })}
             </div>
           ) : (
             filtered.map((item, idx) => {
@@ -133,7 +136,7 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
                     type="button"
                     className="text-xs bg-dark-800 group-hover:bg-primary-600 text-gray-300 group-hover:text-white px-3 py-1 rounded transition-colors flex items-center gap-1"
                   >
-                    <Check size={14} /> Selecionar
+                    <Check size={14} /> {t('components.reference_picker.select_btn')}
                   </button>
                 </div>
               );

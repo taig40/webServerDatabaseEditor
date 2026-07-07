@@ -6,13 +6,15 @@ import { Search, Compass, Plus, Database, Sparkles, Save, Trash2 } from 'lucide-
 import { RepeatableGroup } from '../components/RepeatableGroup';
 import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 type SourceTab = 'rathena' | 'custom';
 
 export const QuestEditor: React.FC = () => {
+  const t = useLanguageStore(state => state.t);
   const [quests, setQuests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingStatus, setLoadingStatus] = useState("Carregando banco de missões...");
+  const [loadingStatus, setLoadingStatus] = useState(t('quest_editor.status.loading'));
   const [searchText, setSearchText] = useState("");
   const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
   const [selectedQuestId, setSelectedQuestId] = useState<number | null>(null);
@@ -31,7 +33,7 @@ export const QuestEditor: React.FC = () => {
       setIsLoading(false);
     } catch (err) {
       console.error("Erro ao carregar quests:", err);
-      setLoadingStatus("Erro ao carregar quests.");
+      setLoadingStatus(t('quest_editor.status.error_fetching'));
       setIsLoading(false);
     }
   };
@@ -98,12 +100,12 @@ export const QuestEditor: React.FC = () => {
     setIsSaving(true);
     try {
       await axios.put(`${API_URL}/api/quests/${selectedQuest.Id}`, { data: selectedQuest });
-      alert("Missão salva com sucesso em db/import/quest_db.yml!");
+      alert(t('quest_editor.save_success'));
       setQuests(prev => prev.map(q => q.Id === selectedQuest.Id ? { ...selectedQuest, _source: 'custom' } : q));
       setSourceTab('custom');
     } catch (err) {
       console.error("Erro ao salvar quest:", err);
-      alert("Erro ao salvar quest.");
+      alert(t('quest_editor.save_error'));
     } finally {
       setIsSaving(false);
     }
@@ -113,7 +115,7 @@ export const QuestEditor: React.FC = () => {
     try {
       const newQuest = {
         Id: 99999,
-        Title: "Nova Missão Customizada",
+        Title: t('quest_editor.create_default_title'),
         TimeLimit: 0,
         Targets: [{ Mob: 1002, Count: 5 }],
         Drops: []
@@ -126,7 +128,7 @@ export const QuestEditor: React.FC = () => {
       setSourceTab('custom');
     } catch (err) {
       console.error("Erro ao criar quest:", err);
-      alert("Erro ao criar nova missão.");
+      alert(t('quest_editor.create_error'));
     }
   };
 
@@ -137,12 +139,12 @@ export const QuestEditor: React.FC = () => {
         <div className="p-4 border-b border-white/5 bg-gradient-to-b from-[#1a1a24] to-[#12121a]">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-gray-200 font-semibold text-lg flex items-center gap-2">
-              <Compass size={18} className="text-indigo-500" /> Missões (Quests)
+              <Compass size={18} className="text-indigo-500" /> {t('quest_editor.sidebar.title')}
             </h2>
             <button
               onClick={handleCreateNewQuest}
               className="p-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded transition-colors"
-              title="Nova Missão"
+              title={t('quest_editor.sidebar.add_quest')}
             >
               <Plus size={16} />
             </button>
@@ -181,7 +183,7 @@ export const QuestEditor: React.FC = () => {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
               type="text"
-              placeholder="Buscar por ID ou Título..."
+              placeholder={t('quest_editor.sidebar.search_placeholder')}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="w-full bg-dark-900 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
@@ -212,12 +214,12 @@ export const QuestEditor: React.FC = () => {
                   >
                     <div className="flex flex-col min-w-0 flex-1 pr-2">
                       <span className={`text-sm truncate font-medium ${isSelected ? 'text-white font-semibold' : 'text-gray-300'}`}>
-                        {quest.Title || `Quest #${quest.Id}`}
+                        {quest.Title || `${t('quest_editor.sidebar.title')} #${quest.Id}`}
                       </span>
                       <span className="text-[11px] text-gray-500 font-mono">ID: {quest.Id}</span>
                     </div>
                     <span className="text-[10px] bg-dark-900 text-indigo-300 font-mono px-1.5 py-0.5 rounded border border-white/5">
-                      {(quest.Targets || []).length} Alvos
+                      {t('quest_editor.sidebar.targets_count', { count: (quest.Targets || []).length })}
                     </span>
                   </div>
                 );
@@ -234,12 +236,12 @@ export const QuestEditor: React.FC = () => {
             <div className="flex justify-between items-center pb-4 border-b border-dark-800">
               <div>
                 <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span>{selectedQuest.Title || `Quest #${selectedQuest.Id}`}</span>
+                  <span>{selectedQuest.Title || `${t('quest_editor.sidebar.title')} #${selectedQuest.Id}`}</span>
                   <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-mono ${selectedQuest._source === 'custom' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-dark-800 text-gray-400'}`}>
-                    {selectedQuest._source === 'custom' ? 'Custom Import' : 'rAthena Original'}
+                    {selectedQuest._source === 'custom' ? t('quest_editor.source.custom') : t('quest_editor.source.rathena')}
                   </span>
                 </h1>
-                <span className="text-xs font-mono text-gray-500">ID da Missão: #{selectedQuest.Id}</span>
+                <span className="text-xs font-mono text-gray-500">{t('quest_editor.detail.quest_id_line', { id: selectedQuest.Id })}</span>
               </div>
               <button
                 type="button"
@@ -248,13 +250,13 @@ export const QuestEditor: React.FC = () => {
                 className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-indigo-900/30 transition-all disabled:opacity-50"
               >
                 <Save size={16} />
-                <span>Salvar em db/import/quest_db.yml</span>
+                <span>{t('quest_editor.detail.save_button')}</span>
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-400">ID da Missão</label>
+                <label className="text-xs font-medium text-gray-400">{t('quest_editor.fields.quest_id')}</label>
                 <input
                   type="number"
                   value={selectedQuest.Id || 0}
@@ -263,7 +265,7 @@ export const QuestEditor: React.FC = () => {
                 />
               </div>
               <div className="flex flex-col gap-1 md:col-span-2">
-                <label className="text-xs font-medium text-gray-400">Título da Missão (Title)</label>
+                <label className="text-xs font-medium text-gray-400">{t('quest_editor.fields.title')}</label>
                 <input
                   type="text"
                   value={selectedQuest.Title || ''}
@@ -272,7 +274,7 @@ export const QuestEditor: React.FC = () => {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-400">Limite de Tempo (Segundos — TimeLimit)</label>
+                <label className="text-xs font-medium text-gray-400">{t('quest_editor.fields.time_limit')}</label>
                 <input
                   type="number"
                   value={selectedQuest.TimeLimit || 0}
@@ -284,7 +286,7 @@ export const QuestEditor: React.FC = () => {
 
             {/* Targets */}
             <RepeatableGroup
-              title="Monstros Alvo (Targets)"
+              title={t('quest_editor.targets.title')}
               items={selectedQuest.Targets || []}
               onAdd={handleAddTarget}
               onRemove={handleRemoveTarget}
@@ -292,13 +294,13 @@ export const QuestEditor: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-[11px] text-gray-400 flex justify-between">
-                      <span>Mob ID</span>
+                      <span>{t('quest_editor.targets.mob_id')}</span>
                       <button
                         type="button"
                         onClick={() => setPickerConfig({ open: true, type: 'mob', targetType: 'target', idx })}
                         className="text-[10px] text-indigo-400 hover:underline"
                       >
-                        🔍 Buscar Mob
+                        {t('quest_editor.targets.search_mob')}
                       </button>
                     </label>
                     <input
@@ -309,7 +311,7 @@ export const QuestEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-gray-400">Quantidade (Count)</label>
+                    <label className="text-[11px] text-gray-400">{t('quest_editor.targets.count')}</label>
                     <input
                       type="number"
                       value={target.Count || 1}
@@ -318,12 +320,12 @@ export const QuestEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-gray-400">Raça (Race)</label>
+                    <label className="text-[11px] text-gray-400">{t('quest_editor.targets.race')}</label>
                     <input
                       type="text"
                       value={target.Race || ''}
                       onChange={(e) => handleUpdateTargetField(idx, 'Race', e.target.value)}
-                      placeholder="Ex: Formless"
+                      placeholder={t('quest_editor.targets.race_placeholder')}
                       className="bg-dark-900 border border-dark-700 rounded px-2.5 py-1 text-xs text-white"
                     />
                   </div>
@@ -333,7 +335,7 @@ export const QuestEditor: React.FC = () => {
 
             {/* Drops */}
             <RepeatableGroup
-              title="Itens de Drop de Missão (Drops)"
+              title={t('quest_editor.drops.title')}
               items={selectedQuest.Drops || []}
               onAdd={handleAddDrop}
               onRemove={handleRemoveDrop}
@@ -341,13 +343,13 @@ export const QuestEditor: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-[11px] text-gray-400 flex justify-between">
-                      <span>Mob ID</span>
+                      <span>{t('quest_editor.drops.mob_id')}</span>
                       <button
                         type="button"
                         onClick={() => setPickerConfig({ open: true, type: 'mob', targetType: 'drop', idx })}
                         className="text-[10px] text-indigo-400 hover:underline"
                       >
-                        🔍 Mob
+                        {t('quest_editor.drops.search_mob')}
                       </button>
                     </label>
                     <input
@@ -359,13 +361,13 @@ export const QuestEditor: React.FC = () => {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-[11px] text-gray-400 flex justify-between">
-                      <span>Item ID</span>
+                      <span>{t('quest_editor.drops.item_id')}</span>
                       <button
                         type="button"
                         onClick={() => setPickerConfig({ open: true, type: 'item', targetType: 'drop', idx })}
                         className="text-[10px] text-indigo-400 hover:underline"
                       >
-                        🔍 Item
+                        {t('quest_editor.drops.search_item')}
                       </button>
                     </label>
                     <input
@@ -377,7 +379,7 @@ export const QuestEditor: React.FC = () => {
                   </div>
                   <div className="flex flex-col gap-1">
                     <PercentBadge
-                      label="Rate (10000 = 100%)"
+                      label={t('quest_editor.drops.rate')}
                       value={drop.Rate || 10000}
                       onChange={(val) => handleUpdateDropField(idx, 'Rate', val)}
                       scale={100}
@@ -390,8 +392,8 @@ export const QuestEditor: React.FC = () => {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <Compass size={64} className="mb-4 opacity-20 text-indigo-500" />
-            <h3 className="text-xl font-medium text-gray-400">Nenhuma Missão Selecionada</h3>
-            <p className="text-sm mt-2">Selecione uma missão na lista ao lado para ver e editar seus alvos e drops.</p>
+            <h3 className="text-xl font-medium text-gray-400">{t('quest_editor.no_selection.title')}</h3>
+            <p className="text-sm mt-2">{t('quest_editor.no_selection.subtitle')}</p>
           </div>
         )}
       </div>
