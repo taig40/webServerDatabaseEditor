@@ -289,6 +289,57 @@ class GRFReader:
 
         return None
 
+    def has_file(self, filename: str) -> bool:
+        """
+        Checks if a file exists in the override directory or inside any loaded GRF.
+        Does not read the file content, making it very fast.
+        """
+        if not self.loaded:
+            return False
+
+        filename_lower = filename.lower().replace('\\', '/')
+
+        # 1. Check override path
+        if self.override_path and os.path.isdir(self.override_path):
+            root = self.override_path.rstrip('/\\')
+            if root.endswith('data') and filename_lower.startswith('data/'):
+                adjusted = filename_lower[5:]
+            else:
+                adjusted = filename_lower
+            full = os.path.join(root, adjusted).replace('\\', '/')
+            if os.path.exists(full):
+                return True
+            try:
+                os_adjusted = adjusted.encode('latin-1').decode('euc-kr')
+                full_os = os.path.join(root, os_adjusted).replace('\\', '/')
+                if os.path.exists(full_os):
+                    return True
+            except Exception:
+                pass
+
+        # 2. Iterate GRFs
+        for grf in self._grfs:
+            if grf.is_folder:
+                if grf.path.rstrip('/\\').endswith('data') and filename_lower.startswith('data/'):
+                    adjusted = filename_lower[5:]
+                else:
+                    adjusted = filename_lower
+                full = os.path.join(grf.path, adjusted).replace('\\', '/')
+                if os.path.exists(full):
+                    return True
+                try:
+                    os_adjusted = adjusted.encode('latin-1').decode('euc-kr')
+                    full_os = os.path.join(grf.path, os_adjusted).replace('\\', '/')
+                    if os.path.exists(full_os):
+                        return True
+                except Exception:
+                    pass
+            else:
+                if filename_lower in grf.files:
+                    return True
+
+        return False
+
     # ── Image helpers (unchanged) ─────────────────────────────────────────
 
     def convert_bmp_to_png(self, bmp_bytes: bytes) -> Optional[bytes]:
@@ -531,6 +582,14 @@ class GRFReader:
     def save_mob_act(self, aegis_name: str, act_bytes: bytes) -> str:
         """Saves a .act action file for a monster."""
         return self._save_asset(f"data/sprite/{_KOREAN_MONSTER_FOLDER}/{aegis_name}.act", act_bytes)
+
+    def save_item_drop_spr(self, resource_name: str, spr_bytes: bytes) -> str:
+        """Saves a .spr drop sprite file for an item."""
+        return self._save_asset(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.spr", spr_bytes)
+
+    def save_item_drop_act(self, resource_name: str, act_bytes: bytes) -> str:
+        """Saves a .act drop action file for an item."""
+        return self._save_asset(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.act", act_bytes)
 
 
 grf_reader = GRFReader()

@@ -10,6 +10,20 @@ import { useLanguageStore } from '../store/useLanguageStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface AssetsStatus {
+  icon_exists: boolean;
+  collection_exists: boolean;
+  drop_spr_exists: boolean;
+  drop_act_exists: boolean;
+}
+
+const DEFAULT_ASSETS_STATUS: AssetsStatus = {
+  icon_exists: false,
+  collection_exists: false,
+  drop_spr_exists: false,
+  drop_act_exists: false,
+};
+
 interface ClientFields {
   exists_in_lua: boolean;
   identifiedDisplayName: string;
@@ -135,12 +149,13 @@ const ItemCard: React.FC<{ fields: ClientFields; iconSrc: string }> = ({ fields,
   );
 };
 
-/** Upload button that sends a BMP file to the given endpoint. */
+/** Upload button that sends a file to the given endpoint. */
 const AssetUploadButton: React.FC<{
   label: string;
   endpoint: string;
+  accept?: string;
   onUploaded: () => void;
-}> = ({ label, endpoint, onUploaded }) => {
+}> = ({ label, endpoint, accept = ".bmp", onUploaded }) => {
   const t = useLanguageStore(state => state.t);
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -164,7 +179,7 @@ const AssetUploadButton: React.FC<{
 
   return (
     <>
-      <input ref={inputRef} type="file" accept=".bmp" className="hidden" onChange={handleFile} />
+      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={handleFile} />
       <button
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
@@ -199,6 +214,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
   const [isSaving, setIsSaving]   = useState(false);
   // Bust the icon URL cache after an upload
   const [iconBust, setIconBust]   = useState(Date.now());
+  const [assetsStatus, setAssetsStatus] = useState<AssetsStatus>(DEFAULT_ASSETS_STATUS);
 
   // ── GRF Asset Picker State ────────────────────────────────────────────────
   const [pickerOpen, setPickerOpen]   = useState(false);
@@ -232,9 +248,11 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
       };
       setFields(data);
       setOriginal(data);
+      setAssetsStatus(res.data.assets_status ?? DEFAULT_ASSETS_STATUS);
     } catch {
       setFields(EMPTY_FIELDS);
       setOriginal(EMPTY_FIELDS);
+      setAssetsStatus(DEFAULT_ASSETS_STATUS);
     } finally {
       setIsFetching(false);
     }
@@ -258,6 +276,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
     const ok = await onSave(item.Id, payload);
     if (ok) {
       setOriginal(fields);
+      fetchClientData();
     }
     setIsSaving(false);
   };
@@ -443,7 +462,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                     <AssetUploadButton
                       label={t('client_item_detail.buttons.upload_icon')}
                       endpoint={`${API_URL}/api/client_items/${item.Id}/icon`}
-                      onUploaded={() => setIconBust(Date.now())}
+                      onUploaded={() => { setIconBust(Date.now()); fetchClientData(); }}
                     />
                     <button
                       type="button"
@@ -455,8 +474,12 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                       {t('client_item_detail.buttons.select_grf')}
                     </button>
                   </div>
-                  <p className="text-[10px] text-gray-700 font-mono">
-                    data/texture/유저인터페이스/item/{fields.identifiedResourceName || '?'}.bmp
+                  <p className="text-[10px] font-mono flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${assetsStatus.icon_exists ? 'bg-green-400' : 'bg-red-400'}`} />
+                    <span className="text-gray-500">data/texture/유저인터페이스/item/{fields.identifiedResourceName || '?'}.bmp</span>
+                    <span className={assetsStatus.icon_exists ? 'text-green-400' : 'text-red-400'}>
+                      ({assetsStatus.icon_exists ? t('client_item_detail.status.exists') : t('client_item_detail.status.missing')})
+                    </span>
                   </p>
                 </div>
               </div>
@@ -474,7 +497,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                     <AssetUploadButton
                       label={t('client_item_detail.buttons.upload_collection')}
                       endpoint={`${API_URL}/api/client_items/${item.Id}/collection`}
-                      onUploaded={() => {}}
+                      onUploaded={() => fetchClientData()}
                     />
                     <button
                       type="button"
@@ -486,9 +509,55 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                       {t('client_item_detail.buttons.select_grf')}
                     </button>
                   </div>
-                  <p className="text-[10px] text-gray-700 font-mono">
-                    data/texture/유저인터페이스/collection/{fields.identifiedResourceName || '?'}.bmp
+                  <p className="text-[10px] font-mono flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${assetsStatus.collection_exists ? 'bg-green-400' : 'bg-red-400'}`} />
+                    <span className="text-gray-500">data/texture/유저인터페이스/collection/{fields.identifiedResourceName || '?'}.bmp</span>
+                    <span className={assetsStatus.collection_exists ? 'text-green-400' : 'text-red-400'}>
+                      ({assetsStatus.collection_exists ? t('client_item_detail.status.exists') : t('client_item_detail.status.missing')})
+                    </span>
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Drop Sprite */}
+            <div>
+              <Label text={t('client_item_detail.labels.drop_sprite')} />
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-[#0f0f14] border border-white/10 rounded-lg flex items-center justify-center p-1 shrink-0">
+                  <Database size={20} className="text-gray-700" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <AssetUploadButton
+                      label={t('client_item_detail.buttons.upload_drop_spr')}
+                      endpoint={`${API_URL}/api/client_items/${item.Id}/drop_spr`}
+                      accept=".spr"
+                      onUploaded={() => fetchClientData()}
+                    />
+                    <AssetUploadButton
+                      label={t('client_item_detail.buttons.upload_drop_act')}
+                      endpoint={`${API_URL}/api/client_items/${item.Id}/drop_act`}
+                      accept=".act"
+                      onUploaded={() => fetchClientData()}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-0.5 text-[10px] font-mono">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${assetsStatus.drop_spr_exists ? 'bg-green-400' : 'bg-red-400'}`} />
+                      <span className="text-gray-500">data/sprite/아이템/{fields.identifiedResourceName || '?'}.spr</span>
+                      <span className={assetsStatus.drop_spr_exists ? 'text-green-400' : 'text-red-400'}>
+                        ({assetsStatus.drop_spr_exists ? t('client_item_detail.status.exists') : t('client_item_detail.status.missing')})
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${assetsStatus.drop_act_exists ? 'bg-green-400' : 'bg-red-400'}`} />
+                      <span className="text-gray-500">data/sprite/아이템/{fields.identifiedResourceName || '?'}.act</span>
+                      <span className={assetsStatus.drop_act_exists ? 'text-green-400' : 'text-red-400'}>
+                        ({assetsStatus.drop_act_exists ? t('client_item_detail.status.exists') : t('client_item_detail.status.missing')})
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

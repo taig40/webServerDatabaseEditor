@@ -335,7 +335,9 @@
     "status": {
       "in_lua": "● No ItemInfo.lua",
       "missing_in_lua": "● Faltando no ItemInfo.lua",
-      "fetching": "Carregando..."
+      "fetching": "Carregando...",
+      "exists": "Presente",
+      "missing": "Ausente"
     },
     "unsaved_changes": "Alterações não salvas",
     "sections": {
@@ -347,11 +349,14 @@
     },
     "labels": {
       "inventory_icon": "Ícone do Inventário",
-      "collection_illustration": "Ilustração de Coleção"
+      "collection_illustration": "Ilustração de Coleção",
+      "drop_sprite": "Sprite de Drop (.spr / .act)"
     },
     "buttons": {
       "upload_icon": "Upload de Ícone (.bmp)",
       "upload_collection": "Upload de Coleção (.bmp)",
+      "upload_drop_spr": "Upload Sprite (.spr)",
+      "upload_drop_act": "Upload Ação (.act)",
       "select_grf": "Selecionar da GRF"
     },
     "picker": {
