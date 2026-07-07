@@ -146,7 +146,8 @@
       "pets": "Pets",
       "client_items": "Client Items",
       "client_quests": "Client Quests",
-      "constants": "Constants"
+      "constants": "Constants",
+      "random_options": "Random Options"
     }
   },
   "app": {
@@ -784,6 +785,22 @@
       "description": "The application failed to read a database file because of an encoding mismatch.",
       "suggestion": "You should check your client and server text encoding settings.",
       "go_to_settings": "Go to Settings"
+    },
+    "random_options_editor": {
+      "title": "Random Options",
+      "search_placeholder": "Search groups...",
+      "new_group": "New Group",
+      "group_id": "Group ID",
+      "group_name": "Group Constant",
+      "options_list": "Bonus Option List",
+      "add_option": "Add Bonus Option",
+      "no_options": "No bonus options added to this group yet.",
+      "option_header": "Option",
+      "chance_header": "Chance",
+      "select_group": "Select a Random Option Group",
+      "select_group_desc": "Choose a group from the left panel or click + to create a new one.",
+      "save_btn": "Save Changes",
+      "saved_toast": "✓ Saved successfully!"
     }
   }
 }

@@ -41,7 +41,7 @@ if db_base_path:
 # ─── Import Application Modules (Dependent on Env Variables) ────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements
+from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
 from app.services.grf_reader import grf_reader, MAX_GRF_SLOTS
@@ -196,6 +196,10 @@ async def lifespan(app: FastAPI):
         achievement_db.load_db_async(achievement_db_path)
         print(f"[*] Disparado o processo de parse assíncrono de conquistas a partir de '{achievement_db_path}'.")
         
+    from app.services.randomopt_parser import randomopt_db
+    randomopt_db.initialize()
+    print("[*] Random Options database inicializado.")
+        
     yield
 
 # Atualiza a app para usar o lifespan correto (FastAPI moderno)
@@ -213,6 +217,7 @@ app.include_router(pets.router,         prefix="/api/pets",         tags=["pets"
 app.include_router(client_items.router, prefix="/api/client_items", tags=["client_items"])
 app.include_router(settings_api.router, prefix="/api/settings",    tags=["settings"])
 app.include_router(achievements.router,  prefix="/api/achievements", tags=["achievements"])
+app.include_router(randomopt.router,    prefix="/api/server/randomopt", tags=["randomopt"])
 
 @app.get("/")
 def read_root():

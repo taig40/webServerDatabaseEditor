@@ -13,6 +13,7 @@ import PetEditor from './pages/PetEditor';
 import ClientItemEditor from './pages/ClientItemEditor';
 import AchievementEditor from './pages/AchievementEditor';
 import SettingsPage from './pages/SettingsPage';
+import RandomOptionsEditor from './pages/RandomOptionsEditor';
 
 type ActiveView = ModuleId | 'settings';
 
@@ -56,6 +57,7 @@ function App() {
       case 'pets':           return <PetEditor />;
       case 'client_items':   return <ClientItemEditor />;
       case 'server_achievements': return <AchievementEditor />;
+      case 'random_options': return <RandomOptionsEditor />;
       case 'settings':       return <SettingsPage />;
       default:               return (
         <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-600">
