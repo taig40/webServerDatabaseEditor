@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLanguageStore } from '../store/useLanguageStore';
 import {
   Package,
   Skull,
@@ -82,6 +83,7 @@ interface LayoutProps {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onSettingsClick }) => {
+  const t = useLanguageStore(state => state.t);
   const [expanded, setExpanded] = useState(true);
 
   const activeModule = MODULES.find(m => m.id === activeView) || null;
@@ -114,7 +116,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
               <button
                 onClick={() => setExpanded(false)}
                 className="ml-auto flex-shrink-0 text-gray-500 hover:text-white transition-colors p-1 rounded"
-                title="Recolher menu"
+                title={t('layout.collapse')}
               >
                 <ChevronLeft size={16} />
               </button>
@@ -124,7 +126,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
               <button
                 onClick={() => setExpanded(true)}
                 className="text-gray-500 hover:text-white transition-colors p-2 rounded flex items-center justify-center"
-                title="Expandir menu"
+                title={t('layout.expand')}
               >
                 <ChevronRight size={20} />
               </button>
@@ -140,7 +142,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
               {expanded && (
                 <div className="px-4 mb-1">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-gray-600">
-                    {GROUP_LABELS[group]}
+                    {t(`layout.groups.${group}` as any)}
                   </span>
                 </div>
               )}
@@ -160,7 +162,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
                       <button
                         onClick={() => mod.available && onViewChange(mod.id)}
                         disabled={isDisabled}
-                        title={!expanded ? mod.label : undefined}
+                        title={!expanded ? t(`layout.modules.${mod.id}` as any) : undefined}
                         className={[
                           'w-full flex items-center gap-3 rounded-lg px-2 py-2 text-left transition-all duration-150',
                           isActive
@@ -182,7 +184,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
                         {expanded && (
                           <div className="flex flex-col min-w-0">
                             <span className={`text-[13px] font-medium truncate ${isActive ? 'text-white' : ''}`}>
-                              {mod.label}
+                              {t(`layout.modules.${mod.id}` as any)}
                             </span>
                             <span className={`text-[10px] truncate font-mono ${isActive ? 'text-violet-300' : 'text-gray-600'}`}>
                               {mod.sublabel}
@@ -198,7 +200,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
                         {/* "em breve" badge */}
                         {isDisabled && expanded && (
                           <span className="ml-auto text-[9px] uppercase tracking-wider text-gray-700 flex-shrink-0">
-                            em breve
+                            {t('layout.coming_soon')}
                           </span>
                         )}
                       </button>
@@ -223,7 +225,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
             <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center">
               <Settings size={15} className={activeView === 'settings' ? 'text-violet-400' : ''} />
             </span>
-            {expanded && <span className="text-[13px] font-medium">Configurações</span>}
+            {expanded && <span className="text-[13px] font-medium">{t('layout.settings')}</span>}
           </button>
         </div>
       </aside>
@@ -235,7 +237,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
         <div className="flex h-9 bg-[#12121a] border-b border-[#1e1e2e] items-end px-0">
           <div className="flex items-center gap-2 px-4 h-9 bg-[#0f0f14] text-white text-[13px] border-t-2 border-violet-500 -mb-px shadow-sm">
             <ActiveIcon size={13} className="text-violet-400 flex-shrink-0" />
-            <span className="font-medium">{activeView === 'settings' ? 'Configurações' : activeModule?.label}</span>
+            <span className="font-medium">{activeView === 'settings' ? t('layout.settings') : activeModule && t(`layout.modules.${activeModule.id}` as any)}</span>
             {activeModule && <span className="text-[11px] text-gray-500 font-mono">{activeModule.sublabel}</span>}
           </div>
         </div>

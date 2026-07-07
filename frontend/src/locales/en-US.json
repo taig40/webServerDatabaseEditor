@@ -92,5 +92,35 @@
       "create_copy": "✨ Create Copy in db/import/ (Recommended)",
       "overwrite": "⚠️ Overwrite Original File in rAthena"
     }
+  },
+  "layout": {
+    "collapse": "Collapse menu",
+    "expand": "Expand menu",
+    "coming_soon": "soon",
+    "settings": "Settings",
+    "groups": {
+      "server": "Server DB",
+      "client": "Client DB",
+      "misc": "Misc"
+    },
+    "modules": {
+      "items": "Items",
+      "mobs": "Monsters",
+      "skills": "Skills",
+      "server_quests": "Quests",
+      "server_achievements": "Achievements",
+      "item_combos": "Item Combos",
+      "mob_groups": "Mob Groups",
+      "skill_requirements": "Skill Requirements",
+      "mob_skills": "Mob Skills",
+      "pets": "Pets",
+      "client_items": "Client Items",
+      "client_quests": "Client Quests",
+      "constants": "Constants"
+    }
+  },
+  "app": {
+    "under_development": "Under development",
+    "coming_soon_details": "This module will be available soon."
   }
 }

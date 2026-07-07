@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Layout, { type ModuleId } from './components/Layout';
+import { useLanguageStore } from './store/useLanguageStore';
 import ItemEditor from './pages/ItemEditor';
 import MonsterEditor from './pages/MonsterEditor';
 import SkillEditor from './pages/SkillEditor';
@@ -14,6 +15,7 @@ import SettingsPage from './pages/SettingsPage';
 type ActiveView = ModuleId | 'settings';
 
 function App() {
+  const t = useLanguageStore(state => state.t);
   const [activeView, setActiveView] = useState<ActiveView>('items');
 
   const renderContent = () => {
@@ -31,8 +33,8 @@ function App() {
       default:               return (
         <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-600">
           <span className="text-5xl">🚧</span>
-          <span className="text-lg font-medium">Em desenvolvimento</span>
-          <span className="text-sm">Este módulo estará disponível em breve.</span>
+          <span className="text-lg font-medium">{t('app.under_development')}</span>
+          <span className="text-sm">{t('app.coming_soon_details')}</span>
         </div>
       );
     }
