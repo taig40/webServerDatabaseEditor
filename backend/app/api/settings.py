@@ -134,6 +134,18 @@ async def save_settings(payload: SettingsPayload):
             detail=f"Maximum {MAX_GRF_SLOTS} GRF files allowed (matching the official RO client DATA.INI limit)."
         )
 
+    # Validate client encoding
+    if payload.iteminfo_path and os.path.exists(payload.iteminfo_path):
+        from app.core.utils import read_file_safely
+        read_file_safely(payload.iteminfo_path, payload.client_encoding or "euc-kr")
+
+    # Validate server encoding
+    db_base = payload.server_db_base_path or ""
+    mob_skill_path = os.path.join(db_base, "re/mob_skill_db.txt").replace("\\", "/") if db_base else ""
+    if mob_skill_path and os.path.exists(mob_skill_path):
+        from app.core.utils import read_file_safely
+        read_file_safely(mob_skill_path, payload.server_encoding or "utf-8")
+
     updates: dict = {
         "SERVER_DB_BASE_PATH": payload.server_db_base_path or "",
         "ITEMINFO_PATH": payload.iteminfo_path or "",
@@ -176,6 +188,18 @@ async def reload_settings():
     This re-initialises the GRF reader, DB parsers and iteminfo.
     """
     env = _read_env()
+    from app.core.utils import read_file_safely
+
+    # Validate client encoding
+    iteminfo_path = env.get("ITEMINFO_PATH", "").strip()
+    if iteminfo_path and os.path.exists(iteminfo_path):
+        read_file_safely(iteminfo_path, env.get("CLIENT_ENCODING", "euc-kr") or "euc-kr")
+
+    # Validate server encoding
+    db_base = env.get("SERVER_DB_BASE_PATH", "").strip()
+    mob_skill_path = os.path.join(db_base, "re/mob_skill_db.txt").replace("\\", "/") if db_base else ""
+    if mob_skill_path and os.path.exists(mob_skill_path):
+        read_file_safely(mob_skill_path, env.get("SERVER_ENCODING", "utf-8") or "utf-8")
 
     # Apply to os.environ
     for key, val in env.items():

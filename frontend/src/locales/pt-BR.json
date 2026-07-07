@@ -771,6 +771,12 @@
         "inventory": "Inventário da Loja",
         "default_price": "Preço Padrão (item_db)"
       }
+    },
+    "encoding_mismatch": {
+      "title": "Incompatibilidade de Codificação (Encoding Mismatch)",
+      "description": "A aplicação falhou ao ler um arquivo de banco de dados por incompatibilidade de codificação.",
+      "suggestion": "Você deve verificar as suas configurações de codificação de texto (Encoding do Servidor / Cliente).",
+      "go_to_settings": "Ir para Configurações"
     }
   }
 }

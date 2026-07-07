@@ -771,6 +771,12 @@
         "inventory": "Shop Inventory",
         "default_price": "Default Price (item_db)"
       }
+    },
+    "encoding_mismatch": {
+      "title": "Encoding Mismatch Detected",
+      "description": "The application failed to read a database file because of an encoding mismatch.",
+      "suggestion": "You should check your client and server text encoding settings.",
+      "go_to_settings": "Go to Settings"
     }
   }
 }
