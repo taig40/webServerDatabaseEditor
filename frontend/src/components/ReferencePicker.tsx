@@ -115,7 +115,8 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
                 <div
                   key={idx}
                   onClick={() => {
-                    onSelect(itemId, itemName);
+                    const selectedName = type === 'item' ? (item.AegisName || itemName) : itemName;
+                    onSelect(itemId, selectedName);
                     onClose();
                   }}
                   className="flex items-center justify-between p-3 hover:bg-primary-500/10 hover:border-primary-500/30 border border-transparent rounded-lg cursor-pointer transition-all group"
