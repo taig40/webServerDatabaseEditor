@@ -147,9 +147,35 @@ class YamlDatabase:
         if filepath not in self.db_cache:
             return False
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
-            self.yaml.dump(self.db_cache[filepath], f)
+        
+        # Temporarily strip metadata keys (starting with '_') from the cached data before dumping
+        removed_keys = []
+        
+        def strip_metadata(obj):
+            if isinstance(obj, dict):
+                to_remove = [k for k in obj.keys() if isinstance(k, str) and k.startswith('_')]
+                for k in to_remove:
+                    removed_keys.append((obj, k, obj[k]))
+                    del obj[k]
+                for v in obj.values():
+                    strip_metadata(v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    strip_metadata(item)
+                    
+        data = self.db_cache[filepath]
+        strip_metadata(data)
+        
+        try:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                self.yaml.dump(data, f)
+        finally:
+            # Restore the keys back to their original dictionary objects
+            for obj, k, val in removed_keys:
+                obj[k] = val
+                
         return True
+
 
     def _normalize_scripts(self, data: dict):
         for sk in ['Script', 'EquipScript', 'UnEquipScript']:
