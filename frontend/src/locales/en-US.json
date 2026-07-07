@@ -335,7 +335,9 @@
     "status": {
       "in_lua": "● In ItemInfo.lua",
       "missing_in_lua": "● Missing in ItemInfo.lua",
-      "fetching": "Loading..."
+      "fetching": "Loading...",
+      "exists": "Exists",
+      "missing": "Missing"
     },
     "unsaved_changes": "Unsaved Changes",
     "sections": {
@@ -347,11 +349,14 @@
     },
     "labels": {
       "inventory_icon": "Inventory Icon",
-      "collection_illustration": "Collection Illustration"
+      "collection_illustration": "Collection Illustration",
+      "drop_sprite": "Drop Sprite (.spr / .act)"
     },
     "buttons": {
       "upload_icon": "Upload Icon (.bmp)",
       "upload_collection": "Upload Collection (.bmp)",
+      "upload_drop_spr": "Upload Sprite (.spr)",
+      "upload_drop_act": "Upload Action (.act)",
       "select_grf": "Select from GRF"
     },
     "picker": {
