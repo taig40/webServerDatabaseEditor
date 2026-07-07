@@ -811,6 +811,24 @@
       "small_header": "Pequeno (Small)",
       "medium_header": "Médio (Medium)",
       "large_header": "Grande (Large)"
+    },
+    "client_item_audit": {
+      "tab_editor": "Editor de Itens",
+      "tab_audit": "Auditoria de Assets",
+      "scan_btn": "Escanear Assets Faltando",
+      "scanning": "Escaneando GRF e diretórios físicos...",
+      "id": "ID do Item",
+      "name": "Nome de Exibição",
+      "res_name": "Nome do Recurso",
+      "missing": "Arquivos Faltando",
+      "actions": "Ações",
+      "edit_tooltip": "Abrir no Editor",
+      "clean": "✓ Todos os assets estão presentes! Nenhum arquivo faltando detectado.",
+      "results_count": "Encontrados {count} itens com assets faltando",
+      "badge_icon": "Ícone (BMP)",
+      "badge_collection": "Coleção (BMP)",
+      "badge_spr": "Sprite (SPR)",
+      "badge_act": "Ação (ACT)"
     }
   }
 }
