@@ -1,0 +1,68 @@
+{
+  "common": {
+    "save": "Salvar",
+    "saving": "Salvando...",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "loading": "Carregando...",
+    "success": "Sucesso",
+    "error": "Erro",
+    "reload": "Recarregar",
+    "reloading": "Recarregando..."
+  },
+  "settings": {
+    "title": "Configurações do Sistema",
+    "subtitle": "Configure as pastas do servidor, arquivos do cliente, codificações de texto e arquivos GRF.",
+    "save_settings": "Salvar Configurações",
+    "reload_cache": "Recarregar Cache do Servidor",
+    "reload_cache_subtitle": "Força o backend a recarregar todos os arquivos LUA e YAML das pastas.",
+    "tabs": {
+      "server": "Servidor",
+      "client": "Cliente",
+      "grf": "GRFs",
+      "advanced": "Avançado"
+    },
+    "database": {
+      "title": "Banco de Dados do Servidor",
+      "label": "Pasta Base de DB",
+      "sublabel": "Diretório base do banco de dados (ex: rathena/db). Contém as pastas /re/ e /import/.",
+      "placeholder": "Caminho completo do diretório..."
+    },
+    "client": {
+      "title": "Arquivos do Cliente",
+      "iteminfo_label": "System iteminfo.lua / iteminfo.lub",
+      "iteminfo_sublabel": "Caminho para o iteminfo.lua ou iteminfo.lub dentro da pasta System do cliente.",
+      "grf_override_label": "Pasta de Override do Cliente (data)",
+      "grf_override_sublabel": "Diretório para salvar arquivos customizados extraídos (ex: kRO/data/). Deve ser uma pasta.",
+      "placeholder": "Caminho completo do arquivo..."
+    },
+    "grf": {
+      "title": "Arquivos GRF",
+      "subtitle": "Configure até 10 arquivos GRF (ordem do DATA.INI). O slot 0 tem prioridade MÁXIMA.",
+      "add": "Adicionar Slot GRF",
+      "max_reached": "Limite máximo de slots atingido",
+      "priority_max": "Máx",
+      "priority_min": "Mín",
+      "validation": {
+        "ok": "OK",
+        "empty": "Vazio",
+        "not_found": "Não encontrado"
+      }
+    },
+    "language": {
+      "title": "Idioma / Language",
+      "subtitle": "Selecione o idioma da interface visual / Select visual interface language.",
+      "pt": "Português (PT-BR)",
+      "en": "English (EN-US)"
+    },
+    "advanced": {
+      "title": "Configurações Avançadas",
+      "server_encoding": "Codificação do Servidor",
+      "server_encoding_sublabel": "Codificação utilizada para ler/gravar os arquivos YAML do servidor (padrão: UTF-8).",
+      "client_encoding": "Codificação do Cliente",
+      "client_encoding_sublabel": "Codificação utilizada para ler os arquivos LUB do cliente (kRO CP949 ou CP1252).",
+      "cors_label": "Origens CORS Permitidas",
+      "cors_sublabel": "Origens CORS permitidas no servidor de API (separadas por vírgula)."
+    }
+  }
+}
