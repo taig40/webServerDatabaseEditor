@@ -6,6 +6,7 @@ import {
   AlertTriangle, Loader2, HardDrive, Layers, ShieldCheck
 } from 'lucide-react';
 import { API_URL } from '../config/env';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 const MAX_GRF = 10;
 
@@ -141,6 +142,7 @@ function GRFRow({
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 const SettingsPage: React.FC = () => {
+  const { language, setLanguage, t } = useLanguageStore();
   const [serverDbBasePath, setServerDbBasePath] = useState('');
   const [iteminfoPath, setIteminfoPath] = useState('');
   const [grfList, setGrfList] = useState<GRFEntry[]>([]);
@@ -265,7 +267,7 @@ const SettingsPage: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-full gap-3 text-gray-500">
         <Loader2 size={20} className="animate-spin" />
-        <span className="text-sm">Carregando configurações...</span>
+        <span className="text-sm">{t('common.loading')}</span>
       </div>
     );
   }
@@ -282,8 +284,8 @@ const SettingsPage: React.FC = () => {
             <Settings size={18} className="text-violet-400" />
           </div>
           <div>
-            <h1 className="text-white font-bold text-xl">Configurações</h1>
-            <p className="text-gray-500 text-sm">Configure os caminhos do servidor, client e arquivos GRF</p>
+            <h1 className="text-white font-bold text-xl">{t('settings.title')}</h1>
+            <p className="text-gray-500 text-sm">{t('settings.subtitle')}</p>
           </div>
         </div>
 
@@ -311,18 +313,18 @@ const SettingsPage: React.FC = () => {
               }`}
           >
             {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            {isSaving ? 'Salvando...' : saveStatus === 'saved' ? 'Salvo!' : 'Salvar'}
+            {isSaving ? t('common.saving') : saveStatus === 'saved' ? t('common.success') : t('common.save')}
           </button>
 
           {/* Reload */}
           <button
             onClick={handleReload}
             disabled={isReloading}
-            title="Recarrega todos os bancos de dados e a GRF sem reiniciar o servidor"
+            title={t('settings.reload_cache_subtitle')}
             className="flex items-center gap-2 px-4 py-2 rounded-xl border border-emerald-600/30 bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 text-sm font-semibold transition-all"
           >
             {isReloading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-            Recarregar Servidor
+            {t('settings.reload_cache')}
           </button>
         </div>
       </div>
@@ -347,11 +349,11 @@ const SettingsPage: React.FC = () => {
       <div className="flex-1 px-8 py-6 grid grid-cols-1 xl:grid-cols-2 gap-6 content-start">
 
         {/* ── Server DB ── */}
-        <SectionCard icon={Database} title="Banco de Dados do Servidor" subtitle="Arquivos .yml e .txt do rAthena" iconClass="text-violet-400">
+        <SectionCard icon={Database} title={t('settings.database.title')} subtitle="Arquivos .yml e .txt do rAthena" iconClass="text-violet-400">
           <div className="flex flex-col gap-4">
             <PathField
-              label="Pasta base (SERVER_DB_BASE_PATH)"
-              sublabel="Os arquivos de DB serão buscados automaticamente em <base>/re/ e /import/"
+              label={t('settings.database.label')}
+              sublabel={t('settings.database.sublabel')}
               value={serverDbBasePath}
               onChange={setServerDbBasePath}
               placeholder="Ex: C:\rathena\db"
@@ -366,11 +368,11 @@ const SettingsPage: React.FC = () => {
         </SectionCard>
 
         {/* ── Client ── */}
-        <SectionCard icon={Server} title="Cliente Ragnarok Online" subtitle="Arquivos do client do jogador" iconClass="text-blue-400">
+        <SectionCard icon={Server} title={t('settings.client.title')} subtitle="Arquivos do client do jogador" iconClass="text-blue-400">
           <div className="flex flex-col gap-4">
             <PathField
-              label="ItemInfo (ITEMINFO_PATH)"
-              sublabel="System/itemInfo.lua ou itemInfo_true.lua do seu client"
+              label={t('settings.client.iteminfo_label')}
+              sublabel={t('settings.client.iteminfo_sublabel')}
               value={iteminfoPath}
               onChange={setIteminfoPath}
               placeholder="Ex: C:\kRO\System\LuaFiles514\itemInfo.lua"
@@ -400,8 +402,8 @@ const SettingsPage: React.FC = () => {
         <div className="xl:col-span-2">
           <SectionCard
             icon={HardDrive}
-            title="Arquivos GRF"
-            subtitle={`DATA.INI style — até ${MAX_GRF} GRFs com prioridade. GRF_0 = maior prioridade, GRF_9 = menor.`}
+            title={t('settings.grf.title')}
+            subtitle={t('settings.grf.subtitle')}
             iconClass="text-orange-400"
           >
             {/* Legend */}
@@ -544,6 +546,33 @@ const SettingsPage: React.FC = () => {
                     CLIENT_ENCODING={clientEncoding}
                   </span>
                 </div>
+              </div>
+            </div>
+          </SectionCard>
+        </div>
+
+        {/* ── Language ── */}
+        <div className="xl:col-span-2">
+          <SectionCard
+            icon={Globe}
+            title={t('settings.language.title')}
+            subtitle={t('settings.language.subtitle')}
+            iconClass="text-emerald-400"
+          >
+            <div className="flex flex-col gap-1.5 max-w-md">
+              <label className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">
+                {t('settings.language.title')}
+              </label>
+              <div className="relative mt-0.5">
+                <select
+                  value={language}
+                  onChange={e => setLanguage(e.target.value as any)}
+                  className="w-full appearance-none bg-[#0f0f14] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500/60 transition-colors cursor-pointer pr-8"
+                >
+                  <option value="pt-BR">{t('settings.language.pt')}</option>
+                  <option value="en-US">{t('settings.language.en')}</option>
+                </select>
+                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">▾</div>
               </div>
             </div>
           </SectionCard>

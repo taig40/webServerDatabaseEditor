@@ -1,0 +1,68 @@
+{
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error",
+    "reload": "Reload",
+    "reloading": "Reloading..."
+  },
+  "settings": {
+    "title": "Application Settings",
+    "subtitle": "Configure server directories, client files, encoding, and client GRFs.",
+    "save_settings": "Save Settings",
+    "reload_cache": "Reload Backend Cache",
+    "reload_cache_subtitle": "Force backend to reload all YAML and LUA files from directories.",
+    "tabs": {
+      "server": "Server",
+      "client": "Client",
+      "grf": "GRFs",
+      "advanced": "Advanced"
+    },
+    "database": {
+      "title": "Server Database",
+      "label": "Server DB Base Path",
+      "sublabel": "Base directory for server database (e.g. rathena/db). Contains /re/ and /import/ folders.",
+      "placeholder": "Full directory path..."
+    },
+    "client": {
+      "title": "Client Files",
+      "iteminfo_label": "System iteminfo.lua / iteminfo.lub",
+      "iteminfo_sublabel": "Path to System/iteminfo.lua or iteminfo.lub of your client.",
+      "grf_override_label": "GRF Override Data Folder",
+      "grf_override_sublabel": "Folder to save custom client files (e.g., kRO/data/). Must be a folder.",
+      "placeholder": "Full file path..."
+    },
+    "grf": {
+      "title": "GRF Files",
+      "subtitle": "Configure up to 10 GRF files (DATA.INI order). GRF 0 has MAXIMUM priority.",
+      "add": "Add GRF Slot",
+      "max_reached": "Maximum slots reached",
+      "priority_max": "Max",
+      "priority_min": "Min",
+      "validation": {
+        "ok": "OK",
+        "empty": "Empty",
+        "not_found": "Not found"
+      }
+    },
+    "language": {
+      "title": "Language / Idioma",
+      "subtitle": "Select visual interface language / Selecione o idioma da interface visual.",
+      "pt": "Português (PT-BR)",
+      "en": "English (EN-US)"
+    },
+    "advanced": {
+      "title": "Advanced Settings",
+      "server_encoding": "Server Encoding",
+      "server_encoding_sublabel": "Encoding used to read/write server database files (default: UTF-8).",
+      "client_encoding": "Client Encoding",
+      "client_encoding_sublabel": "Encoding used to read client LUB files (kRO CP949 or CP1252).",
+      "cors_label": "CORS Allowed Origins",
+      "cors_sublabel": "Allowed CORS origins for the API server (comma-separated)."
+    }
+  }
+}
