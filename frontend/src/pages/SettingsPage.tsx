@@ -33,24 +33,61 @@ function SectionCard({
 }
 
 function PathField({
-  label, sublabel, value, onChange, placeholder
+  label, sublabel, value, onChange, placeholder, type = 'dir', ext
 }: {
   label: string; sublabel?: string; value: string;
   onChange: (v: string) => void; placeholder?: string;
+  type?: 'dir' | 'file'; ext?: string;
 }) {
+  const t = useLanguageStore(state => state.t);
+  const [isBrowsing, setIsBrowsing] = useState(false);
+
+  const handleBrowse = async () => {
+    setIsBrowsing(true);
+    try {
+      const res = await axios.post(`${API_URL}/api/settings/browse`, {
+        type,
+        initial: value,
+        ext
+      });
+      if (res.data && res.data.path) {
+        onChange(res.data.path);
+      }
+    } catch (err) {
+      console.error('Error browsing path:', err);
+    } finally {
+      setIsBrowsing(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">{label}</label>
       {sublabel && <p className="text-[11px] text-gray-600 -mt-1">{sublabel}</p>}
-      <div className="relative">
-        <FolderOpen size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
-        <input
-          type="text"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder || 'Caminho completo...'}
-          className="w-full bg-[#0f0f14] border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm text-gray-200 font-mono placeholder-gray-700 focus:outline-none focus:border-violet-500/60 transition-colors"
-        />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <FolderOpen size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+          <input
+            type="text"
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            placeholder={placeholder || t('settings.database.placeholder')}
+            className="w-full bg-[#0f0f14] border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm text-gray-200 font-mono placeholder-gray-700 focus:outline-none focus:border-violet-500/60 transition-colors"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={handleBrowse}
+          disabled={isBrowsing}
+          className="px-4 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-800 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center gap-1.5"
+        >
+          {isBrowsing ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : (
+            <FolderOpen size={12} />
+          )}
+          {t('settings.browse')}
+        </button>
       </div>
     </div>
   );
@@ -58,10 +95,11 @@ function PathField({
 
 // Status badge from /validate endpoint
 function StatusBadge({ status }: { status?: { status: string } }) {
+  const t = useLanguageStore(state => state.t);
   if (!status) return null;
-  if (status.status === 'ok') return <span className="flex items-center gap-1 text-[10px] text-green-400"><CheckCircle2 size={11} /> OK</span>;
-  if (status.status === 'empty') return <span className="flex items-center gap-1 text-[10px] text-gray-600"><XCircle size={11} /> Vazio</span>;
-  return <span className="flex items-center gap-1 text-[10px] text-red-400"><AlertTriangle size={11} /> Não encontrado</span>;
+  if (status.status === 'ok') return <span className="flex items-center gap-1 text-[10px] text-green-400"><CheckCircle2 size={11} /> {t('settings.grf.validation.ok')}</span>;
+  if (status.status === 'empty') return <span className="flex items-center gap-1 text-[10px] text-gray-600"><XCircle size={11} /> {t('settings.grf.validation.empty')}</span>;
+  return <span className="flex items-center gap-1 text-[10px] text-red-400"><AlertTriangle size={11} /> {t('settings.grf.validation.not_found')}</span>;
 }
 
 // ── GRF Entry Row ──────────────────────────────────────────────────────────────
@@ -78,11 +116,36 @@ function GRFRow({
   onMoveDown: () => void;
   validationStatus?: { status: string };
 }) {
+  const t = useLanguageStore(state => state.t);
+  const [isBrowsing, setIsBrowsing] = useState(false);
+
+  const handleBrowse = async () => {
+    setIsBrowsing(true);
+    try {
+      const res = await axios.post(`${API_URL}/api/settings/browse`, {
+        type: 'file',
+        initial: entry.path,
+        ext: 'grf'
+      });
+      if (res.data && res.data.path) {
+        onChange(res.data.path);
+      }
+    } catch (err) {
+      console.error('Error browsing GRF:', err);
+    } finally {
+      setIsBrowsing(false);
+    }
+  };
+
   const priorityColors = [
     'bg-violet-600', 'bg-indigo-600', 'bg-blue-600', 'bg-cyan-600', 'bg-teal-600',
     'bg-green-700', 'bg-yellow-700', 'bg-orange-700', 'bg-red-700', 'bg-gray-700',
   ];
-  const priorityLabels = ['Máxima', '', '', '', '', '', '', '', '', 'Mínima'];
+  const priorityLabels = [
+    t('settings.grf.priority_max'),
+    '', '', '', '', '', '', '', '',
+    t('settings.grf.priority_min')
+  ];
   const bgColor = priorityColors[entry.priority] || 'bg-gray-700';
 
   return (
@@ -96,15 +159,30 @@ function GRFRow({
       </div>
 
       {/* Path input */}
-      <div className="relative flex-1">
-        <FolderOpen size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
-        <input
-          type="text"
-          value={entry.path}
-          onChange={e => onChange(e.target.value)}
-          placeholder={`GRF ${entry.priority}: caminho para o arquivo .grf ou pasta...`}
-          className="w-full bg-[#0f0f14] border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-xs text-gray-200 font-mono placeholder-gray-700 focus:outline-none focus:border-violet-500/60 transition-colors"
-        />
+      <div className="flex-1 flex gap-2">
+        <div className="relative flex-1">
+          <FolderOpen size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+          <input
+            type="text"
+            value={entry.path}
+            onChange={e => onChange(e.target.value)}
+            placeholder={t('settings.grf.placeholder', { priority: entry.priority })}
+            className="w-full bg-[#0f0f14] border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-xs text-gray-200 font-mono placeholder-gray-700 focus:outline-none focus:border-violet-500/60 transition-colors"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={handleBrowse}
+          disabled={isBrowsing}
+          className="px-3 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-800 text-white font-semibold text-xs rounded-xl shadow transition-colors flex items-center gap-1"
+        >
+          {isBrowsing ? (
+            <Loader2 size={11} className="animate-spin" />
+          ) : (
+            <FolderOpen size={11} />
+          )}
+          {t('settings.browse')}
+        </button>
       </div>
 
       {/* Validation status */}
@@ -298,7 +376,7 @@ const SettingsPage: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-dark-800/60 text-gray-400 hover:text-white hover:border-white/20 text-sm font-medium transition-all"
           >
             {isValidating ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
-            Validar Caminhos
+            {t('settings.validate_btn')}
           </button>
 
           {/* Save */}
@@ -333,7 +411,7 @@ const SettingsPage: React.FC = () => {
       {reloadStatus && (
         <div className="mx-8 mt-4 bg-emerald-950/60 border border-emerald-700/40 rounded-xl p-4">
           <p className="text-emerald-400 text-sm font-semibold mb-2">
-            ✓ Servidor recarregado — {reloadStatus.grf_count} GRF(s) ativa(s)
+            {t('settings.reload_success_message', { count: reloadStatus.grf_count })}
           </p>
           <div className="flex flex-wrap gap-2">
             {reloadStatus.reloaded_dbs.map((db, i) => (
@@ -349,7 +427,7 @@ const SettingsPage: React.FC = () => {
       <div className="flex-1 px-8 py-6 grid grid-cols-1 xl:grid-cols-2 gap-6 content-start">
 
         {/* ── Server DB ── */}
-        <SectionCard icon={Database} title={t('settings.database.title')} subtitle="Arquivos .yml e .txt do rAthena" iconClass="text-violet-400">
+        <SectionCard icon={Database} title={t('settings.database.title')} subtitle={t('settings.database.subtitle_card')} iconClass="text-violet-400">
           <div className="flex flex-col gap-4">
             <PathField
               label={t('settings.database.label')}
@@ -357,18 +435,19 @@ const SettingsPage: React.FC = () => {
               value={serverDbBasePath}
               onChange={setServerDbBasePath}
               placeholder="Ex: C:\rathena\db"
+              type="dir"
             />
             {validation['SERVER_DB_BASE_PATH'] && (
               <div className="flex items-center gap-2 text-[11px]">
                 <StatusBadge status={validation['SERVER_DB_BASE_PATH']} />
-                <span className="text-gray-600">{validation['SERVER_DB_BASE_PATH']?.status === 'ok' ? 'Pasta encontrada' : 'Pasta não encontrada'}</span>
+                <span className="text-gray-600">{validation['SERVER_DB_BASE_PATH']?.status === 'ok' ? t('settings.database.found') : t('settings.database.not_found')}</span>
               </div>
             )}
           </div>
         </SectionCard>
 
         {/* ── Client ── */}
-        <SectionCard icon={Server} title={t('settings.client.title')} subtitle="Arquivos do client do jogador" iconClass="text-blue-400">
+        <SectionCard icon={Server} title={t('settings.client.title')} subtitle={t('settings.client.subtitle_card')} iconClass="text-blue-400">
           <div className="flex flex-col gap-4">
             <PathField
               label={t('settings.client.iteminfo_label')}
@@ -376,6 +455,8 @@ const SettingsPage: React.FC = () => {
               value={iteminfoPath}
               onChange={setIteminfoPath}
               placeholder="Ex: C:\kRO\System\LuaFiles514\itemInfo.lua"
+              type="file"
+              ext="lua"
             />
             {validation['ITEMINFO_PATH'] && (
               <div className="flex items-center gap-2 text-[11px]">
@@ -384,11 +465,13 @@ const SettingsPage: React.FC = () => {
             )}
 
             <PathField
-              label="Conquistas LUA (ACHIEVEMENTS_LUA_PATH)"
-              sublabel="System/achievements.lub ou achievement_list.lub do seu client"
+              label={t('settings.client.achievements_lua_label')}
+              sublabel={t('settings.client.achievements_lua_sublabel')}
               value={achievementsLuaPath}
               onChange={setAchievementsLuaPath}
-              placeholder="Deixe em branco para detectar automaticamente relativo ao ItemInfo"
+              placeholder={t('settings.client.achievements_lua_placeholder')}
+              type="file"
+              ext="lua"
             />
             {validation['ACHIEVEMENTS_LUA_PATH'] && (
               <div className="flex items-center gap-2 text-[11px]">
@@ -410,21 +493,21 @@ const SettingsPage: React.FC = () => {
             <div className="flex items-center gap-4 mb-4 text-[11px] text-gray-600">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded bg-violet-600 inline-block" />
-                Prioridade 0 (máxima)
+                {t('settings.grf.legend_max')}
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded bg-gray-700 inline-block" />
-                Prioridade 9 (mínima)
+                {t('settings.grf.legend_min')}
               </div>
               <div className="flex items-center gap-1.5 ml-2 text-gray-500">
-                Aceita: arquivo <span className="font-mono text-violet-300">.grf</span> ou pasta <span className="font-mono text-violet-300">data\</span>
+                {t('settings.grf.legend_accepted')}
               </div>
             </div>
 
             <div className="flex flex-col gap-2 mb-4">
               {sortedGRFs.length === 0 ? (
                 <div className="text-center py-8 text-gray-700 border border-dashed border-white/5 rounded-xl text-sm">
-                  Nenhuma GRF configurada. Clique em "Adicionar GRF" para começar.
+                  {t('settings.grf.empty')}
                 </div>
               ) : (
                 sortedGRFs.map((entry, idx) => (
@@ -448,25 +531,26 @@ const SettingsPage: React.FC = () => {
                 onClick={addGRF}
                 className="flex items-center gap-2 text-xs text-violet-400 hover:text-violet-300 py-2 px-3 rounded-lg bg-violet-600/10 hover:bg-violet-600/20 border border-violet-600/20 transition-colors"
               >
-                <Plus size={13} /> Adicionar GRF ({grfList.length}/{MAX_GRF})
+                <Plus size={13} /> {t('settings.grf.add', { count: grfList.length, max: MAX_GRF })}
               </button>
             )}
 
             {grfList.length >= MAX_GRF && (
               <p className="text-xs text-amber-500/80 mt-2 flex items-center gap-1.5">
                 <AlertTriangle size={12} />
-                Limite máximo de {MAX_GRF} GRFs atingido (igual ao cliente oficial do RO)
+                {t('settings.grf.limit_reached', { max: MAX_GRF })}
               </p>
             )}
 
             {/* Override path */}
             <div className="mt-5 pt-5 border-t border-white/5">
               <PathField
-                label="Override Path (GRF_OVERRIDE_PATH)"
-                sublabel="Pasta onde o editor salva sprites e ícones customizados. Necessário ao usar .grf binários."
+                label={t('settings.grf.override_label')}
+                sublabel={t('settings.grf.override_sublabel')}
                 value={grfOverridePath}
                 onChange={setGrfOverridePath}
-                placeholder="Ex: C:\kRO\data\"
+                placeholder={t('settings.grf.override_placeholder')}
+                type="dir"
               />
               {validation['GRF_OVERRIDE_PATH'] && (
                 <div className="flex items-center gap-2 mt-2 text-[11px]">
@@ -481,18 +565,18 @@ const SettingsPage: React.FC = () => {
         <div className="xl:col-span-2">
           <SectionCard
             icon={Globe}
-            title="Encoding"
-            subtitle="Define o encoding de texto para leitura dos arquivos do servidor e do cliente"
+            title={t('settings.advanced.encoding_title')}
+            subtitle={t('settings.advanced.encoding_subtitle')}
             iconClass="text-cyan-400"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Server encoding */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">
-                  Encoding do Servidor
+                  {t('settings.advanced.server_encoding')}
                 </label>
                 <p className="text-[11px] text-gray-600 -mt-1">
-                  Usado para ler arquivos <span className="font-mono text-violet-300">mob_skill_db.txt</span> e outros arquivos de texto
+                  {t('settings.advanced.server_encoding_desc')}
                 </p>
                 <div className="relative mt-0.5">
                   <select
@@ -520,10 +604,10 @@ const SettingsPage: React.FC = () => {
               {/* Client encoding */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">
-                  Encoding do Cliente
+                  {t('settings.advanced.client_encoding')}
                 </label>
                 <p className="text-[11px] text-gray-600 -mt-1">
-                  Usado para ler <span className="font-mono text-violet-300">itemInfo.lua</span> e nomes de arquivos dentro da GRF
+                  {t('settings.advanced.client_encoding_desc')}
                 </p>
                 <div className="relative mt-0.5">
                   <select
@@ -580,13 +664,14 @@ const SettingsPage: React.FC = () => {
 
         {/* ── Advanced ── */}
         <div className="xl:col-span-2">
-          <SectionCard icon={Globe} title="Configurações Avançadas" iconClass="text-gray-400">
+          <SectionCard icon={Globe} title={t('settings.advanced.title')} iconClass="text-gray-400">
             <PathField
-              label="CORS Origins"
-              sublabel="Origens permitidas para o frontend (separadas por v\u00edrgula)"
+              label={t('settings.advanced.cors_label')}
+              sublabel={t('settings.advanced.cors_sublabel')}
               value={corsOrigins}
               onChange={setCorsOrigins}
               placeholder="http://localhost:5173, http://127.0.0.1:5173"
+              type="dir"
             />
           </SectionCard>
         </div>

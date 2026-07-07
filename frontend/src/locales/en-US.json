@@ -25,25 +25,41 @@
     },
     "database": {
       "title": "Server Database",
+      "subtitle_card": "rAthena .yml and .txt files",
       "label": "Server DB Base Path",
       "sublabel": "Base directory for server database (e.g. rathena/db). Contains /re/ and /import/ folders.",
-      "placeholder": "Full directory path..."
+      "placeholder": "Full directory path...",
+      "found": "Folder found",
+      "not_found": "Folder not found"
     },
     "client": {
       "title": "Client Files",
+      "subtitle_card": "Player client files",
       "iteminfo_label": "System iteminfo.lua / iteminfo.lub",
       "iteminfo_sublabel": "Path to System/iteminfo.lua or iteminfo.lub of your client.",
       "grf_override_label": "GRF Override Data Folder",
       "grf_override_sublabel": "Folder to save custom client files (e.g., kRO/data/). Must be a folder.",
-      "placeholder": "Full file path..."
+      "placeholder": "Full file path...",
+      "achievements_lua_label": "Achievements LUA (ACHIEVEMENTS_LUA_PATH)",
+      "achievements_lua_sublabel": "System/achievements.lub or achievement_list.lub path of your client.",
+      "achievements_lua_placeholder": "Leave blank to auto-detect relative to ItemInfo"
     },
     "grf": {
       "title": "GRF Files",
       "subtitle": "Configure up to 10 GRF files (DATA.INI order). GRF 0 has MAXIMUM priority.",
-      "add": "Add GRF Slot",
+      "add": "Add GRF Slot ({count}/{max})",
       "max_reached": "Maximum slots reached",
       "priority_max": "Max",
       "priority_min": "Min",
+      "legend_max": "Priority 0 (maximum)",
+      "legend_min": "Priority 9 (minimum)",
+      "legend_accepted": "Accepts: .grf file or data\\ folder",
+      "placeholder": "GRF {priority}: path to .grf file or folder...",
+      "empty": "No GRFs configured. Click \"Add GRF\" to start.",
+      "limit_reached": "Maximum limit of {max} GRFs reached (matches the official RO client DATA.INI limit)",
+      "override_label": "Override Path (GRF_OVERRIDE_PATH)",
+      "override_sublabel": "Folder where the editor saves custom sprites and icons. Required when using binary .grf files.",
+      "override_placeholder": "e.g., C:\\kRO\\data\\",
       "validation": {
         "ok": "OK",
         "empty": "Empty",
@@ -52,7 +68,7 @@
     },
     "language": {
       "title": "Language / Idioma",
-      "subtitle": "Select visual interface language / Selecione o idioma da interface visual.",
+      "subtitle": "Select visual interface language / Select language of the interface.",
       "pt": "Português (PT-BR)",
       "en": "English (EN-US)"
     },
@@ -63,8 +79,15 @@
       "client_encoding": "Client Encoding",
       "client_encoding_sublabel": "Encoding used to read client LUB files (kRO CP949 or CP1252).",
       "cors_label": "CORS Allowed Origins",
-      "cors_sublabel": "Allowed CORS origins for the API server (comma-separated)."
-    }
+      "cors_sublabel": "Allowed CORS origins for the API server (comma-separated).",
+      "encoding_title": "Encoding Settings",
+      "encoding_subtitle": "Define text encoding for reading server and client files.",
+      "server_encoding_desc": "Used to read mob_skill_db.txt and other text database files.",
+      "client_encoding_desc": "Used to read itemInfo.lua and file names inside GRFs."
+    },
+    "browse": "Browse",
+    "validate_btn": "Validate Paths",
+    "reload_success_message": "✓ Server reloaded — {count} active GRF(s)"
   },
   "item_detail": {
     "unnamed": "Unnamed Item",
