@@ -1,3 +1,44 @@
+import os
+import shutil
+import sys
+from dotenv import load_dotenv
+
+# ─── Load Environment Variables First (Highest Priority) ─────────────────────
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+env_template_path = os.path.join(base_dir, ".env-template")
+env_path = os.path.join(base_dir, ".env")
+
+# 1. Se é a primeira vez rodando (não existe .env), transforma o .env-template em .env
+if not os.path.exists(env_path):
+    if os.path.exists(env_template_path):
+        shutil.copyfile(env_template_path, env_path)
+        print(f"[*] Arquivo .env criado a partir de .env-template em {env_path}")
+    else:
+        print(f"[Erro] Arquivo .env-template não encontrado em {env_template_path}")
+        sys.exit(1)
+
+# 2. Carrega as variáveis (com override=True para garantir precedência do arquivo .env)
+load_dotenv(dotenv_path=env_path, override=True)
+
+# 2c. Preencher caminhos de banco de dados automaticamente a partir de SERVER_DB_BASE_PATH se preenchido
+db_base_path = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
+if db_base_path:
+    print(f"[*] Usando pasta base de DB: '{db_base_path}'")
+    db_defaults = {
+        "ITEM_DB_PATH": "re/item_db.yml",
+        "MOB_DB_PATH": "re/mob_db.yml",
+        "SKILL_DB_PATH": "re/skill_db.yml",
+        "MOB_SKILL_DB_PATH": "re/mob_skill_db.txt",
+        "COMBO_DB_PATH": "re/item_combos.yml",
+        "QUEST_DB_PATH": "re/quest_db.yml",
+        "PET_DB_PATH": "re/pet_db.yml",
+        "ACHIEVEMENT_DB_PATH": "re/achievement_db.yml",
+    }
+    for env_key, filename in db_defaults.items():
+        if not os.environ.get(env_key, "").strip():
+            os.environ[env_key] = os.path.join(db_base_path, filename).replace("\\", "/")
+
+# ─── Import Application Modules (Dependent on Env Variables) ────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements
@@ -10,47 +51,12 @@ from app.services.combo_parser import combo_db
 from app.services.quest_parser import quest_db
 from app.services.pet_parser import pet_db
 from app.services.achievement_parser import achievement_db
-import os
-import shutil
-import sys
-from dotenv import load_dotenv
+
+# ─── Live Config Sync ────────────────────────────────────────────────────────
+from app.core.config import cfg
+cfg.reload_from_env()
 
 def setup_and_validate_env():
-    # Base directory for the backend (where .env and .env-template are)
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    env_template_path = os.path.join(base_dir, ".env-template")
-    env_path = os.path.join(base_dir, ".env")
-    
-    # 1. Se é a primeira vez rodando (não existe .env), transforma o .env-template em .env
-    if not os.path.exists(env_path):
-        if os.path.exists(env_template_path):
-            shutil.copyfile(env_template_path, env_path)
-            print(f"[*] Arquivo .env criado a partir de .env-template em {env_path}")
-        else:
-            print(f"[Erro] Arquivo .env-template não encontrado em {env_template_path}")
-            sys.exit(1)
-            
-    # 2. Carrega as variáveis
-    load_dotenv(dotenv_path=env_path)
-    
-    # 2c. Preencher caminhos de banco de dados automaticamente a partir de SERVER_DB_BASE_PATH se preenchido
-    db_base_path = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
-    if db_base_path:
-        print(f"[*] Usando pasta base de DB: '{db_base_path}'")
-        db_defaults = {
-            "ITEM_DB_PATH": "re/item_db.yml",
-            "MOB_DB_PATH": "re/mob_db.yml",
-            "SKILL_DB_PATH": "re/skill_db.yml",
-            "MOB_SKILL_DB_PATH": "re/mob_skill_db.txt",
-            "COMBO_DB_PATH": "re/item_combos.yml",
-            "QUEST_DB_PATH": "re/quest_db.yml",
-            "PET_DB_PATH": "re/pet_db.yml",
-            "ACHIEVEMENT_DB_PATH": "re/achievement_db.yml",
-        }
-        for env_key, filename in db_defaults.items():
-            if not os.environ.get(env_key, "").strip():
-                os.environ[env_key] = os.path.join(db_base_path, filename).replace("\\", "/")
-    
     # 3. Lê as chaves necessárias do .env-template para validar
     required_keys = []
     if os.path.exists(env_template_path):
