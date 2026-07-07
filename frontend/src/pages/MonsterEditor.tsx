@@ -5,6 +5,7 @@ import { API_URL } from '../config/env';
 import {
   Search, Plus, ShieldAlert, Database, Sparkles, Loader2
 } from 'lucide-react';
+import { useLanguageStore } from '../store/useLanguageStore';
 import MonsterAnimator from '../components/MonsterAnimator';
 import MonsterDetail from '../components/MonsterDetail';
 import NewMobModal from '../components/NewMobModal';
@@ -26,9 +27,10 @@ const ELEMENT_COLORS: Record<string, string> = {
 };
 
 const MonsterEditor: React.FC = () => {
+  const t = useLanguageStore(state => state.t);
   const [mobs, setMobs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingStatus, setLoadingStatus] = useState('Conectando ao Backend...');
+  const [loadingStatus, setLoadingStatus] = useState(t('monster_editor.status.connecting'));
   const [mobsLoaded, setMobsLoaded] = useState(0);
   const [searchText, setSearchText] = useState('');
   const [selectedMobId, setSelectedMobId] = useState<number | null>(null);
@@ -43,24 +45,30 @@ const MonsterEditor: React.FC = () => {
       try {
         const statusRes = await axios.get(`${API_URL}/api/mobs/status`);
         const { is_loading, message, mobs_loaded } = statusRes.data;
-        setLoadingStatus(message);
+        let displayMessage = message;
+        if (message === "Conectando ao Backend...") {
+          displayMessage = t('monster_editor.status.connecting');
+        } else if (message === "Carregando lista de monstros...") {
+          displayMessage = t('monster_editor.status.loading_list');
+        }
+        setLoadingStatus(displayMessage);
         setMobsLoaded(mobs_loaded);
 
         if (!is_loading && message !== 'Aguardando inicialização...') {
           if (intervalId) clearInterval(intervalId);
-          setLoadingStatus('Carregando lista de monstros...');
+          setLoadingStatus(t('monster_editor.status.loading_list'));
           try {
             const mobsRes = await axios.get(`${API_URL}/api/mobs/?skip=0&limit=50000`);
             setMobs(mobsRes.data.mobs);
             setIsLoading(false);
           } catch (err) {
             console.error('Erro ao baixar monstros:', err);
-            setLoadingStatus('Erro ao receber os monstros.');
+            setLoadingStatus(t('monster_editor.status.error_final_array'));
           }
         }
       } catch (err) {
         console.error('Erro no polling de status de monstros:', err);
-        setLoadingStatus('Servidor offline. Reconectando...');
+        setLoadingStatus(t('monster_editor.status.offline'));
       }
     };
 
@@ -116,7 +124,7 @@ const MonsterEditor: React.FC = () => {
       return true;
     } catch (error) {
       console.error('[webSDE] Falha ao salvar mob:', error);
-      alert('Erro de conexão ao salvar a alteração no YAML.');
+      alert(t('monster_editor.status.save_error'));
       return false;
     }
   }, []);
@@ -183,11 +191,11 @@ const MonsterEditor: React.FC = () => {
       {isLoading && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-dark-900/90 backdrop-blur-sm">
           <div className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mb-6" />
-          <h3 className="text-2xl text-white font-semibold mb-2">Carregando Banco de Monstros</h3>
+          <h3 className="text-2xl text-white font-semibold mb-2">{t('monster_editor.status.loading_title')}</h3>
           <p className="text-gray-400 mb-2 font-mono text-sm">{loadingStatus}</p>
           <div className="bg-dark-800 px-4 py-2 rounded-full border border-white/10">
             <span className="text-violet-400 font-bold text-lg">{mobsLoaded.toLocaleString()}</span>
-            <span className="text-gray-500 ml-2">mobs carregados</span>
+            <span className="text-gray-500 ml-2">{t('monster_editor.status.entries_read')}</span>
           </div>
         </div>
       )}
@@ -213,12 +221,12 @@ const MonsterEditor: React.FC = () => {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-gray-200 font-semibold text-lg flex items-center gap-2">
               <ShieldAlert size={18} className="text-violet-500" />
-              Monstros
+              {t('monster_editor.title')}
             </h2>
             <button
               onClick={() => setIsModalOpen(true)}
               className="p-1.5 bg-violet-600/20 hover:bg-violet-600/40 text-violet-400 rounded transition-colors"
-              title="Novo Monstro"
+              title={t('monster_editor.new_monster')}
             >
               <Plus size={16} />
             </button>
@@ -265,7 +273,7 @@ const MonsterEditor: React.FC = () => {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
               type="text"
-              placeholder="Buscar por ID, Nome ou AegisName..."
+              placeholder={t('monster_editor.search_placeholder')}
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
               className="w-full bg-dark-900/60 border border-white/10 rounded-lg pl-8 pr-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-violet-500/60 transition-colors"
@@ -275,7 +283,7 @@ const MonsterEditor: React.FC = () => {
 
         {/* Count bar */}
         <div className="px-4 py-1.5 text-[10px] text-gray-600 border-b border-white/[0.04]">
-          {filteredMobs.length.toLocaleString()} de {activeMobs.length.toLocaleString()} monstros
+          {t('monster_editor.results', { count: filteredMobs.length.toLocaleString() })} / {t('monster_editor.total', { count: activeMobs.length.toLocaleString() })}
         </div>
 
         {/* Virtual list */}
@@ -283,7 +291,7 @@ const MonsterEditor: React.FC = () => {
           {filteredMobs.length === 0 && !isLoading ? (
             <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-600">
               <ShieldAlert size={32} className="opacity-20" />
-              <span className="text-xs">Nenhum monstro encontrado</span>
+              <span className="text-xs">{t('monster_editor.no_monsters_found')}</span>
             </div>
           ) : (
             <Virtuoso
@@ -306,9 +314,9 @@ const MonsterEditor: React.FC = () => {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-8 text-gray-600 gap-3">
             <ShieldAlert size={48} className="opacity-20" />
-            <span className="text-lg font-semibold text-gray-500">Nenhum Monstro Selecionado</span>
+            <span className="text-lg font-semibold text-gray-500">{t('monster_editor.no_selection.title')}</span>
             <span className="text-sm text-gray-600 max-w-xs">
-              Selecione um monstro na lista para visualizar e editar todos os seus atributos.
+              {t('monster_editor.no_selection.subtitle')}
             </span>
           </div>
         )}

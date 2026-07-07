@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { API_URL } from '../config/env';
 import MonsterAnimator from './MonsterAnimator';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 // ─── Element & Race definitions ───────────────────────────────────────────────
 
@@ -96,6 +97,7 @@ interface MonsterDetailProps {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
+  const t = useLanguageStore(state => state.t);
   const [local, setLocal] = useState<any>(mob);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -165,7 +167,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
 
   const handleSpriteUpload = async () => {
     if (!sprFile || !actFile) {
-      setUploadError('Selecione ambos os arquivos: .spr e .act');
+      setUploadError(t('monster_detail.sprite.error_select_both'));
       return;
     }
     setIsUploadingSprite(true);
@@ -182,7 +184,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
       setSprFile(null);
       setActFile(null);
     } catch (err: any) {
-      setUploadError(err?.response?.data?.detail || err.message || 'Erro desconhecido');
+      setUploadError(err?.response?.data?.detail || err.message || t('common.error'));
     } finally {
       setIsUploadingSprite(false);
     }
@@ -219,28 +221,28 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
       {showSaveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="text-white font-bold text-lg mb-2">Salvar Alterações</h3>
+            <h3 className="text-white font-bold text-lg mb-2">{t('monster_detail.save_modal.title')}</h3>
             <p className="text-gray-400 text-sm mb-5">
-              Este monstro faz parte do banco original do rAthena. Como deseja salvar?
+              {t('monster_detail.save_modal.body')}
             </p>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => executeSave('import')}
                 className="px-4 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm transition-colors"
               >
-                Salvar em db/import/ (Recomendado)
+                {t('monster_detail.save_modal.create_copy')}
               </button>
               <button
                 onClick={() => executeSave('overwrite')}
                 className="px-4 py-2.5 rounded-lg bg-red-900/60 hover:bg-red-900 border border-red-700/40 text-red-300 font-semibold text-sm transition-colors"
               >
-                Sobrescrever arquivo original
+                {t('monster_detail.save_modal.overwrite')}
               </button>
               <button
                 onClick={() => setShowSaveModal(false)}
                 className="px-4 py-2 text-gray-500 hover:text-gray-300 text-sm transition-colors"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -263,10 +265,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
             <button
               onClick={() => { setShowSpriteModal(true); setUploadError(null); }}
               className="absolute inset-0 bg-black/70 rounded-lg flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer backdrop-blur-[1px]"
-              title="Trocar Sprite (ACT + SPR)"
+              title={t('monster_detail.sprite.hover_title')}
             >
               <Upload size={22} className="text-white drop-shadow" />
-              <span className="text-white text-[10px] font-bold tracking-wide">Trocar Sprite</span>
+              <span className="text-white text-[10px] font-bold tracking-wide">{t('monster_detail.sprite.change')}</span>
               <span className="text-white/60 text-[9px]">ACT + SPR</span>
             </button>
           </div>
@@ -277,12 +279,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
               <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 w-[420px] shadow-2xl">
                 <h3 className="text-white font-bold text-base mb-1 flex items-center gap-2">
                   <Upload size={16} className="text-violet-400" />
-                  Trocar Sprite do Monstro
+                  {t('monster_detail.sprite.upload_modal.title')}
                 </h3>
                 <p className="text-gray-500 text-xs mb-5">
-                  Selecione os arquivos <span className="text-violet-300 font-mono">.spr</span> e{' '}
-                  <span className="text-violet-300 font-mono">.act</span> do monstro. Eles serão salvos
-                  no override path do GRF com o nome <span className="text-blue-300 font-mono">{local.AegisName}</span>.
+                  {t('monster_detail.sprite.upload_modal.subtitle', { name: local.AegisName })}
                 </p>
 
                 {/* SPR file picker */}
@@ -301,7 +301,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold text-gray-300">
-                      {sprFile ? sprFile.name : 'Selecionar arquivo .spr'}
+                      {sprFile ? sprFile.name : t('monster_detail.sprite.upload_modal.select_spr')}
                     </div>
                     {sprFile && (
                       <div className="text-[10px] text-gray-500">{(sprFile.size / 1024).toFixed(1)} KB</div>
@@ -336,7 +336,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold text-gray-300">
-                      {actFile ? actFile.name : 'Selecionar arquivo .act'}
+                      {actFile ? actFile.name : t('monster_detail.sprite.upload_modal.select_act')}
                     </div>
                     {actFile && (
                       <div className="text-[10px] text-gray-500">{(actFile.size / 1024).toFixed(1)} KB</div>
@@ -368,14 +368,14 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isUploadingSprite
-                      ? <><Loader2 size={14} className="animate-spin" /> Salvando...</>
-                      : <><Upload size={14} /> Fazer Upload</>}
+                      ? <><Loader2 size={14} className="animate-spin" /> {t('common.saving')}</>
+                      : <><Upload size={14} /> {t('monster_detail.sprite.upload_modal.upload_button')}</>}
                   </button>
                   <button
                     onClick={() => { setShowSpriteModal(false); setSprFile(null); setActFile(null); setUploadError(null); }}
                     className="px-4 py-2.5 text-gray-400 hover:text-white bg-dark-900/60 border border-white/5 rounded-xl text-sm transition-colors"
                   >
-                    Cancelar
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>
@@ -385,7 +385,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
           {/* Name / meta */}
           <div className="flex flex-col min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <h2 className="text-2xl font-bold text-white truncate">{local.Name || 'Unnamed'}</h2>
+              <h2 className="text-2xl font-bold text-white truncate">{local.Name || t('monster_detail.unnamed')}</h2>
               {isMvp && (
                 <span className="text-[10px] bg-red-950/80 border border-red-800 text-red-400 px-2 py-0.5 rounded-full font-bold shrink-0">
                   MVP
@@ -416,7 +416,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
         <div className="flex items-center gap-3 shrink-0">
           {isModified && (
             <span className="text-amber-400 text-xs font-mono bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20 animate-pulse">
-              ● Não salvo
+              ● {t('monster_detail.unsaved')}
             </span>
           )}
           <button
@@ -429,7 +429,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
             }`}
           >
             <Save size={15} />
-            {isSaving ? 'Salvando...' : 'Salvar'}
+            {isSaving ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </div>
@@ -446,10 +446,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                 : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
             }`}
           >
-            {tab === 'status' && 'Status'}
-            {tab === 'drops' && 'Drops'}
-            {tab === 'ai' && 'IA / Modos'}
-            {tab === 'skills' && 'Skills'}
+            {tab === 'status' && t('monster_detail.tabs.status')}
+            {tab === 'drops' && t('monster_detail.tabs.drops')}
+            {tab === 'ai' && t('monster_detail.tabs.ai')}
+            {tab === 'skills' && t('monster_detail.tabs.skills')}
           </button>
         ))}
       </div>
@@ -462,9 +462,9 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
 
             {/* Identity */}
-            <SectionCard icon={Star} title="Identidade" iconClass="text-yellow-400">
+            <SectionCard icon={Star} title={t('monster_detail.sections.identity')} iconClass="text-yellow-400">
               <div className="grid grid-cols-2 gap-3">
-                <FieldRow label="Nome (EN)">
+                <FieldRow label={t('monster_detail.fields.name')}>
                   <input
                     type="text"
                     value={local.Name || ''}
@@ -480,19 +480,19 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                     className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-violet-500 focus:outline-none transition-colors"
                   />
                 </FieldRow>
-                <FieldRow label="Raça">
+                <FieldRow label={t('monster_detail.fields.race')}>
                   <Select value={local.Race || 'Formless'} onChange={v => set('Race', v)} options={RACES} />
                 </FieldRow>
-                <FieldRow label="Tamanho">
+                <FieldRow label={t('monster_detail.fields.size')}>
                   <Select value={local.Size || 'Medium'} onChange={v => set('Size', v)} options={SIZES} />
                 </FieldRow>
-                <FieldRow label="Elemento">
+                <FieldRow label={t('monster_detail.fields.element')}>
                   <Select value={local.Element || 'Neutral'} onChange={v => set('Element', v)} options={ELEMENTS} />
                 </FieldRow>
-                <FieldRow label="Nível do Elemento">
+                <FieldRow label={t('monster_detail.fields.element_level')}>
                   <NumInput value={elementLevel} onChange={v => set('ElementLevel', Math.max(1, Math.min(4, v)))} min={1} />
                 </FieldRow>
-                <FieldRow label="Classe (AI)">
+                <FieldRow label={t('monster_detail.fields.class')}>
                   <Select
                     value={local.Class || 'Normal'}
                     onChange={v => set('Class', v)}
@@ -506,7 +506,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
             </SectionCard>
 
             {/* Combat Stats */}
-            <SectionCard icon={Sword} title="Combate" iconClass="text-orange-400">
+            <SectionCard icon={Sword} title={t('monster_detail.sections.combat')} iconClass="text-orange-400">
               <div className="grid grid-cols-2 gap-3">
                 <FieldRow label="HP">
                   <NumInput value={local.Hp} onChange={v => set('Hp', v)} min={0} />
@@ -526,17 +526,17 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                 <FieldRow label="MDEF">
                   <NumInput value={local.MagicDefense} onChange={v => set('MagicDefense', v)} min={0} />
                 </FieldRow>
-                <FieldRow label="Resistência Física">
+                <FieldRow label={t('monster_detail.fields.res_phys')}>
                   <NumInput value={local.Resistance} onChange={v => set('Resistance', v)} />
                 </FieldRow>
-                <FieldRow label="Resistência Mágica">
+                <FieldRow label={t('monster_detail.fields.res_magic')}>
                   <NumInput value={local.MagicResistance} onChange={v => set('MagicResistance', v)} />
                 </FieldRow>
               </div>
             </SectionCard>
 
             {/* Attributes */}
-            <SectionCard icon={Shield} title="Atributos" iconClass="text-blue-400">
+            <SectionCard icon={Shield} title={t('monster_detail.sections.attributes')} iconClass="text-blue-400">
               <div className="grid grid-cols-3 gap-3">
                 {['Str', 'Agi', 'Vit', 'Int', 'Dex', 'Luk'].map(attr => (
                   <div key={attr} className="bg-dark-900/80 rounded-lg border border-white/5 p-2 text-center">
@@ -553,18 +553,18 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
             </SectionCard>
 
             {/* Ranges & Speed */}
-            <SectionCard icon={Zap} title="Alcance & Velocidade" iconClass="text-cyan-400">
+            <SectionCard icon={Zap} title={t('monster_detail.sections.ranges_speed')} iconClass="text-cyan-400">
               <div className="grid grid-cols-2 gap-3">
-                <FieldRow label="Alcance de Ataque">
+                <FieldRow label={t('monster_detail.fields.atk_range')}>
                   <NumInput value={local.AttackRange} onChange={v => set('AttackRange', v)} min={0} />
                 </FieldRow>
-                <FieldRow label="Alcance de Skill">
+                <FieldRow label={t('monster_detail.fields.skill_range')}>
                   <NumInput value={local.SkillRange} onChange={v => set('SkillRange', v)} min={0} />
                 </FieldRow>
-                <FieldRow label="Alcance de Perseguição">
+                <FieldRow label={t('monster_detail.fields.chase_range')}>
                   <NumInput value={local.ChaseRange} onChange={v => set('ChaseRange', v)} min={0} />
                 </FieldRow>
-                <FieldRow label="Velocidade de Caminhada">
+                <FieldRow label={t('monster_detail.fields.walk_speed')}>
                   <NumInput value={local.WalkSpeed} onChange={v => set('WalkSpeed', v)} min={0} />
                 </FieldRow>
                 <FieldRow label="Attack Delay">
@@ -583,7 +583,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
             </SectionCard>
 
             {/* Experience */}
-            <SectionCard icon={Award} title="Experiência" iconClass="text-emerald-400">
+            <SectionCard icon={Award} title={t('monster_detail.sections.experience')} iconClass="text-emerald-400">
               <div className="grid grid-cols-3 gap-3">
                 <FieldRow label="Base EXP">
                   <NumInput value={local.BaseExp} onChange={v => set('BaseExp', v)} min={0} />
@@ -605,17 +605,17 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
           <div className="flex flex-col gap-4">
 
             {/* Normal Drops */}
-            <SectionCard icon={Sword} title="Drops Normais" iconClass="text-green-400">
+            <SectionCard icon={Sword} title={t('monster_detail.sections.normal_drops')} iconClass="text-green-400">
               <div className="flex flex-col gap-1.5">
                 {/* Header */}
                 <div className="grid grid-cols-[1fr_120px_32px] gap-2 text-[10px] text-gray-500 uppercase tracking-widest px-1 mb-1">
-                  <span>Item (AegisName)</span>
-                  <span className="text-right">Taxa (%)</span>
+                  <span>{t('monster_detail.drops.item')}</span>
+                  <span className="text-right">{t('monster_detail.drops.rate')}</span>
                   <span />
                 </div>
                 {(local.Drops || []).length === 0 && (
                   <div className="text-xs text-gray-600 italic text-center py-4 bg-dark-900/30 rounded-lg border border-white/5">
-                    Nenhum drop cadastrado.
+                    {t('monster_detail.drops.no_drops')}
                   </div>
                 )}
                 {(local.Drops || []).map((drop: any, idx: number) => (
@@ -624,7 +624,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                       type="text"
                       value={drop.Item || ''}
                       onChange={e => updateDrop('Drops', idx, 'Item', e.target.value)}
-                      placeholder="AegisName do Item"
+                      placeholder={t('monster_detail.drops.placeholder_item')}
                       className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-violet-500 focus:outline-none font-mono"
                     />
                     <input
@@ -648,22 +648,22 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                   onClick={() => addDrop('Drops')}
                   className="mt-1 flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 py-1.5 px-3 rounded-lg bg-violet-600/10 hover:bg-violet-600/20 border border-violet-600/20 transition-colors self-start"
                 >
-                  <Plus size={13} /> Adicionar Drop
+                  <Plus size={13} /> {t('monster_detail.drops.add_drop')}
                 </button>
               </div>
             </SectionCard>
 
             {/* MVP Drops */}
-            <SectionCard icon={Award} title="Drops MVP" iconClass="text-red-400">
+            <SectionCard icon={Award} title={t('monster_detail.sections.mvp_drops')} iconClass="text-red-400">
               <div className="flex flex-col gap-1.5">
                 <div className="grid grid-cols-[1fr_120px_32px] gap-2 text-[10px] text-gray-500 uppercase tracking-widest px-1 mb-1">
-                  <span>Item (AegisName)</span>
-                  <span className="text-right">Taxa (%)</span>
+                  <span>{t('monster_detail.drops.item')}</span>
+                  <span className="text-right">{t('monster_detail.drops.rate')}</span>
                   <span />
                 </div>
                 {(local.MvpDrops || []).length === 0 && (
                   <div className="text-xs text-gray-600 italic text-center py-4 bg-dark-900/30 rounded-lg border border-white/5">
-                    Nenhum drop MVP cadastrado.
+                    {t('monster_detail.drops.no_mvp_drops')}
                   </div>
                 )}
                 {(local.MvpDrops || []).map((drop: any, idx: number) => (
@@ -672,7 +672,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                       type="text"
                       value={drop.Item || ''}
                       onChange={e => updateDrop('MvpDrops', idx, 'Item', e.target.value)}
-                      placeholder="AegisName do Item"
+                      placeholder={t('monster_detail.drops.placeholder_item')}
                       className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-violet-500 focus:outline-none font-mono"
                     />
                     <input
@@ -696,7 +696,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                   onClick={() => addDrop('MvpDrops')}
                   className="mt-1 flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 py-1.5 px-3 rounded-lg bg-red-600/10 hover:bg-red-600/20 border border-red-600/20 transition-colors self-start"
                 >
-                  <Plus size={13} /> Adicionar Drop MVP
+                  <Plus size={13} /> {t('monster_detail.drops.add_mvp_drop')}
                 </button>
               </div>
             </SectionCard>
@@ -705,7 +705,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
 
         {/* ── AI MODES ── */}
         {activeTab === 'ai' && (
-          <SectionCard icon={Brain} title="Modos de IA (Behavior Flags)" iconClass="text-fuchsia-400">
+          <SectionCard icon={Brain} title={t('monster_detail.ai.title')} iconClass="text-fuchsia-400">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {AI_MODES.map(modeKey => {
                 const active = !!(local.Modes?.[modeKey]);
@@ -726,22 +726,22 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
               })}
             </div>
             <p className="text-[10px] text-gray-600 mt-4 italic">
-              Clique nos botões para ativar/desativar os flags de comportamento do monstro.
+              {t('monster_detail.ai.subtitle')}
             </p>
           </SectionCard>
         )}
 
         {/* ── SKILLS ── */}
         {activeTab === 'skills' && (
-          <SectionCard icon={Zap} title="Skills do Monstro" iconClass="text-cyan-400">
+          <SectionCard icon={Zap} title={t('monster_detail.skills.title')} iconClass="text-cyan-400">
             {skillsLoading ? (
               <div className="flex items-center justify-center py-8 gap-3 text-gray-500">
                 <Loader2 size={18} className="animate-spin" />
-                <span className="text-sm">Carregando skills...</span>
+                <span className="text-sm">{t('monster_detail.skills.loading')}</span>
               </div>
             ) : skills.length === 0 ? (
               <div className="text-center py-8 text-gray-600 text-sm italic">
-                Nenhuma skill cadastrada para este monstro.
+                {t('monster_detail.skills.no_skills')}
               </div>
             ) : (
               <div className="flex flex-col gap-1">
@@ -751,7 +751,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                   <span>State</span>
                   <span className="text-center">Lv</span>
                   <span className="text-center">Taxa‰</span>
-                  <span>Condição</span>
+                  <span>{t('monster_detail.skills.condition')}</span>
                 </div>
                 {skills.map((skill: any, idx: number) => (
                   <div
@@ -777,7 +777,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                   </div>
                 ))}
                 <p className="text-[10px] text-gray-600 mt-3 italic">
-                  Para editar skills, acesse o editor de "Mob Skills". As taxas estão em milésimos (‰).
+                  {t('monster_detail.skills.footer_tip')}
                 </p>
               </div>
             )}

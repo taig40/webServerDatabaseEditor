@@ -122,5 +122,126 @@
   "app": {
     "under_development": "Em desenvolvimento",
     "coming_soon_details": "Este módulo estará disponível em breve."
+  },
+  "item_editor": {
+    "title": "Itens",
+    "new_item": "Novo Item",
+    "search_placeholder": "Buscar por ID, Nome...",
+    "results": "Resultados: {count}",
+    "total": "Total: {count}",
+    "unknown": "Desconhecido",
+    "no_selection": {
+      "title": "Nenhum Item Selecionado",
+      "subtitle": "Selecione um item na lista ao lado para ver os detalhes e editá-lo."
+    },
+    "status": {
+      "connecting": "Conectando ao Backend...",
+      "loading_list": "Carregando lista de Itens...",
+      "error_final_array": "Erro ao receber os itens finais.",
+      "offline": "Servidor offline. Tentando reconectar...",
+      "loading_title": "Carregando Banco de Itens",
+      "entries_read": "entradas lidas",
+      "save_error": "Erro de conexão ao salvar a alteração no YAML."
+    }
+  },
+  "monster_editor": {
+    "title": "Monstros",
+    "new_monster": "Novo Monstro",
+    "search_placeholder": "Buscar por ID, Nome...",
+    "results": "Resultados: {count}",
+    "total": "Total: {count}",
+    "unknown": "Desconhecido",
+    "no_selection": {
+      "title": "Nenhum Monstro Selecionado",
+      "subtitle": "Selecione um monstro na lista ao lado para ver os detalhes e editá-lo."
+    },
+    "no_monsters_found": "Nenhum monstro encontrado",
+    "status": {
+      "connecting": "Conectando ao Backend...",
+      "loading_list": "Carregando lista de monstros...",
+      "error_fetching": "Erro ao baixar monstros:",
+      "error_final_array": "Erro ao receber os monstros.",
+      "offline": "Servidor offline. Reconectando...",
+      "loading_title": "Carregando Banco de Monstros",
+      "entries_read": "entradas lidas",
+      "save_error": "Erro de conexão ao salvar a alteração no YAML."
+    }
+  },
+  "monster_detail": {
+    "unsaved": "Não salvo",
+    "unnamed": "Sem Nome",
+    "save_modal": {
+      "title": "Salvar Alterações",
+      "body": "Este monstro faz parte do banco original do rAthena. Como deseja salvar?",
+      "create_copy": "Salvar em db/import/ (Recomendado)",
+      "overwrite": "Sobrescrever arquivo original"
+    },
+    "tabs": {
+      "status": "Status & Atributos",
+      "drops": "Tabela de Drops",
+      "ai": "IA / Modos",
+      "skills": "Skills"
+    },
+    "sprite": {
+      "error_select_both": "Selecione ambos os arquivos: .spr e .act",
+      "hover_title": "Trocar Sprite (ACT + SPR)",
+      "change": "Trocar Sprite",
+      "upload_modal": {
+        "title": "Trocar Sprite do Monstro",
+        "subtitle": "Selecione os arquivos .spr e .act do monstro. Eles serão salvos no override path do GRF com o nome {name}.",
+        "select_spr": "Selecionar arquivo .spr",
+        "select_act": "Selecionar arquivo .act",
+        "upload_button": "Fazer Upload"
+      }
+    },
+    "sections": {
+      "identity": "Identidade",
+      "combat": "Combate",
+      "attributes": "Atributos",
+      "ranges_speed": "Alcance & Velocidade",
+      "experience": "Experiência",
+      "normal_drops": "Drops Normais",
+      "mvp_drops": "Drops MVP"
+    },
+    "fields": {
+      "name": "Nome (EN)",
+      "race": "Raça",
+      "size": "Tamanho",
+      "element": "Elemento",
+      "element_level": "Nível do Elemento",
+      "class": "Classe (AI)",
+      "res_phys": "Resistência Física",
+      "res_magic": "Resistência Mágica",
+      "atk_range": "Alcance de Ataque",
+      "skill_range": "Alcance de Skill",
+      "chase_range": "Alcance de Perseguição",
+      "walk_speed": "Velocidade de Caminhada"
+    },
+    "drops": {
+      "item": "Item (AegisName)",
+      "rate": "Taxa (%)",
+      "no_drops": "Nenhum drop cadastrado.",
+      "no_mvp_drops": "Nenhum drop MVP cadastrado.",
+      "placeholder_item": "AegisName do Item",
+      "add_drop": "Adicionar Drop",
+      "add_mvp_drop": "Adicionar Drop MVP"
+    },
+    "ai": {
+      "title": "Modos de IA (Behavior Flags)",
+      "subtitle": "Clique nos botões para ativar/desativar os flags de comportamento do monstro."
+    },
+    "skills": {
+      "title": "Skills do Monstro",
+      "loading": "Carregando skills...",
+      "no_skills": "Nenhuma skill cadastrada para este monstro.",
+      "condition": "Condição",
+      "footer_tip": "Para editar skills, acesse o editor de \"Mob Skills\". As taxas estão em milésimos (‰)."
+    }
+  },
+  "monster_animator": {
+    "animation_not_found": "Animação não encontrada",
+    "error_spritesheet": "Erro ao carregar spritesheet",
+    "no_sprite_kro": "Sem sprite no kRO",
+    "frames_count": "{count} frames"
   }
 }
