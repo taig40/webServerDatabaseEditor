@@ -41,7 +41,7 @@ if db_base_path:
 # ─── Import Application Modules (Dependent on Env Variables) ────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt
+from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
 from app.services.grf_reader import grf_reader, MAX_GRF_SLOTS
@@ -199,6 +199,10 @@ async def lifespan(app: FastAPI):
     from app.services.randomopt_parser import randomopt_db
     randomopt_db.initialize()
     print("[*] Random Options database inicializado.")
+
+    from app.services.sizefix_parser import sizefix_db
+    sizefix_db.initialize()
+    print("[*] Size Fix database inicializado.")
         
     yield
 
@@ -218,6 +222,7 @@ app.include_router(client_items.router, prefix="/api/client_items", tags=["clien
 app.include_router(settings_api.router, prefix="/api/settings",    tags=["settings"])
 app.include_router(achievements.router,  prefix="/api/achievements", tags=["achievements"])
 app.include_router(randomopt.router,    prefix="/api/server/randomopt", tags=["randomopt"])
+app.include_router(sizefix.router,      prefix="/api/server/sizefix",   tags=["sizefix"])
 
 @app.get("/")
 def read_root():

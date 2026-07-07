@@ -287,6 +287,10 @@ async def reload_settings():
     randomopt_db.initialize()
     reloaded.append("randomopt_db")
 
+    from app.services.sizefix_parser import sizefix_db
+    sizefix_db.initialize()
+    reloaded.append("sizefix_db")
+
     return {
         "status": "reloaded",
         "grf_count": len(grf_list),

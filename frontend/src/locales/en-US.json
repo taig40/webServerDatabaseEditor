@@ -801,6 +801,16 @@
       "select_group_desc": "Choose a group from the left panel or click + to create a new one.",
       "save_btn": "Save Changes",
       "saved_toast": "✓ Saved successfully!"
+    },
+    "size_fix_editor": {
+      "title": "Weapon Size Penalties",
+      "subtitle": "Configure damage multipliers for weapon classes against monster sizes.",
+      "save_btn": "Save Changes",
+      "saved_toast": "✓ Size penalties saved successfully!",
+      "weapon_header": "Weapon Class",
+      "small_header": "Small (Pequeno)",
+      "medium_header": "Medium (Médio)",
+      "large_header": "Large (Grande)"
     }
   }
 }
