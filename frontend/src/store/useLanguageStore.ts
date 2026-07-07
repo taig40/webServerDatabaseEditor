@@ -46,6 +46,9 @@ export const useLanguageStore = create<LanguageState>((set, get) => {
     setLanguage: (lang: Language) => {
       localStorage.setItem('app-language', lang);
       set({ language: lang });
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     },
 
     t: (key: TranslationKey, variables?: Record<string, string | number>) => {
