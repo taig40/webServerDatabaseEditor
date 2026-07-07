@@ -83,7 +83,12 @@
       "encoding_title": "Encoding Settings",
       "encoding_subtitle": "Define text encoding for reading server and client files.",
       "server_encoding_desc": "Used to read mob_skill_db.txt and other text database files.",
-      "client_encoding_desc": "Used to read itemInfo.lua and file names inside GRFs."
+      "client_encoding_desc": "Used to read itemInfo.lua and file names inside GRFs.",
+      "encoding_options": {
+        "utf8": "UTF-8 (Default)",
+        "euckr": "EUC-KR / CP949 (Korean kRO clients)",
+        "cp1252": "Windows-1252 / CP1252 (Western servers)"
+      }
     },
     "browse": "Browse",
     "validate_btn": "Validate Paths",
