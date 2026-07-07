@@ -218,10 +218,10 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
 
   // ── GRF Asset Picker State ────────────────────────────────────────────────
   const [pickerOpen, setPickerOpen]   = useState(false);
-  const [pickerType, setPickerType]   = useState<'item_icon' | 'item_collection'>('item_icon');
+  const [pickerType, setPickerType]   = useState<'item_icon' | 'item_collection' | 'item_sprite'>('item_icon');
   const [pickerTitle, setPickerTitle] = useState('Escolher da GRF');
 
-  const openPicker = (type: 'item_icon' | 'item_collection', title: string) => {
+  const openPicker = (type: 'item_icon' | 'item_collection' | 'item_sprite', title: string) => {
     setPickerType(type);
     setPickerTitle(title);
     setPickerOpen(true);
@@ -541,6 +541,15 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                       accept=".act"
                       onUploaded={() => fetchClientData()}
                     />
+                    <button
+                      type="button"
+                      onClick={() => openPicker('item_sprite', t('client_item_detail.picker.select_sprite'))}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-cyan-950/40 border border-cyan-500/30
+                        hover:border-cyan-400 hover:bg-cyan-900/40 text-cyan-300 transition-all font-medium"
+                    >
+                      <Database size={12} />
+                      {t('client_item_detail.buttons.select_grf')}
+                    </button>
                   </div>
                   <div className="flex flex-col gap-0.5 text-[10px] font-mono">
                     <div className="flex items-center gap-1.5">

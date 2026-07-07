@@ -469,7 +469,14 @@ class GRFReader:
                 if rname:
                     res_map[rname.lower()] = (item_id, dname)
 
-        if asset_type == "item_collection":
+        ext = ".bmp"
+        if asset_type == "item_sprite":
+            prefixes = [
+                f"data/sprite/{_KOREAN_ITEM_FOLDER}/".lower(),
+                "data/sprite/item/".lower(),
+            ]
+            ext = ".spr"
+        elif asset_type == "item_collection":
             prefixes = [
                 f"data/texture/{_KOREAN_UI_FOLDER}/collection/".lower(),
                 "data/texture/userinterface/collection/".lower(),
@@ -486,10 +493,10 @@ class GRFReader:
 
         for grf in self._grfs:
             for k in grf.files.keys():
-                if any(k.startswith(p) for p in prefixes) and k.endswith(".bmp"):
+                if any(k.startswith(p) for p in prefixes) and k.endswith(ext):
                     basename = os.path.basename(k)
-                    if basename.endswith(".bmp"):
-                        res_name = basename[:-4]
+                    if basename.endswith(ext):
+                        res_name = basename[:-len(ext)]
                         if res_name:
                             found_resources.add(res_name)
 

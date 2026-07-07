@@ -361,7 +361,8 @@
     },
     "picker": {
       "select_icon": "Select Item Icon from GRF",
-      "select_collection": "Select Collection Sprite from GRF"
+      "select_collection": "Select Collection Sprite from GRF",
+      "select_sprite": "Select Item Drop Sprite from GRF"
     },
     "previews": {
       "identified": "Identified",
