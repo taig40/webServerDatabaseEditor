@@ -16,6 +16,7 @@ ENCODING_OPTIONS = [
     {"value": "utf-8",   "label": "UTF-8 (padrão)"},
     {"value": "euc-kr",  "label": "EUC-KR / CP949 (clientes coreanos kRO)"},
     {"value": "cp1252",  "label": "Windows-1252 / CP1252 (servidores ocidentais)"},
+    {"value": "latin-1", "label": "Latin-1 (transparente / ignorar erros de decodificação)"},
 ]
 
 

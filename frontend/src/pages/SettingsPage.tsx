@@ -588,11 +588,13 @@ const SettingsPage: React.FC = () => {
                       { value: 'utf-8', label: '' },
                       { value: 'euc-kr', label: '' },
                       { value: 'cp1252', label: '' },
+                      { value: 'latin-1', label: '' },
                     ]).map(opt => {
                       let label = opt.label;
                       if (opt.value === 'utf-8') label = t('settings.advanced.encoding_options.utf8');
                       else if (opt.value === 'euc-kr') label = t('settings.advanced.encoding_options.euckr');
                       else if (opt.value === 'cp1252') label = t('settings.advanced.encoding_options.cp1252');
+                      else if (opt.value === 'latin-1') label = t('settings.advanced.encoding_options.latin1');
                       return (
                         <option key={opt.value} value={opt.value}>{label}</option>
                       );
@@ -625,11 +627,13 @@ const SettingsPage: React.FC = () => {
                       { value: 'utf-8', label: '' },
                       { value: 'euc-kr', label: '' },
                       { value: 'cp1252', label: '' },
+                      { value: 'latin-1', label: '' },
                     ]).map(opt => {
                       let label = opt.label;
                       if (opt.value === 'utf-8') label = t('settings.advanced.encoding_options.utf8');
                       else if (opt.value === 'euc-kr') label = t('settings.advanced.encoding_options.euckr');
                       else if (opt.value === 'cp1252') label = t('settings.advanced.encoding_options.cp1252');
+                      else if (opt.value === 'latin-1') label = t('settings.advanced.encoding_options.latin1');
                       return (
                         <option key={opt.value} value={opt.value}>{label}</option>
                       );
