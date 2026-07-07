@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from app.services.iteminfo_parser import iteminfo_db
-from app.services.grf_reader import grf_reader
+from app.services.grf_reader import grf_reader, _KOREAN_UI_FOLDER, _KOREAN_ITEM_FOLDER
 
 router = APIRouter()
 
@@ -48,19 +48,22 @@ async def get_client_item(item_id: int):
     # Verify assets status
     resource_name = entry.get("identifiedResourceName") or entry.get("unIdentifiedResourceName") or str(item_id)
 
-    icon_exists = grf_reader.has_file(f"data/texture/유저인터페이스/item/{resource_name}.bmp") or grf_reader.has_file(f"data/texture/userinterface/item/{resource_name}.bmp")
+    icon_exists = (
+        grf_reader.has_file(f"data/texture/{_KOREAN_UI_FOLDER}/item/{resource_name}.bmp") or
+        grf_reader.has_file(f"data/texture/userinterface/item/{resource_name}.bmp")
+    )
     collection_exists = (
-        grf_reader.has_file(f"data/texture/유저인터페이스/collection/{resource_name}.bmp") or
+        grf_reader.has_file(f"data/texture/{_KOREAN_UI_FOLDER}/collection/{resource_name}.bmp") or
         grf_reader.has_file(f"data/texture/userinterface/collection/{resource_name}.bmp") or
-        grf_reader.has_file(f"data/sprite/아이템/{resource_name}.bmp") or
+        grf_reader.has_file(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.bmp") or
         grf_reader.has_file(f"data/sprite/item/{resource_name}.bmp")
     )
     drop_spr_exists = (
-        grf_reader.has_file(f"data/sprite/아이템/{resource_name}.spr") or
+        grf_reader.has_file(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.spr") or
         grf_reader.has_file(f"data/sprite/item/{resource_name}.spr")
     )
     drop_act_exists = (
-        grf_reader.has_file(f"data/sprite/아이템/{resource_name}.act") or
+        grf_reader.has_file(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.act") or
         grf_reader.has_file(f"data/sprite/item/{resource_name}.act")
     )
 
