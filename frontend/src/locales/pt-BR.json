@@ -361,7 +361,8 @@
     },
     "picker": {
       "select_icon": "Selecionar Ícone do Item na GRF",
-      "select_collection": "Selecionar Sprite de Coleção na GRF"
+      "select_collection": "Selecionar Sprite de Coleção na GRF",
+      "select_sprite": "Selecionar Sprite de Drop do Item na GRF"
     },
     "previews": {
       "identified": "Identificado",

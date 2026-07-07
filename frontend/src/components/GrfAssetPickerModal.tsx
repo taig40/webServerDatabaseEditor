@@ -11,7 +11,7 @@ interface AssetEntry {
 
 interface Props {
   isOpen: boolean;
-  assetType: 'item_icon' | 'item_collection';
+  assetType: 'item_icon' | 'item_collection' | 'item_sprite';
   title: string;
   currentResourceName: string;
   onClose: () => void;
