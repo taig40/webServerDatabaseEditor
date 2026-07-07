@@ -143,7 +143,7 @@ const ItemCard: React.FC<{ fields: ClientFields; iconSrc: string }> = ({ fields,
         {fields.ClassNum > 0 && (
           <p className="text-[10px] text-gray-500 font-mono">ClassNum: {fields.ClassNum}</p>
         )}
-        <p className="text-[10px] text-gray-600 font-mono">res: {fields.identifiedResourceName || '—'}</p>
+        <p className="text-[10px] text-gray-600 font-mono">res: {decodeLatin1ToEucKr(fields.identifiedResourceName) || '—'}</p>
       </div>
     </div>
   );
@@ -203,6 +203,16 @@ const Card: React.FC<{ icon: React.ReactNode; title: string; children: React.Rea
       {children}
     </div>
   );
+
+const decodeLatin1ToEucKr = (str: string): string => {
+  if (!str) return '';
+  try {
+    const bytes = new Uint8Array(str.split('').map(c => c.charCodeAt(0)));
+    return new TextDecoder('euc-kr').decode(bytes);
+  } catch {
+    return str;
+  }
+};
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -372,6 +382,11 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                 placeholder="Resource filename without extension"
                 mono
               />
+              {fields.identifiedResourceName && (
+                <p className="text-[10px] text-gray-500 mt-1 font-sans">
+                  Korean Name / Nome Coreano: <span className="text-cyan-400 font-medium">{decodeLatin1ToEucKr(fields.identifiedResourceName)}</span>
+                </p>
+              )}
             </div>
             <div>
               <Label text="identifiedDescriptionName" mono />
@@ -402,6 +417,11 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                 placeholder="Unidentified Resource filename"
                 mono
               />
+              {fields.unIdentifiedResourceName && (
+                <p className="text-[10px] text-gray-500 mt-1 font-sans">
+                  Korean Name / Nome Coreano: <span className="text-cyan-400 font-medium">{decodeLatin1ToEucKr(fields.unIdentifiedResourceName)}</span>
+                </p>
+              )}
             </div>
             <div>
               <Label text="unidentifiedDescriptionName" mono />
@@ -476,7 +496,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                   </div>
                   <p className="text-[10px] font-mono flex items-center gap-1.5">
                     <span className={`w-1.5 h-1.5 rounded-full ${assetsStatus.icon_exists ? 'bg-green-400' : 'bg-red-400'}`} />
-                    <span className="text-gray-500">data/texture/유저인터페이스/item/{fields.identifiedResourceName || '?'}.bmp</span>
+                    <span className="text-gray-500">data/texture/유저인터페이스/item/{decodeLatin1ToEucKr(fields.identifiedResourceName) || '?'}.bmp</span>
                     <span className={assetsStatus.icon_exists ? 'text-green-400' : 'text-red-400'}>
                       ({assetsStatus.icon_exists ? t('client_item_detail.status.exists') : t('client_item_detail.status.missing')})
                     </span>
@@ -511,7 +531,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                   </div>
                   <p className="text-[10px] font-mono flex items-center gap-1.5">
                     <span className={`w-1.5 h-1.5 rounded-full ${assetsStatus.collection_exists ? 'bg-green-400' : 'bg-red-400'}`} />
-                    <span className="text-gray-500">data/texture/유저인터페이스/collection/{fields.identifiedResourceName || '?'}.bmp</span>
+                    <span className="text-gray-500">data/texture/유저인터페이스/collection/{decodeLatin1ToEucKr(fields.identifiedResourceName) || '?'}.bmp</span>
                     <span className={assetsStatus.collection_exists ? 'text-green-400' : 'text-red-400'}>
                       ({assetsStatus.collection_exists ? t('client_item_detail.status.exists') : t('client_item_detail.status.missing')})
                     </span>
