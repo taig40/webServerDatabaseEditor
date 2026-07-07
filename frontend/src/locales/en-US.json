@@ -64,5 +64,33 @@
       "cors_label": "CORS Allowed Origins",
       "cors_sublabel": "Allowed CORS origins for the API server (comma-separated)."
     }
+  },
+  "item_detail": {
+    "unnamed": "Unnamed Item",
+    "unsaved_changes": "Unsaved changes",
+    "save_changes": "Save Changes",
+    "basic_stats": "Basic Stats",
+    "combat_equip": "Combat & Equipment",
+    "restrictions": "Equipment Restrictions",
+    "scripts": "Scripts & Logic",
+    "main_script": "Main Script",
+    "dropped_by": "Dropped By (Monsters)",
+    "sold_by": "Sold By (Shops)",
+    "loading_drops": "Fetching drops from server...",
+    "no_drops": "No monster drops this item natively.",
+    "loading_shops": "Looking for shops in the world...",
+    "no_shops": "This item is not sold in any default shop.",
+    "table": {
+      "mob_id": "Mob ID",
+      "name": "Original Name (kRO)",
+      "aegis_name": "AegisName",
+      "rate": "Drop Rate"
+    },
+    "save_modal": {
+      "title": "Save Changes",
+      "body": "The item {id} ({name}) belongs to the original rAthena database. Do you want to create a custom override copy in import/item_db.yml or overwrite the original file?",
+      "create_copy": "✨ Create Copy in db/import/ (Recommended)",
+      "overwrite": "⚠️ Overwrite Original File in rAthena"
+    }
   }
 }

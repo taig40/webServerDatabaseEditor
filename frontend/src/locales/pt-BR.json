@@ -64,5 +64,33 @@
       "cors_label": "Origens CORS Permitidas",
       "cors_sublabel": "Origens CORS permitidas no servidor de API (separadas por vírgula)."
     }
+  },
+  "item_detail": {
+    "unnamed": "Item Sem Nome",
+    "unsaved_changes": "Alterações não salvas",
+    "save_changes": "Salvar Alterações",
+    "basic_stats": "Atributos Básicos",
+    "combat_equip": "Combate & Equipamento",
+    "restrictions": "Restrições de Equipamento",
+    "scripts": "Scripts & Lógica",
+    "main_script": "Script Principal",
+    "dropped_by": "Dropado Por (Monstros)",
+    "sold_by": "Vendido Por (Lojas)",
+    "loading_drops": "Buscando drops no servidor...",
+    "no_drops": "Nenhum monstro dropa este item nativamente.",
+    "loading_shops": "Buscando lojas pelo mundo...",
+    "no_shops": "Este item não é vendido em nenhuma loja padrão.",
+    "table": {
+      "mob_id": "Mob ID",
+      "name": "Nome Original (kRO)",
+      "aegis_name": "AegisName",
+      "rate": "Taxa de Drop"
+    },
+    "save_modal": {
+      "title": "Salvar Alterações",
+      "body": "O item {id} ({name}) pertence ao banco original do rAthena. Deseja criar uma cópia customizada na pasta import/item_db.yml ou sobrescrever o arquivo original?",
+      "create_copy": "✨ Criar Cópia em db/import/ (Recomendado)",
+      "overwrite": "⚠️ Sobrescrever Arquivo Original no rAthena"
+    }
   }
 }
