@@ -83,7 +83,12 @@
       "encoding_title": "Configuração de Codificação",
       "encoding_subtitle": "Define o encoding de texto para leitura dos arquivos do servidor e do cliente.",
       "server_encoding_desc": "Usado para ler mob_skill_db.txt e outros arquivos de texto.",
-      "client_encoding_desc": "Usado para ler itemInfo.lua e nomes de arquivos dentro da GRF."
+      "client_encoding_desc": "Usado para ler itemInfo.lua e nomes de arquivos dentro da GRF.",
+      "encoding_options": {
+        "utf8": "UTF-8 (padrão)",
+        "euckr": "EUC-KR / CP949 (clientes coreanos kRO)",
+        "cp1252": "Windows-1252 / CP1252 (servidores ocidentais)"
+      }
     },
     "browse": "Selecionar",
     "validate_btn": "Validar Caminhos",

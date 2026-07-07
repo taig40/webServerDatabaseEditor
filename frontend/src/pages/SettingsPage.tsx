@@ -585,12 +585,18 @@ const SettingsPage: React.FC = () => {
                     className="w-full appearance-none bg-[#0f0f14] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500/60 transition-colors cursor-pointer pr-8"
                   >
                     {(encodingOptions.length > 0 ? encodingOptions : [
-                      { value: 'utf-8', label: 'UTF-8 (padrão)' },
-                      { value: 'euc-kr', label: 'EUC-KR / CP949 (clientes coreanos kRO)' },
-                      { value: 'cp1252', label: 'Windows-1252 / CP1252 (servidores ocidentais)' },
-                    ]).map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
+                      { value: 'utf-8', label: '' },
+                      { value: 'euc-kr', label: '' },
+                      { value: 'cp1252', label: '' },
+                    ]).map(opt => {
+                      let label = opt.label;
+                      if (opt.value === 'utf-8') label = t('settings.advanced.encoding_options.utf8');
+                      else if (opt.value === 'euc-kr') label = t('settings.advanced.encoding_options.euckr');
+                      else if (opt.value === 'cp1252') label = t('settings.advanced.encoding_options.cp1252');
+                      return (
+                        <option key={opt.value} value={opt.value}>{label}</option>
+                      );
+                    })}
                   </select>
                   <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">▾</div>
                 </div>
@@ -616,12 +622,18 @@ const SettingsPage: React.FC = () => {
                     className="w-full appearance-none bg-[#0f0f14] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500/60 transition-colors cursor-pointer pr-8"
                   >
                     {(encodingOptions.length > 0 ? encodingOptions : [
-                      { value: 'utf-8', label: 'UTF-8 (padrão)' },
-                      { value: 'euc-kr', label: 'EUC-KR / CP949 (clientes coreanos kRO)' },
-                      { value: 'cp1252', label: 'Windows-1252 / CP1252 (servidores ocidentais)' },
-                    ]).map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
+                      { value: 'utf-8', label: '' },
+                      { value: 'euc-kr', label: '' },
+                      { value: 'cp1252', label: '' },
+                    ]).map(opt => {
+                      let label = opt.label;
+                      if (opt.value === 'utf-8') label = t('settings.advanced.encoding_options.utf8');
+                      else if (opt.value === 'euc-kr') label = t('settings.advanced.encoding_options.euckr');
+                      else if (opt.value === 'cp1252') label = t('settings.advanced.encoding_options.cp1252');
+                      return (
+                        <option key={opt.value} value={opt.value}>{label}</option>
+                      );
+                    })}
                   </select>
                   <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">▾</div>
                 </div>
