@@ -236,6 +236,10 @@
       "loading": "Carregando skills...",
       "no_skills": "Nenhuma skill cadastrada para este monstro.",
       "condition": "Condição",
+      "skill_id": "Skill ID",
+      "state": "Estado",
+      "level": "Nv",
+      "rate": "Taxa‰",
       "footer_tip": "Para editar skills, acesse o editor de \"Mob Skills\". As taxas estão em milésimos (‰)."
     }
   },
