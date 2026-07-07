@@ -87,7 +87,8 @@
       "encoding_options": {
         "utf8": "UTF-8 (padrão)",
         "euckr": "EUC-KR / CP949 (clientes coreanos kRO)",
-        "cp1252": "Windows-1252 / CP1252 (servidores ocidentais)"
+        "cp1252": "Windows-1252 / CP1252 (servidores ocidentais)",
+        "latin1": "Latin-1 (transparente / ignorar erros de decodificação)"
       }
     },
     "browse": "Selecionar",
