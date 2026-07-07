@@ -811,6 +811,24 @@
       "small_header": "Small (Pequeno)",
       "medium_header": "Medium (Médio)",
       "large_header": "Large (Grande)"
+    },
+    "client_item_audit": {
+      "tab_editor": "Item Editor",
+      "tab_audit": "Audit & Tools",
+      "scan_btn": "Scan Missing Assets",
+      "scanning": "Scanning GRF & Override directories...",
+      "id": "Item ID",
+      "name": "Display Name",
+      "res_name": "Resource Name",
+      "missing": "Missing Files",
+      "actions": "Actions",
+      "edit_tooltip": "Open in Editor",
+      "clean": "✓ All assets are present! No missing files detected.",
+      "results_count": "Found {count} items with missing assets",
+      "badge_icon": "Icon (BMP)",
+      "badge_collection": "Collection (BMP)",
+      "badge_spr": "Sprite (SPR)",
+      "badge_act": "Action (ACT)"
     }
   }
 }
