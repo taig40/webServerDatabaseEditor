@@ -25,25 +25,41 @@
     },
     "database": {
       "title": "Banco de Dados do Servidor",
+      "subtitle_card": "Arquivos .yml e .txt do rAthena",
       "label": "Pasta Base de DB",
       "sublabel": "Diretório base do banco de dados (ex: rathena/db). Contém as pastas /re/ e /import/.",
-      "placeholder": "Caminho completo do diretório..."
+      "placeholder": "Caminho completo do diretório...",
+      "found": "Pasta encontrada",
+      "not_found": "Pasta não encontrada"
     },
     "client": {
       "title": "Arquivos do Cliente",
+      "subtitle_card": "Arquivos do client do jogador",
       "iteminfo_label": "System iteminfo.lua / iteminfo.lub",
       "iteminfo_sublabel": "Caminho para o iteminfo.lua ou iteminfo.lub dentro da pasta System do cliente.",
       "grf_override_label": "Pasta de Override do Cliente (data)",
       "grf_override_sublabel": "Diretório para salvar arquivos customizados extraídos (ex: kRO/data/). Deve ser uma pasta.",
-      "placeholder": "Caminho completo do arquivo..."
+      "placeholder": "Caminho completo do arquivo...",
+      "achievements_lua_label": "Conquistas LUA (ACHIEVEMENTS_LUA_PATH)",
+      "achievements_lua_sublabel": "Caminho para o achievements.lub ou achievement_list.lub do seu cliente.",
+      "achievements_lua_placeholder": "Deixe em branco para detectar automaticamente relativo ao ItemInfo"
     },
     "grf": {
       "title": "Arquivos GRF",
       "subtitle": "Configure até 10 arquivos GRF (ordem do DATA.INI). O slot 0 tem prioridade MÁXIMA.",
-      "add": "Adicionar Slot GRF",
+      "add": "Adicionar GRF ({count}/{max})",
       "max_reached": "Limite máximo de slots atingido",
       "priority_max": "Máx",
       "priority_min": "Mín",
+      "legend_max": "Prioridade 0 (máxima)",
+      "legend_min": "Prioridade 9 (mínima)",
+      "legend_accepted": "Aceita: arquivo .grf ou pasta data\\",
+      "placeholder": "GRF {priority}: caminho para o arquivo .grf ou pasta...",
+      "empty": "Nenhuma GRF configurada. Clique em \"Adicionar GRF\" para começar.",
+      "limit_reached": "Limite máximo de {max} GRFs atingido (igual ao cliente oficial do RO)",
+      "override_label": "Override Path (GRF_OVERRIDE_PATH)",
+      "override_sublabel": "Pasta onde o editor salva sprites e ícones customizados. Necessário ao usar .grf binários.",
+      "override_placeholder": "Ex: C:\\kRO\\data\\",
       "validation": {
         "ok": "OK",
         "empty": "Vazio",
@@ -63,8 +79,15 @@
       "client_encoding": "Codificação do Cliente",
       "client_encoding_sublabel": "Codificação utilizada para ler os arquivos LUB do cliente (kRO CP949 ou CP1252).",
       "cors_label": "Origens CORS Permitidas",
-      "cors_sublabel": "Origens CORS permitidas no servidor de API (separadas por vírgula)."
-    }
+      "cors_sublabel": "Origens CORS permitidas no servidor de API (separadas por vírgula).",
+      "encoding_title": "Configuração de Codificação",
+      "encoding_subtitle": "Define o encoding de texto para leitura dos arquivos do servidor e do cliente.",
+      "server_encoding_desc": "Usado para ler mob_skill_db.txt e outros arquivos de texto.",
+      "client_encoding_desc": "Usado para ler itemInfo.lua e nomes de arquivos dentro da GRF."
+    },
+    "browse": "Selecionar",
+    "validate_btn": "Validar Caminhos",
+    "reload_success_message": "✓ Servidor recarregado — {count} GRF(s) ativa(s)"
   },
   "item_detail": {
     "unnamed": "Item Sem Nome",

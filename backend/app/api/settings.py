@@ -296,3 +296,46 @@ async def validate_settings():
         _check("GRF_PATH (legacy)", old_grf)
 
     return results
+
+
+@router.post("/browse")
+def browse_path(payload: dict):
+    """
+    Open a native directory/file chooser dialog on the host OS.
+    Runs synchronously on a thread pool so it does not block the async event loop.
+    """
+    import tkinter as tk
+    from tkinter import filedialog
+    
+    # Hide root window
+    root = tk.Tk()
+    root.withdraw()
+    root.wm_attributes("-topmost", True)
+    
+    dialog_type = payload.get("type", "dir")
+    initial_dir = payload.get("initial", "")
+    if initial_dir and not os.path.exists(initial_dir):
+        initial_dir = ""
+        
+    selected_path = ""
+    if dialog_type == "dir":
+        selected_path = filedialog.askdirectory(
+            initialdir=initial_dir,
+            title="Select Folder / Selecionar Pasta"
+        )
+    elif dialog_type == "file":
+        ext = payload.get("ext", "")
+        filetypes = [("All Files", "*.*")]
+        if ext == "lua":
+            filetypes = [("Lua Files", "*.lua;*.lub"), ("All Files", "*.*")]
+        elif ext == "grf":
+            filetypes = [("GRF Files", "*.grf"), ("All Files", "*.*")]
+        selected_path = filedialog.askopenfilename(
+            initialdir=initial_dir,
+            filetypes=filetypes,
+            title="Select File / Selecionar Arquivo"
+        )
+        
+    root.destroy()
+    return {"path": selected_path.replace("\\", "/")}
+
