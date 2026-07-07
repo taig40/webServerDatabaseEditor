@@ -747,10 +747,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
               <div className="flex flex-col gap-1">
                 {/* Header */}
                 <div className="grid grid-cols-[70px_1fr_70px_80px_1fr] gap-2 text-[10px] text-gray-500 uppercase tracking-widest px-2 mb-1">
-                  <span>Skill ID</span>
-                  <span>State</span>
-                  <span className="text-center">Lv</span>
-                  <span className="text-center">Taxa‰</span>
+                  <span>{t('monster_detail.skills.skill_id')}</span>
+                  <span>{t('monster_detail.skills.state')}</span>
+                  <span className="text-center">{t('monster_detail.skills.level')}</span>
+                  <span className="text-center">{t('monster_detail.skills.rate')}</span>
                   <span>{t('monster_detail.skills.condition')}</span>
                 </div>
                 {skills.map((skill: any, idx: number) => (

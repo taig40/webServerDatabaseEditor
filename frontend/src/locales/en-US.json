@@ -236,6 +236,10 @@
       "loading": "Loading skills...",
       "no_skills": "No skills registered for this monster.",
       "condition": "Condition",
+      "skill_id": "Skill ID",
+      "state": "State",
+      "level": "Lv",
+      "rate": "Rate‰",
       "footer_tip": "To edit skills, use the \"Mob Skills\" editor. Rates are in parts per thousand (‰)."
     }
   },
