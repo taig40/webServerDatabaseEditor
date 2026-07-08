@@ -681,14 +681,21 @@ const SettingsPage: React.FC = () => {
         {/* ── Advanced ── */}
         <div className="xl:col-span-2">
           <SectionCard icon={Globe} title={t('settings.advanced.title')} iconClass="text-gray-400">
-            <PathField
-              label={t('settings.advanced.cors_label')}
-              sublabel={t('settings.advanced.cors_sublabel')}
-              value={corsOrigins}
-              onChange={setCorsOrigins}
-              placeholder="http://localhost:5173, http://127.0.0.1:5173"
-              type="dir"
-            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">
+                {t('settings.advanced.cors_label')}
+              </label>
+              <p className="text-[11px] text-gray-600 -mt-1">
+                {t('settings.advanced.cors_sublabel')}
+              </p>
+              <input
+                type="text"
+                value={corsOrigins}
+                onChange={e => setCorsOrigins(e.target.value)}
+                placeholder="http://localhost:5173, http://127.0.0.1:5173"
+                className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 font-mono placeholder-gray-700 focus:outline-none focus:border-violet-500/60 transition-colors"
+              />
+            </div>
           </SectionCard>
         </div>
 

@@ -67,8 +67,8 @@
       }
     },
     "language": {
-      "title": "Idioma / Language",
-      "subtitle": "Selecione o idioma da interface visual / Select visual interface language.",
+      "title": "Idioma",
+      "subtitle": "Selecione o idioma da interface visual.",
       "pt": "Português (PT-BR)",
       "en": "English (EN-US)"
     },
@@ -549,6 +549,12 @@
     "status": {
       "loading": "Carregando banco de missões...",
       "error_fetching": "Erro ao carregar quests."
+    },
+    "badges": {
+      "ok": "Sincronizado",
+      "divergent": "Divergente",
+      "server_only": "Apenas Servidor",
+      "client_only": "Apenas Cliente"
     },
     "save_success": "Missão salva com sucesso em db/import/quest_db.yml!",
     "save_error": "Erro ao salvar quest.",

@@ -254,13 +254,13 @@ export const QuestEditor: React.FC = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'ok':
-        return <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider flex items-center gap-1"><CheckCircle2 size={10} /> Sincronizado</span>;
+        return <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider flex items-center gap-1"><CheckCircle2 size={10} /> {t('quest_editor.badges.ok')}</span>;
       case 'divergent':
-        return <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20 font-bold uppercase tracking-wider flex items-center gap-1"><AlertTriangle size={10} /> Divergente</span>;
+        return <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20 font-bold uppercase tracking-wider flex items-center gap-1"><AlertTriangle size={10} /> {t('quest_editor.badges.divergent')}</span>;
       case 'server_only':
-        return <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-bold uppercase tracking-wider flex items-center gap-1"><Database size={10} /> Apenas Servidor</span>;
+        return <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-bold uppercase tracking-wider flex items-center gap-1"><Database size={10} /> {t('quest_editor.badges.server_only')}</span>;
       case 'client_only':
-        return <span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20 font-bold uppercase tracking-wider flex items-center gap-1"><Scroll size={10} /> Apenas Cliente</span>;
+        return <span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20 font-bold uppercase tracking-wider flex items-center gap-1"><Scroll size={10} /> {t('quest_editor.badges.client_only')}</span>;
       default:
         return null;
     }
