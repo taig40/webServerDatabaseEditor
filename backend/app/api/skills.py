@@ -8,8 +8,10 @@ from app.services.skill_parser import skill_db
 router = APIRouter()
 
 
+from app.models.skill import SkillModel
+
 class SkillUpdate(BaseModel):
-    data: dict[str, Any]
+    data: SkillModel
 
 
 @router.get("/status")
@@ -49,7 +51,10 @@ async def get_skill(skill_id: int):
 
 @router.put("/{skill_id}")
 async def update_skill(skill_id: int, body: SkillUpdate):
-    result = skill_db.update_skill(skill_id, body.data)
+    updated_dict = body.data.model_dump(exclude_unset=True)
+    if "Id" in updated_dict:
+        del updated_dict["Id"]
+    result = skill_db.update_skill(skill_id, updated_dict)
     if result is None:
         raise HTTPException(status_code=404, detail="Skill não encontrada.")
     return result
