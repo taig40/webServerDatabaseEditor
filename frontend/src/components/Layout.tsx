@@ -28,7 +28,6 @@ export type ModuleId =
   | 'items'
   | 'mobs'
   | 'client_items'
-  | 'client_quests'
   | 'skills'
   | 'server_quests'
   | 'item_combos'
@@ -62,9 +61,8 @@ const MODULES: Module[] = [
   { id: 'size_fix',            label: 'Penalidades de Tamanho', sublabel: 'size_fix.yml',        icon: Scale,     group: 'server', available: true  },
   // ── Client DB ──
   { id: 'client_items',        label: 'Itens (Cliente)',      sublabel: 'iteminfo.lua',         icon: BookOpen,     group: 'client', available: true  },
-  { id: 'client_quests',       label: 'Quests (Cliente)',     sublabel: 'questid2display.lua',  icon: Scroll,       group: 'client', available: false },
   // ── Misc ──
-  { id: 'constants',           label: 'Constantes',          sublabel: 'const.txt',            icon: FlaskConical, group: 'misc',   available: false },
+  { id: 'constants',           label: 'Constantes',          sublabel: 'const.yml',            icon: FlaskConical, group: 'misc',   available: true },
 ];
 
 const GROUP_LABELS: Record<string, string> = {

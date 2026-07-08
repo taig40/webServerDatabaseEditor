@@ -43,6 +43,19 @@ class _Config:
                     if os.path.exists(p2):
                         self.achievements_lua_path = p2
 
+        self.quests_lua_path: str = os.environ.get("QUESTS_LUA_PATH", "").strip()
+        if not self.quests_lua_path:
+            iteminfo = os.environ.get("ITEMINFO_PATH", "").strip()
+            if iteminfo:
+                system_dir = os.path.dirname(os.path.dirname(iteminfo))
+                p1 = os.path.join(system_dir, "questid2display.lua").replace("\\", "/")
+                if os.path.exists(p1):
+                    self.quests_lua_path = p1
+                else:
+                    p2 = os.path.join(system_dir, "questid2display.lub").replace("\\", "/")
+                    if os.path.exists(p2):
+                        self.quests_lua_path = p2
+
     def set_server_encoding(self, enc: str):
         self.server_encoding = enc
         os.environ["SERVER_ENCODING"] = enc

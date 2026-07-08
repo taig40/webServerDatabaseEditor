@@ -90,6 +90,7 @@ class SettingsPayload(BaseModel):
     server_encoding: Optional[str] = "utf-8"
     client_encoding: Optional[str] = "euc-kr"
     achievements_lua_path: Optional[str] = ""
+    quests_lua_path: Optional[str] = ""
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
@@ -121,6 +122,7 @@ async def get_settings():
         "server_encoding": env.get("SERVER_ENCODING", "utf-8") or "utf-8",
         "client_encoding": env.get("CLIENT_ENCODING", "euc-kr") or "euc-kr",
         "achievements_lua_path": env.get("ACHIEVEMENTS_LUA_PATH", ""),
+        "quests_lua_path": env.get("QUESTS_LUA_PATH", ""),
         "encoding_options": ENCODING_OPTIONS,
     }
 
@@ -154,6 +156,7 @@ async def save_settings(payload: SettingsPayload):
         "SERVER_ENCODING": payload.server_encoding or "utf-8",
         "CLIENT_ENCODING": payload.client_encoding or "euc-kr",
         "ACHIEVEMENTS_LUA_PATH": payload.achievements_lua_path or "",
+        "QUESTS_LUA_PATH": payload.quests_lua_path or "",
     }
 
     # Clear all GRF slots first, then write only the ones provided

@@ -1,6 +1,227 @@
-"""quest_parser.py — Quest DB parser (quest_db.yml)."""
+"""quest_parser.py — Quest DB parser (quest_db.yml + questid2display.lua)."""
 
+import os
+import re
+from typing import Optional, Any
 from app.services.generic_parser import GenericYamlParser
+from app.core.config import cfg
+
+def get_quests_lua_path() -> str:
+    # Check if configured in environment / config object
+    path = cfg.quests_lua_path
+    if path and os.path.exists(path):
+        return path
+        
+    iteminfo = os.environ.get("ITEMINFO_PATH", "").strip()
+    if iteminfo:
+        system_dir = os.path.dirname(os.path.dirname(iteminfo)) # goes up to System/ or SystemEN/
+        p1 = os.path.join(system_dir, "questid2display.lua").replace("\\", "/")
+        if os.path.exists(p1):
+            return p1
+        p2 = os.path.join(system_dir, "questid2display.lub").replace("\\", "/")
+        if os.path.exists(p2):
+            return p2
+            
+        # Try checking in System/ if parent was SystemEN/ or vice versa
+        game_root = os.path.dirname(system_dir)
+        p3 = os.path.join(game_root, "System", "questid2display.lua").replace("\\", "/")
+        if os.path.exists(p3):
+            return p3
+        p4 = os.path.join(game_root, "System", "questid2display.lub").replace("\\", "/")
+        if os.path.exists(p4):
+            return p4
+            
+        # Default fallback (create in the same directory as achievements.lub if possible)
+        return os.path.join(system_dir, "questid2display.lua").replace("\\", "/")
+    return ""
+
+def parse_quest_lua_block(block: str) -> dict:
+    data = {
+        "Title": "",
+        "Summary": "",
+        "Info": "",
+        "QuickInfo": []
+    }
+    
+    # Match Title / Name
+    m_title = re.search(r"Title\s*=\s*\"([^\"]*)\"", block)
+    if not m_title:
+        m_title = re.search(r"Name\s*=\s*\"([^\"]*)\"", block)
+    if m_title: 
+        data["Title"] = m_title.group(1)
+        
+    # Match Summary
+    m_summary = re.search(r"Summary\s*=\s*\"([^\"]*)\"", block)
+    if m_summary: 
+        data["Summary"] = m_summary.group(1)
+        
+    # Match Description as multiline Info string
+    m_desc = re.search(r"Description\s*=\s*\{([\s\S]*?)\}", block)
+    if m_desc:
+        desc_str = m_desc.group(1)
+        lines = re.findall(r'"((?:[^"\\]|\\.)*)"', desc_str)
+        data["Info"] = "\n".join([ln.replace('\\"', '"').replace('\\\\', '\\') for ln in lines])
+    else:
+        # Fallback to simple string Info = "..." or Description = "..."
+        m_info = re.search(r"Info\s*=\s*\"([^\"]*)\"", block)
+        if not m_info:
+            m_info = re.search(r"Description\s*=\s*\"([^\"]*)\"", block)
+        if m_info: 
+            data["Info"] = m_info.group(1)
+            
+    # Match QuickInfo list of strings
+    m_qinfo = re.search(r"QuickInfo\s*=\s*\{([\s\S]*?)\}", block)
+    if m_qinfo:
+        qinfo_str = m_qinfo.group(1)
+        lines = re.findall(r'"((?:[^"\\]|\\.)*)"', qinfo_str)
+        data["QuickInfo"] = [ln.replace('\\"', '"').replace('\\\\', '\\') for ln in lines]
+        
+    return data
+
+def parse_quests_lua(filepath: str) -> dict[int, dict]:
+    if not os.path.exists(filepath):
+        return {}
+
+    preferred = cfg.client_encoding
+    fallbacks = [e for e in ("euc-kr", "utf-8", "cp1252", "latin-1") if e != preferred]
+
+    raw_lines = []
+    for enc in [preferred] + fallbacks:
+        try:
+            with open(filepath, "r", encoding=enc, errors="replace") as f:
+                raw_lines = f.readlines()
+            break
+        except Exception:
+            continue
+    else:
+        return {}
+
+    quest_map = {}
+    re_entry = re.compile(r"^\s*\[(\d+)\]\s*=\s*\{")
+
+    current_id = None
+    current_lines = []
+    brace_count = 0
+
+    for line in raw_lines:
+        if current_id is None:
+            m = re_entry.match(line)
+            if m:
+                current_id = int(m.group(1))
+                current_lines = [line]
+                brace_count = 1
+            continue
+
+        current_lines.append(line)
+        clean = line
+        if "--" in clean:
+            clean = clean[:clean.index("--")]
+
+        for char in clean:
+            if char == '{':
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+
+        if brace_count <= 0:
+            quest_map[current_id] = parse_quest_lua_block("".join(current_lines))
+            current_id = None
+            current_lines = []
+            brace_count = 0
+
+    return quest_map
+
+def serialize_quest_lua_block(quest_id: int, data: dict) -> str:
+    title = data.get("Title", "")
+    summary = data.get("Summary", "")
+    info = data.get("Info", "")
+    quick_info = data.get("QuickInfo", [])
+    
+    # Description (split Info by newline)
+    info_lines = [ln.strip() for ln in info.split("\n")] if info else []
+    if info_lines:
+        desc_items = []
+        for line in info_lines:
+            escaped = line.replace('\\', '\\\\').replace('"', '\\"')
+            desc_items.append(f'\t\t\t"{escaped}"')
+        desc_str = "{\n" + ",\n".join(desc_items) + "\n\t\t}"
+    else:
+        desc_str = "{}"
+        
+    # QuickInfo
+    qinfo_items = []
+    for line in quick_info:
+        escaped = line.replace('\\', '\\\\').replace('"', '\\"')
+        qinfo_items.append(f'\t\t\t"{escaped}"')
+    if qinfo_items:
+        qinfo_str = "{\n" + ",\n".join(qinfo_items) + "\n\t\t}"
+    else:
+        qinfo_str = "{}"
+
+    return f"""\t[{quest_id}] = {{
+		Title = "{title}",
+		Description = {desc_str},
+		Summary = "{summary}",
+		QuickInfo = {qinfo_str}
+	}},"""
+
+def save_quest_lua(filepath: str, quest_id: int, data: dict):
+    preferred = cfg.client_encoding
+    fallbacks = [e for e in ("euc-kr", "utf-8", "cp1252", "latin-1") if e != preferred]
+
+    content = ""
+    chosen_enc = "utf-8"
+    if os.path.exists(filepath):
+        for enc in [preferred] + fallbacks:
+            try:
+                with open(filepath, "r", encoding=enc, errors="replace") as f:
+                    content = f.read()
+                chosen_enc = enc
+                break
+            except Exception:
+                continue
+    else:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        content = "questid2display = {\n}\n"
+        chosen_enc = preferred if preferred != "latin-1" else "euc-kr"
+
+    new_block = serialize_quest_lua_block(quest_id, data)
+    start_str = f"[{quest_id}] = {{"
+    start_idx = content.find(start_str)
+
+    if start_idx != -1:
+        line_start = content.rfind("\n", 0, start_idx) + 1
+        brace_count = 0
+        end_idx = start_idx
+        for idx in range(start_idx, len(content)):
+            if content[idx] == '{':
+                brace_count += 1
+            elif content[idx] == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    scan = idx + 1
+                    while scan < len(content) and content[scan] in (' ', '\t', '\r', '\n'):
+                        scan += 1
+                    if scan < len(content) and content[scan] in (',', ';'):
+                        end_idx = scan + 1
+                    else:
+                        end_idx = idx + 1
+                    break
+        new_content = content[:line_start] + new_block + "\n" + content[end_idx:]
+    else:
+        # Append inside table
+        last_brace = content.rfind("}")
+        if last_brace != -1:
+            pre_last = content[:last_brace].rstrip()
+            if pre_last and not pre_last.endswith(","):
+                new_content = content[:last_brace] + ",\n" + new_block + "\n" + content[last_brace:]
+            else:
+                new_content = content[:last_brace] + "\n" + new_block + "\n" + content[last_brace:]
+        else:
+            new_content = content + "\n" + new_block
+
+    with open(filepath, "w", encoding=chosen_enc, errors="replace") as f:
+        f.write(new_content)
 
 
 class QuestDatabase(GenericYamlParser):
@@ -10,17 +231,126 @@ class QuestDatabase(GenericYamlParser):
     _header_type = 'QUEST_DB'
     _header_version = 3
 
-    def get_quests(self):
-        return self.get_all()
+    def __init__(self):
+        super().__init__()
+        self.client_cache: dict[int, dict] = {}
+        self.client_loaded = False
 
-    def get_quest(self, quest_id: int):
-        return self.get_by_id(quest_id)
+    def load_client_db(self):
+        """Loads client quest LUA data into memory cache."""
+        lua_path = get_quests_lua_path()
+        if lua_path and os.path.exists(lua_path):
+            try:
+                self.client_cache = parse_quests_lua(lua_path)
+                self.client_loaded = True
+                print(f"[*] {len(self.client_cache)} client quests loaded from {lua_path}")
+            except Exception as e:
+                print(f"[!] Error loading client quests: {e}")
+                self.client_cache = {}
+                self.client_loaded = False
+        else:
+            self.client_cache = {}
+            self.client_loaded = False
 
-    def update_quest(self, quest_id: int, updated_data: dict):
-        return self.update_entry(quest_id, updated_data)
+    def get_quest_list(self) -> list[dict]:
+        """Returns unified server and client lists annotated with sync status."""
+        server_list = self.get_all()
+        
+        if not self.client_loaded:
+            self.load_client_db()
 
-    def add_quest(self, quest_data: dict):
-        return self.add_entry(quest_data)
+        merged = {}
+
+        # 1. Fill with server quests
+        for s in server_list:
+            quest_id = s.get("Id")
+            if quest_id is not None:
+                merged[quest_id] = {
+                    "Id": quest_id,
+                    "server": s,
+                    "client": self.client_cache.get(quest_id),
+                    "status": "divergent"
+                }
+
+        # 2. Add client quests not on server
+        for quest_id, c in self.client_cache.items():
+            if quest_id not in merged:
+                merged[quest_id] = {
+                    "Id": quest_id,
+                    "server": None,
+                    "client": c,
+                    "status": "client_only"
+                }
+
+        # 3. Determine status
+        for quest_id, m in merged.items():
+            s = m["server"]
+            c = m["client"]
+            if s and c:
+                s_title = s.get("Title", "")
+                c_title = c.get("Title", "")
+                if s_title == c_title:
+                    m["status"] = "ok"
+                else:
+                    m["status"] = "divergent"
+            elif s:
+                m["status"] = "server_only"
+            else:
+                m["status"] = "client_only"
+
+        # Sort by ID
+        return sorted(merged.values(), key=lambda x: x["Id"])
+
+    def get_quest(self, quest_id: int) -> Optional[dict]:
+        """Returns unified server and client quest entry."""
+        server_entry = self.get_by_id(quest_id)
+        if not self.client_loaded:
+            self.load_client_db()
+        client_entry = self.client_cache.get(quest_id)
+        
+        if not server_entry and not client_entry:
+            return None
+            
+        return {
+            "Id": quest_id,
+            "server": server_entry,
+            "client": client_entry
+        }
+
+    def update_quest(self, quest_id: int, server_data: Optional[dict], client_data: Optional[dict]):
+        """Updates server YAML file and/or client LUA file."""
+        if server_data:
+            self.update_entry(quest_id, server_data)
+
+        if client_data:
+            lua_path = get_quests_lua_path()
+            if lua_path:
+                save_quest_lua(lua_path, quest_id, client_data)
+                self.client_cache[quest_id] = client_data
+
+        return {
+            "Id": quest_id,
+            "server": self.get_by_id(quest_id) if server_data else None,
+            "client": self.client_cache.get(quest_id) if client_data else None
+        }
+
+    def add_quest(self, quest_id: int, server_data: Optional[dict], client_data: Optional[dict]):
+        """Creates a new quest in server database and/or client file."""
+        if server_data:
+            server_data["Id"] = quest_id
+            self.add_entry(server_data)
+
+        if client_data:
+            lua_path = get_quests_lua_path()
+            if lua_path:
+                save_quest_lua(lua_path, quest_id, client_data)
+                self.client_cache[quest_id] = client_data
+
+        return {
+            "Id": quest_id,
+            "server": server_data,
+            "client": client_data
+        }
 
 
 quest_db = QuestDatabase()
