@@ -33,6 +33,7 @@ if db_base_path:
         "QUEST_DB_PATH": "re/quest_db.yml",
         "PET_DB_PATH": "re/pet_db.yml",
         "ACHIEVEMENT_DB_PATH": "re/achievement_db.yml",
+        "CONST_DB_PATH": "const.yml",
     }
     for env_key, filename in db_defaults.items():
         if not os.environ.get(env_key, "").strip():
@@ -41,7 +42,7 @@ if db_base_path:
 # ─── Import Application Modules (Dependent on Env Variables) ────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images
+from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images, constants
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
 from app.services.grf_reader import grf_reader, MAX_GRF_SLOTS
@@ -51,6 +52,7 @@ from app.services.combo_parser import combo_db
 from app.services.quest_parser import quest_db
 from app.services.pet_parser import pet_db
 from app.services.achievement_parser import achievement_db
+from app.services.const_parser import const_db
 
 # ─── Live Config Sync ────────────────────────────────────────────────────────
 from app.core.config import cfg
@@ -195,6 +197,11 @@ async def lifespan(app: FastAPI):
     if achievement_db_path:
         achievement_db.load_db_async(achievement_db_path)
         print(f"[*] Disparado o processo de parse assíncrono de conquistas a partir de '{achievement_db_path}'.")
+
+    const_db_path = os.environ.get("CONST_DB_PATH", "")
+    if const_db_path:
+        const_db.load_db_async(const_db_path)
+        print(f"[*] Disparado o processo de parse assíncrono de constantes a partir de '{const_db_path}'.")
         
     from app.services.randomopt_parser import randomopt_db
     randomopt_db.initialize()
@@ -222,6 +229,7 @@ app.include_router(pets.router,         prefix="/api/pets",         tags=["pets"
 app.include_router(client_items.router, prefix="/api/client_items", tags=["client_items"])
 app.include_router(settings_api.router, prefix="/api/settings",    tags=["settings"])
 app.include_router(achievements.router,  prefix="/api/achievements", tags=["achievements"])
+app.include_router(constants.router,     prefix="/api/constants",    tags=["constants"])
 app.include_router(randomopt.router,    prefix="/api/server/randomopt", tags=["randomopt"])
 app.include_router(sizefix.router,      prefix="/api/server/sizefix",   tags=["sizefix"])
 

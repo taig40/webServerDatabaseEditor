@@ -15,6 +15,7 @@ import AchievementEditor from './pages/AchievementEditor';
 import SettingsPage from './pages/SettingsPage';
 import RandomOptionsEditor from './pages/RandomOptionsEditor';
 import SizeFixMatrix from './pages/SizeFixMatrix';
+import ConstantsEditor from './pages/ConstantsEditor';
 
 type ActiveView = ModuleId | 'settings';
 
@@ -60,6 +61,7 @@ function App() {
       case 'server_achievements': return <AchievementEditor />;
       case 'random_options': return <RandomOptionsEditor />;
       case 'size_fix':       return <SizeFixMatrix />;
+      case 'constants':      return <ConstantsEditor />;
       case 'settings':       return <SettingsPage />;
       default:               return (
         <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-600">
