@@ -104,7 +104,7 @@ class ItemInfoParser:
             self.loading = False
 
     def _parse(self, filepath: str):
-        """Line-by-line parser for iteminfo.lua. Fast and memory-efficient."""
+        """Regex block parser for iteminfo.lua. Robust and fully compliant with identified/unidentified requirements."""
         # Strictly validate client encoding first (record error if any, but do not block loading)
         from app.core.utils import read_file_safely
         try:
@@ -122,113 +122,84 @@ class ItemInfoParser:
                 }
 
         # ALWAYS read as latin-1 (byte-transparent).
-        # itemInfo.lua contains EUC-KR encoded Korean text. Latin-1 preserves
-        # every byte as-is (0x00-0xFF → U+0000-U+00FF), which means resource
-        # names stored here will match the GRF filename keys exactly (the GRF
-        # reader also decodes with latin-1).
-        # Display-oriented fields (DisplayName, Description) will look like
-        # mojibake in this internal store, but that's fine — the frontend
-        # re-reads them separately with proper EUC-KR decoding for display.
         with open(filepath, "r", encoding="latin-1") as f:
-            raw_lines = f.readlines()
+            content = f.read()
 
-        re_entry    = re.compile(r"^\s*\[(\d+)\]\s*=\s*\{")
-        re_str_field = re.compile(r"^\s*(\w+)\s*=\s*\"(.*)\"\s*,?\s*$")
-        re_int_field = re.compile(r"^\s*(\w+)\s*=\s*(-?\d+)\s*,?\s*$")
-        re_bool_field= re.compile(r"^\s*(\w+)\s*=\s*(true|false)\s*,?\s*$")
-        re_desc_open = re.compile(r"^\s*(\w+)\s*=\s*\{")
-        re_desc_line = re.compile(r'^\s*"(.*?)"\s*,?\s*$')
-        re_desc_close= re.compile(r"^\s*\},?\s*$")
+        # Step 1: Extract block boundaries using brace counting
+        blocks = []
+        for match in re.finditer(r'^\s*\[(\d+)\]\s*=\s*\{', content, re.MULTILINE):
+            item_id = int(match.group(1))
+            start_idx = match.end()
+            
+            brace_count = 1
+            idx = start_idx
+            n = len(content)
+            while idx < n and brace_count > 0:
+                char = content[idx]
+                if char == '{':
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                idx += 1
+                
+            if brace_count == 0:
+                block_content = content[start_idx:idx-1]
+                blocks.append((item_id, block_content))
 
-        current_id: Optional[int] = None
-        current_field: dict = {}
-        in_desc: Optional[str] = None   # field name while inside { ... }
-        current_desc: list[str] = []
+        new_map = {}
 
-        new_map: dict[int, dict] = {}
+        # Compile explicit regexes with word boundary anchors as requested
+        re_unidentified_display = re.compile(r'\bunidentifiedDisplayName\s*=\s*"(.*?)"')
+        re_unidentified_resource = re.compile(r'\bunidentifiedResourceName\s*=\s*"(.*?)"')
+        re_identified_display = re.compile(r'\bidentifiedDisplayName\s*=\s*"(.*?)"')
+        re_identified_resource = re.compile(r'\bidentifiedResourceName\s*=\s*"(.*?)"')
+        
+        re_slot = re.compile(r'\bslotCount\s*=\s*(-?\d+)')
+        re_class = re.compile(r'\bClassNum\s*=\s*(-?\d+)')
+        re_costume = re.compile(r'\bcostume\s*=\s*(true|false)')
+        
+        # DOTALL and [\s\S]*? pattern for multiline descriptions
+        re_unidentified_desc = re.compile(r'\bunidentifiedDescriptionName\s*=\s*\{([\s\S]*?)\}')
+        re_identified_desc = re.compile(r'\bidentifiedDescriptionName\s*=\s*\{([\s\S]*?)\}')
 
-        FIELD_NAMES = {
-            "identifiedDisplayName",   "identifiedResourceName",   "identifiedDescriptionName",
-            "unidentifiedDisplayName",  "unidentifiedResourceName",  "unidentifiedDescriptionName",
-            "slotCount", "ClassNum", "costume",
-        }
-
-        def flush():
-            nonlocal current_id, current_field, in_desc, current_desc
-            if current_id is not None:
-                new_map[current_id] = current_field
-            current_id    = None
-            current_field = {}
-            in_desc       = None
-            current_desc  = []
-
-        for line in raw_lines:
-            stripped = line.strip()
-
-            # ── New entry ─────────────────────────────────────────────────────
-            m = re_entry.match(line)
+        for item_id, block_content in blocks:
+            fields = {}
+            
+            m = re_unidentified_display.search(block_content)
+            if m: fields['unidentifiedDisplayName'] = m.group(1)
+            
+            m = re_unidentified_resource.search(block_content)
+            if m: fields['unidentifiedResourceName'] = m.group(1)
+            
+            m = re_identified_display.search(block_content)
+            if m: fields['identifiedDisplayName'] = m.group(1)
+            
+            m = re_identified_resource.search(block_content)
+            if m: fields['identifiedResourceName'] = m.group(1)
+            
+            m = re_slot.search(block_content)
+            if m: fields['slotCount'] = int(m.group(1))
+            
+            m = re_class.search(block_content)
+            if m: fields['ClassNum'] = int(m.group(1))
+            
+            m = re_costume.search(block_content)
+            if m: fields['costume'] = (m.group(1) == "true")
+            
+            # Array descriptions
+            m = re_unidentified_desc.search(block_content)
             if m:
-                flush()
-                current_id    = int(m.group(1))
-                current_field = {}
-                continue
-
-            if current_id is None:
-                continue
-
-            # ── Inside a description array ─────────────────────────────────
-            if in_desc is not None:
-                mc = re_desc_close.match(line)
-                if mc:
-                    # Normalise the key to camelCase with uppercase first letter
-                    current_field[in_desc] = current_desc
-                    in_desc      = None
-                    current_desc = []
-                    continue
-                md = re_desc_line.match(line)
-                if md:
-                    current_desc.append(md.group(1))
-                continue
-
-            # ── End of entry ───────────────────────────────────────────────
-            if stripped in ("};", "},", "}"):
-                flush()
-                continue
-
-            # ── Description array opening ─────────────────────────────────
-            mo = re_desc_open.match(line)
-            if mo:
-                fname = mo.group(1)
-                if fname in FIELD_NAMES:
-                    in_desc      = fname
-                    current_desc = []
-                continue
-
-            # ── String fields ─────────────────────────────────────────────
-            ms = re_str_field.match(line)
-            if ms:
-                fname, fval = ms.group(1), ms.group(2)
-                if fname in FIELD_NAMES:
-                    current_field[fname] = fval
-                continue
-
-            # ── Integer fields ────────────────────────────────────────────
-            mi = re_int_field.match(line)
-            if mi:
-                fname, fval = mi.group(1), mi.group(2)
-                if fname in FIELD_NAMES:
-                    current_field[fname] = int(fval)
-                continue
-
-            # ── Boolean fields ─────────────────────────────────────────────
-            mb = re_bool_field.match(line)
-            if mb:
-                fname, fval = mb.group(1), mb.group(2)
-                if fname in FIELD_NAMES:
-                    current_field[fname] = (fval == "true")
-                continue
-
-        flush()  # handle file ending without a closing brace
+                desc_content = m.group(1)
+                lines = re.findall(r'"((?:[^"\\]|\\.)*)"', desc_content)
+                fields['unidentifiedDescriptionName'] = [ln.replace('\\"', '"').replace('\\\\', '\\') for ln in lines]
+                
+            m = re_identified_desc.search(block_content)
+            if m:
+                desc_content = m.group(1)
+                lines = re.findall(r'"((?:[^"\\]|\\.)*)"', desc_content)
+                fields['identifiedDescriptionName'] = [ln.replace('\\"', '"').replace('\\\\', '\\') for ln in lines]
+                
+            new_map[item_id] = fields
 
         # Normalise all keys to canonical camelCase with uppercase first letter
         normalised: dict[int, dict] = {}
@@ -258,13 +229,16 @@ class ItemInfoParser:
     # ── Public read helpers ────────────────────────────────────────────────────
 
     def get_resource_name(self, item_id: int) -> Optional[str]:
-        """Backward-compat: returns identifiedResourceName or unIdentifiedResourceName for the GRF icon resolver."""
+        """Returns identifiedResourceName, falling back to unIdentifiedResourceName only if the former is null/empty."""
         if not self.loaded:
             return None
         entry = self.item_map.get(item_id)
         if not entry:
             return None
-        return entry.get("identifiedResourceName") or entry.get("unIdentifiedResourceName")
+        res_name = entry.get("identifiedResourceName")
+        if not res_name or str(res_name).strip() == "":
+            res_name = entry.get("unIdentifiedResourceName")
+        return res_name
     def get_client_item(self, item_id: int) -> Optional[dict]:
         """Returns the full field dict for item_id, or None if not found."""
         if not self.loaded:
