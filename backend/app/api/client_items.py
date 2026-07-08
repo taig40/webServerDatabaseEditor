@@ -19,6 +19,113 @@ def _require_loaded():
         )
 
 
+# ─── GET /api/client_items/audit-assets ───────────────────────────────────────
+
+@router.get("/audit-assets")
+async def audit_assets():
+    """
+    Scans itemInfo.lua and checks which resources (icon, collection, spr, act)
+    are missing from the override folder or GRF files.
+    """
+    _require_loaded()
+    import os
+
+    # 1. Build a unified fast files set for O(1) checks
+    fast_files_set = set()
+
+    # Index binary GRFs
+    for grf in grf_reader._grfs:
+        if not grf.is_folder:
+            fast_files_set.update(grf.files.keys())
+
+    # Helper to index directory paths (like override_path or folder GRFs)
+    def index_dir(dir_path: str):
+        if not dir_path or not os.path.isdir(dir_path):
+            return
+        try:
+            norm_dir = dir_path.rstrip('/\\').replace('\\', '/')
+            is_data_dir = norm_dir.endswith('/data') or norm_dir == 'data'
+            for root, dirs, files in os.walk(dir_path):
+                for file in files:
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, dir_path).replace("\\", "/").lower()
+                    if is_data_dir:
+                        rel_path = f"data/{rel_path}"
+                    
+                    fast_files_set.add(rel_path)
+                    try:
+                        # Convert to latin-1 via cp949 to match GRF's latin-1 keys
+                        latin1_rel = rel_path.encode('cp949', errors='replace').decode('latin-1').lower()
+                        fast_files_set.add(latin1_rel)
+                    except Exception:
+                        pass
+        except Exception as e:
+            print(f"[!] Error indexing directory {dir_path} for audit: {e}")
+
+    # Index override path
+    index_dir(grf_reader.override_path)
+
+    # Index folder-mode GRFs
+    for grf in grf_reader._grfs:
+        if grf.is_folder:
+            index_dir(grf.path)
+
+    def check_exists(path: str) -> bool:
+        return path.lower() in fast_files_set
+
+    results = []
+    
+    # Iterate all items in iteminfo
+    for item_id, entry in iteminfo_db.item_map.items():
+        res_name = entry.get("identifiedResourceName")
+        if not res_name or str(res_name).strip() == "":
+            res_name = entry.get("unIdentifiedResourceName")
+        if not res_name:
+            continue
+            
+        # Check files
+        icon_exists = (
+            check_exists(f"data/texture/{_KOREAN_UI_FOLDER}/item/{res_name}.bmp") or
+            check_exists(f"data/texture/userinterface/item/{res_name}.bmp")
+        )
+        collection_exists = (
+            check_exists(f"data/texture/{_KOREAN_UI_FOLDER}/collection/{res_name}.bmp") or
+            check_exists(f"data/texture/userinterface/collection/{res_name}.bmp") or
+            check_exists(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{res_name}.bmp") or
+            check_exists(f"data/sprite/item/{res_name}.bmp")
+        )
+        spr_exists = (
+            check_exists(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{res_name}.spr") or
+            check_exists(f"data/sprite/item/{res_name}.spr")
+        )
+        act_exists = (
+            check_exists(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{res_name}.act") or
+            check_exists(f"data/sprite/item/{res_name}.act")
+        )
+        
+        if not (icon_exists and collection_exists and spr_exists and act_exists):
+            missing = []
+            if not icon_exists:
+                missing.append("icon")
+            if not collection_exists:
+                missing.append("collection")
+            if not spr_exists:
+                missing.append("spr")
+            if not act_exists:
+                missing.append("act")
+                
+            results.append({
+                "Id": item_id,
+                "Name": entry.get("identifiedDisplayName") or entry.get("unIdentifiedDisplayName") or "—",
+                "ResourceName": res_name,
+                "Missing": missing
+            })
+            
+    # Sort results by Item ID
+    results.sort(key=lambda x: x["Id"])
+    return results
+
+
 # ─── GET /api/client_items/{item_id} ──────────────────────────────────────────
 
 @router.get("/{item_id}")
@@ -229,87 +336,4 @@ async def upload_item_drop_act(item_id: int, file: UploadFile = File(...)):
         "saved_path": saved_path,
     }
 
-
-@router.get("/audit-assets")
-async def audit_assets():
-    """
-    Scans itemInfo.lua and checks which resources (icon, collection, spr, act)
-    are missing from the override folder or GRF files.
-    """
-    _require_loaded()
-    import os
-
-    # 1. Build cache for GRF lookups and physical directory walk to do O(1) checks
-    override_set = set()
-    override_path = grf_reader.override_path
-    if override_path and os.path.isdir(override_path):
-        try:
-            for root, dirs, files in os.walk(override_path):
-                for file in files:
-                    full_path = os.path.join(root, file)
-                    rel_path = os.path.relpath(full_path, override_path).replace("\\", "/").lower()
-                    override_set.add(rel_path)
-        except Exception as e:
-            print(f"[!] Error indexing override folder for audit: {e}")
-
-    def check_exists(path: str) -> bool:
-        path_lower = path.lower()
-        if path_lower in override_set:
-            return True
-        for grf in grf_reader._grfs:
-            if path_lower in grf.files:
-                return True
-        return False
-
-    results = []
-    
-    # Iterate all items in iteminfo
-    for item_id, entry in iteminfo_db.item_map.items():
-        res_name = entry.get("identifiedResourceName")
-        if not res_name or str(res_name).strip() == "":
-            res_name = entry.get("unIdentifiedResourceName")
-        if not res_name:
-            continue
-            
-        # Check files
-        icon_exists = (
-            check_exists(f"data/texture/{_KOREAN_UI_FOLDER}/item/{res_name}.bmp") or
-            check_exists(f"data/texture/userinterface/item/{res_name}.bmp")
-        )
-        collection_exists = (
-            check_exists(f"data/texture/{_KOREAN_UI_FOLDER}/collection/{res_name}.bmp") or
-            check_exists(f"data/texture/userinterface/collection/{res_name}.bmp") or
-            check_exists(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{res_name}.bmp") or
-            check_exists(f"data/sprite/item/{res_name}.bmp")
-        )
-        spr_exists = (
-            check_exists(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{res_name}.spr") or
-            check_exists(f"data/sprite/item/{res_name}.spr")
-        )
-        act_exists = (
-            check_exists(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{res_name}.act") or
-            check_exists(f"data/sprite/item/{res_name}.act")
-        )
-        
-        if not (icon_exists and collection_exists and spr_exists and act_exists):
-            missing = []
-            if not icon_exists:
-                missing.append("icon")
-            if not collection_exists:
-                missing.append("collection")
-            if not spr_exists:
-                missing.append("spr")
-            if not act_exists:
-                missing.append("act")
-                
-            results.append({
-                "Id": item_id,
-                "Name": entry.get("identifiedDisplayName") or entry.get("unIdentifiedDisplayName") or "—",
-                "ResourceName": res_name,
-                "Missing": missing
-            })
-            
-    # Sort results by Item ID
-    results.sort(key=lambda x: x["Id"])
-    return results
 
