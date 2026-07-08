@@ -4,6 +4,7 @@ build/
 
 # Node modules
 node_modules/
+.agents/
 
 # Python virtual environment
 venv/
