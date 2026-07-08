@@ -67,8 +67,8 @@
       }
     },
     "language": {
-      "title": "Language / Idioma",
-      "subtitle": "Select visual interface language / Select language of the interface.",
+      "title": "Language",
+      "subtitle": "Select visual interface language.",
       "pt": "Português (PT-BR)",
       "en": "English (EN-US)"
     },
@@ -549,6 +549,12 @@
     "status": {
       "loading": "Loading quest database...",
       "error_fetching": "Error loading quests."
+    },
+    "badges": {
+      "ok": "Synchronized",
+      "divergent": "Divergent",
+      "server_only": "Server Only",
+      "client_only": "Client Only"
     },
     "save_success": "Quest saved successfully to db/import/quest_db.yml!",
     "save_error": "Error saving quest.",
