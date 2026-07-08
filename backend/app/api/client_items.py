@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from app.services.iteminfo_parser import iteminfo_db
 from app.services.grf_reader import grf_reader, _KOREAN_UI_FOLDER, _KOREAN_ITEM_FOLDER
+from app.api.images import get_cached_item_icon
 
 router = APIRouter()
 
@@ -46,7 +47,9 @@ async def get_client_item(item_id: int):
         entry = {"item_id": item_id, "exists_in_lua": True, **entry}
 
     # Verify assets status
-    resource_name = entry.get("identifiedResourceName") or entry.get("unIdentifiedResourceName") or str(item_id)
+    resource_name = entry.get("identifiedResourceName")
+    if not resource_name or str(resource_name).strip() == "":
+        resource_name = entry.get("unIdentifiedResourceName") or str(item_id)
 
     icon_exists = (
         grf_reader.has_file(f"data/texture/{_KOREAN_UI_FOLDER}/item/{resource_name}.bmp") or
@@ -88,6 +91,7 @@ async def update_client_item(item_id: int, fields: dict):
     _require_loaded()
     try:
         updated = iteminfo_db.update_client_item(item_id, fields)
+        get_cached_item_icon.cache_clear()
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -119,6 +123,7 @@ async def upload_item_icon(item_id: int, file: UploadFile = File(...)):
 
     try:
         saved_path = grf_reader.save_item_icon(resource_name, bmp_bytes)
+        get_cached_item_icon.cache_clear()
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -260,7 +265,9 @@ async def audit_assets():
     
     # Iterate all items in iteminfo
     for item_id, entry in iteminfo_db.item_map.items():
-        res_name = entry.get("identifiedResourceName") or entry.get("unIdentifiedResourceName")
+        res_name = entry.get("identifiedResourceName")
+        if not res_name or str(res_name).strip() == "":
+            res_name = entry.get("unIdentifiedResourceName")
         if not res_name:
             continue
             

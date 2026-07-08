@@ -41,7 +41,7 @@ if db_base_path:
 # ─── Import Application Modules (Dependent on Env Variables) ────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix
+from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
 from app.services.grf_reader import grf_reader, MAX_GRF_SLOTS
@@ -212,6 +212,7 @@ app.router.lifespan_context = lifespan
 # Register routers
 app.include_router(items.router,        prefix="/api/items",        tags=["items"])
 app.include_router(grf.router,          prefix="/api/grf",          tags=["grf"])
+app.include_router(images.router,       prefix="/api/images",       tags=["images"])
 app.include_router(mobs.router,         prefix="/api/mobs",         tags=["mobs"])
 app.include_router(skills.router,       prefix="/api/skills",       tags=["skills"])
 app.include_router(mob_skills.router,   prefix="/api/mob_skills",   tags=["mob_skills"])

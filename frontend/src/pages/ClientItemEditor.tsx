@@ -173,16 +173,19 @@ const ClientItemEditor: React.FC = () => {
                         >
                           <div className="flex-shrink-0 w-8 h-8 bg-[#0f0f14] rounded border border-white/10 flex items-center justify-center overflow-hidden p-1">
                             <img
-                              src={`${API_URL}/api/grf/sprite?type=item&id=${item.Id}`}
+                              src={`${API_URL}/api/images/item/${item.Id}`}
                               alt=""
                               className="max-w-full max-h-full"
-                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              onError={(e) => { 
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'></path><path d='M3.3 7l8.7 5 8.7-5'></path><path d='M12 22V12'></path></svg>`;
+                              }}
                               loading="lazy"
                             />
                           </div>
                           <div className="flex flex-col min-w-0 flex-1">
                             <span className={`text-xs truncate font-medium ${isActive ? 'text-white' : 'text-gray-300'}`}>
-                              {item.Name || item.AegisName || t('item_editor.unknown')}
+                              {item.identifiedDisplayName || item.Name || item.AegisName || t('item_editor.unknown')}
                             </span>
                             <span className={`text-[10px] font-mono truncate ${isActive ? 'text-cyan-400' : 'text-gray-600'}`}>
                               {item.Id} · {item.AegisName}

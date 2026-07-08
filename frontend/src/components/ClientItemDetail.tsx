@@ -121,7 +121,15 @@ const ItemCard: React.FC<{ fields: ClientFields; iconSrc: string }> = ({ fields,
     <div className="rounded-xl border border-[#2a2a40] bg-[#13131f] p-4 shadow-xl min-w-[220px] max-w-[320px] font-sans select-none">
       <div className="flex items-start gap-3 mb-2">
         <div className="w-12 h-12 bg-[#0f0f14] border border-white/10 rounded-lg flex items-center justify-center shrink-0 p-1 shadow-inner">
-          <img src={iconSrc} alt="" className="max-w-full max-h-full" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          <img 
+            src={iconSrc} 
+            alt="" 
+            className="max-w-full max-h-full" 
+            onError={(e) => { 
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'></path><path d='M3.3 7l8.7 5 8.7-5'></path><path d='M12 22V12'></path></svg>`;
+            }} 
+          />
         </div>
         <div>
           <p className="text-yellow-300 font-bold text-sm leading-tight">
@@ -291,7 +299,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
     setIsSaving(false);
   };
 
-  const iconSrc = `${API_URL}/api/grf/sprite?type=item&id=${item.Id}&_bust=${iconBust}`;
+  const iconSrc = `${API_URL}/api/images/item/${item.Id}?_bust=${iconBust}`;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-[#0f0f14] text-gray-200">
@@ -305,7 +313,10 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
               src={iconSrc}
               alt="icon"
               className="max-h-full max-w-full drop-shadow-md"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              onError={(e) => { 
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'></path><path d='M3.3 7l8.7 5 8.7-5'></path><path d='M12 22V12'></path></svg>`;
+              }}
             />
             <button
               onClick={() => setIconBust(Date.now())}
@@ -474,7 +485,10 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
                     src={iconSrc}
                     alt="icon"
                     className="max-w-full max-h-full"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    onError={(e) => { 
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'></path><path d='M3.3 7l8.7 5 8.7-5'></path><path d='M12 22V12'></path></svg>`;
+                    }}
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">

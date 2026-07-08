@@ -65,11 +65,25 @@ async def get_items(
     # Paginate
     paginated_items = items[skip : skip + limit]
     
+    # Merge client database LUA properties (identifiedDisplayName, identifiedResourceName)
+    from app.services.iteminfo_parser import iteminfo_db
+    merged_items = []
+    for item in paginated_items:
+        # Create a shallow copy to prevent modifying the cache directly
+        it = dict(item)
+        item_id = it.get("Id")
+        if item_id and iteminfo_db.loaded:
+            entry = iteminfo_db.item_map.get(item_id)
+            if entry:
+                it["identifiedDisplayName"] = entry.get("identifiedDisplayName")
+                it["identifiedResourceName"] = entry.get("identifiedResourceName")
+        merged_items.append(it)
+    
     return {
         "total": total,
         "skip": skip,
         "limit": limit,
-        "items": paginated_items
+        "items": merged_items
     }
 
 from app.models.item import ItemUpdate
