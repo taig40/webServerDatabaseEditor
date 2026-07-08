@@ -7,6 +7,7 @@ import { RepeatableGroup } from '../components/RepeatableGroup';
 import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { translateApiError } from '../utils/errors';
 
 type SourceTab = 'rathena' | 'custom';
 
@@ -197,7 +198,8 @@ export const QuestEditor: React.FC = () => {
       await fetchQuests();
     } catch (err: any) {
       console.error("Erro ao salvar quest:", err);
-      alert(t('quest_editor.save_error') + ': ' + (err?.response?.data?.detail || err.message));
+      const errMsg = translateApiError(err?.response?.data?.detail, t) || err.message;
+      alert(t('quest_editor.save_error') + ': ' + errMsg);
     } finally {
       setIsSaving(false);
     }
@@ -206,12 +208,12 @@ export const QuestEditor: React.FC = () => {
   // Create new quest
   const handleCreateQuest = async () => {
     if (!newId || !newTitle.trim()) {
-      alert("Preencha todos os campos.");
+      alert(t('achievement_editor.create_fill_fields'));
       return;
     }
 
     if (quests.some(q => q.Id === newId)) {
-      alert(`Quest com ID ${newId} já existe.`);
+      alert(t('api_errors.ERROR_DUPLICATE_ID'));
       return;
     }
 
@@ -236,14 +238,15 @@ export const QuestEditor: React.FC = () => {
         client_data: client
       });
 
-      alert("Quest criada com sucesso!");
+      alert(t('quest_editor_extra.alert_save_success'));
       setShowNewModal(false);
       await fetchQuests();
       setSelectedQuestId(newId);
       setSourceTab('custom');
     } catch (err: any) {
       console.error("Erro ao criar quest:", err);
-      alert("Erro ao criar quest: " + (err?.response?.data?.detail || err.message));
+      const errMsg = translateApiError(err?.response?.data?.detail, t) || err.message;
+      alert(t('quest_editor_extra.alert_create_error', { error: errMsg }));
     }
   };
 
@@ -410,7 +413,7 @@ export const QuestEditor: React.FC = () => {
                   activeTab === 'server' ? 'text-indigo-400' : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
-                Lógica do Servidor (YAML)
+                {t('quest_editor_extra.tab_server')} (YAML)
                 {activeTab === 'server' && (
                   <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full" />
                 )}
@@ -421,7 +424,7 @@ export const QuestEditor: React.FC = () => {
                   activeTab === 'client' ? 'text-indigo-400' : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
-                Textos do Cliente (LUA)
+                {t('quest_editor_extra.tab_client')} (LUA)
                 {activeTab === 'client' && (
                   <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full" />
                 )}
@@ -436,12 +439,12 @@ export const QuestEditor: React.FC = () => {
                   <div className="bg-[#12121a] border border-white/5 rounded-2xl p-5 space-y-4">
                     <h3 className="text-white font-bold text-sm flex items-center gap-2 pb-3 border-b border-white/5">
                       <Database size={14} className="text-indigo-400" />
-                      Lógica Geral do Servidor
+                      {t('quest_editor_extra.tab_server')}
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">ID no Servidor</label>
+                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('quest_editor.fields.quest_id')}</label>
                         <input
                           type="number"
                           value={selectedQuest.server?.Id || selectedQuest.Id}
@@ -572,41 +575,41 @@ export const QuestEditor: React.FC = () => {
                   <div className="bg-[#12121a] border border-white/5 rounded-2xl p-5 space-y-4">
                     <h3 className="text-white font-bold text-sm flex items-center gap-2 pb-3 border-b border-white/5">
                       <Scroll size={14} className="text-cyan-400" />
-                      Textos Visuais do Cliente
+                      {t('quest_editor_extra.title_client_texts')}
                     </h3>
 
                     {/* Display Title */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Título da Missão (Title)</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('quest_editor_extra.label_quest_title')}</label>
                       <input
                         type="text"
                         value={selectedQuest.client?.Title || ''}
                         onChange={(e) => updateClientField('Title', e.target.value)}
-                        placeholder="Título exibido no Diário de Missões"
+                        placeholder={t('quest_editor_extra.placeholder_quest_title')}
                         className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-indigo-500/60"
                       />
                     </div>
 
                     {/* Summary */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Progresso / Resumo (Summary)</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('quest_editor_extra.label_quest_summary')}</label>
                       <input
                         type="text"
                         value={selectedQuest.client?.Summary || ''}
                         onChange={(e) => updateClientField('Summary', e.target.value)}
-                        placeholder="Resumo de progresso atual. Ex: Fale com o Oficial"
+                        placeholder={t('quest_editor_extra.placeholder_quest_summary')}
                         className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-indigo-500/60"
                       />
                     </div>
 
                     {/* Info/Description */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Instruções / Detalhes (Info)</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('quest_editor_extra.label_quest_info')}</label>
                       <textarea
                         rows={5}
                         value={selectedQuest.client?.Info || ''}
                         onChange={(e) => updateClientField('Info', e.target.value)}
-                        placeholder="Escreva a descrição detalhada da missão. Pressione Enter para novas linhas."
+                        placeholder={t('quest_editor_extra.placeholder_quest_info')}
                         className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-indigo-500/60 resize-y font-mono leading-relaxed"
                       />
                     </div>
@@ -617,16 +620,16 @@ export const QuestEditor: React.FC = () => {
                     <div className="flex items-center justify-between pb-3 border-b border-white/5">
                       <h3 className="text-white font-bold text-sm flex items-center gap-2">
                         <Scroll size={14} className="text-indigo-400" />
-                        Objetivos Rápidos de Caça (QuickInfo)
+                        {t('quest_editor_extra.quick_info_title')}
                       </h3>
                       <button
                         onClick={() => {
                           const current = selectedQuest.client?.QuickInfo || [];
-                          updateClientField('QuickInfo', [...current, 'Novo objetivo']);
+                          updateClientField('QuickInfo', [...current, t('quest_editor_extra.new_objective')]);
                         }}
                         className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold cursor-pointer"
                       >
-                        + Adicionar Linha
+                        {t('quest_editor_extra.add_line')}
                       </button>
                     </div>
 
@@ -656,7 +659,7 @@ export const QuestEditor: React.FC = () => {
                         </div>
                       ))}
                       {(selectedQuest.client?.QuickInfo || []).length === 0 && (
-                        <p className="text-xs text-gray-500 text-center py-2">Nenhum objetivo rápido configurado.</p>
+                        <p className="text-xs text-gray-500 text-center py-2">{t('constants_editor.no_constants')}</p>
                       )}
                     </div>
                   </div>
@@ -697,15 +700,15 @@ export const QuestEditor: React.FC = () => {
           <div className="bg-[#12121a] border border-white/10 rounded-2xl p-6 w-[400px] shadow-2xl">
             <h3 className="text-white font-bold text-base mb-1 flex items-center gap-2">
               <Plus size={18} className="text-indigo-400" />
-              Criar Nova Missão (Quest)
+              {t('quest_editor.sidebar.add_quest')}
             </h3>
             <p className="text-gray-500 text-xs mb-5">
-              Crie uma missão com ID único no servidor e arquivos do cliente.
+              {t('settings.reload_cache_subtitle')}
             </p>
 
             <div className="space-y-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">ID Único</label>
+                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('quest_editor.fields.quest_id')}</label>
                 <input
                   type="number"
                   value={newId}
@@ -715,7 +718,7 @@ export const QuestEditor: React.FC = () => {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Título da Missão</label>
+                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('quest_editor.fields.title')}</label>
                 <input
                   type="text"
                   value={newTitle}
@@ -730,13 +733,13 @@ export const QuestEditor: React.FC = () => {
                 onClick={handleCreateQuest}
                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow transition-colors cursor-pointer"
               >
-                Criar Missão
+                {t('quest_editor.sidebar.add_quest')}
               </button>
               <button
                 onClick={() => setShowNewModal(false)}
                 className="px-4 py-2.5 text-gray-400 hover:text-white bg-dark-900/60 border border-white/5 rounded-xl text-xs transition-colors cursor-pointer"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { Virtuoso } from 'react-virtuoso';
 import { API_URL } from '../config/env';
 import { Search, Plus, Save, Trash2, Database, Sparkles, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { translateApiError } from '../utils/errors';
 
 interface Constant {
   Name: string;
@@ -19,10 +20,12 @@ export const ConstantsEditor: React.FC = () => {
   const [originalList, setOriginalList] = useState<Constant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [loadingStatus, setLoadingStatus] = useState("Carregando constantes...");
+  const [loadingStatus, setLoadingStatus] = useState("");
   const [searchText, setSearchText] = useState("");
 
+  // Initialize status string after mount with t()
   useEffect(() => {
+    setLoadingStatus(t('constants_editor.loading'));
     fetchConstants();
   }, []);
 
@@ -36,7 +39,7 @@ export const ConstantsEditor: React.FC = () => {
       setIsLoading(false);
     } catch (err) {
       console.error("Erro ao carregar constantes:", err);
-      setLoadingStatus("Erro ao carregar constantes do emulador.");
+      setLoadingStatus(t('constants_editor.loading_error'));
       setIsLoading(false);
     }
   };
@@ -77,12 +80,12 @@ export const ConstantsEditor: React.FC = () => {
     if (!targetItem) return;
 
     if (targetItem._source === 'rathena' && !targetItem._isNew) {
-      alert("Constantes originais do rAthena não podem ser removidas de db/const.yml. Remova apenas constantes customizadas.");
+      alert(t('constants_editor.alert_delete_core'));
       return;
     }
 
     setConstants(prev => prev.filter(c => !(c.Name === targetItem.Name && c._isNew === targetItem._isNew)));
-  }, [filteredConstants]);
+  }, [filteredConstants, t]);
 
   // Add new row at the top
   const handleAddConstant = () => {
@@ -107,15 +110,15 @@ export const ConstantsEditor: React.FC = () => {
     for (const c of constants) {
       const name = c.Name.trim();
       if (!name) {
-        alert("O nome da constante não pode ser vazio.");
+        alert(t('constants_editor.alert_name_empty'));
         return;
       }
       if (!reValidName.test(name)) {
-        alert(`Nome de constante inválido: "${name}". Deve começar com letra maiúscula e conter apenas letras maiúsculas, números ou sublinhados (_) sem espaços.`);
+        alert(t('constants_editor.alert_name_invalid'));
         return;
       }
       if (names.has(name)) {
-        alert(`Erro de duplicidade: A constante "${name}" está definida mais de uma vez.`);
+        alert(t('constants_editor.alert_duplicate', { name }));
         return;
       }
       names.add(name);
@@ -130,11 +133,12 @@ export const ConstantsEditor: React.FC = () => {
       }));
 
       await axios.put(`${API_URL}/api/constants/`, { constants: payload });
-      alert("Constantes salvas com sucesso!");
+      alert(t('constants_editor.save_success'));
       await fetchConstants();
     } catch (err: any) {
       console.error("Erro ao salvar constantes:", err);
-      alert("Erro ao salvar constantes: " + (err?.response?.data?.detail || err.message));
+      const errMsg = translateApiError(err?.response?.data?.detail, t) || err.message;
+      alert(t('constants_editor.save_error', { error: errMsg }));
     } finally {
       setIsSaving(false);
     }
@@ -147,23 +151,23 @@ export const ConstantsEditor: React.FC = () => {
       <div className="flex-shrink-0 flex items-center justify-between px-8 py-5 border-b border-white/5 bg-gradient-to-r from-violet-600/10 to-transparent">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-white tracking-tight">Script Constantes</h2>
+            <h2 className="text-xl font-bold text-white tracking-tight">{t('constants_editor.title')}</h2>
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded">
               const.yml
             </span>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            Gerencie as variáveis globais e constantes do emulador. Edições serão salvas em <span className="font-mono text-gray-400">db/import/const.yml</span>.
+            {t('constants_editor.subtitle')} <span className="font-mono text-gray-400">db/import/const.yml</span>.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           {isLoading && (
-            <span className="text-xs text-gray-600 font-mono animate-pulse">Carregando…</span>
+            <span className="text-xs text-gray-600 font-mono animate-pulse">{t('constants_editor.loading')}</span>
           )}
           {hasUnsavedChanges && !isLoading && (
             <span className="text-amber-400 text-xs font-mono bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20 animate-pulse">
-              ● Alterações não salvas
+              ● {t('constants_editor.unsaved_changes')}
             </span>
           )}
           <button
@@ -176,7 +180,7 @@ export const ConstantsEditor: React.FC = () => {
             }`}
           >
             <Save size={13} />
-            {isSaving ? "Salvando..." : "Salvar Alterações"}
+            {isSaving ? t('constants_editor.saving_btn') : t('constants_editor.save_btn')}
           </button>
         </div>
       </div>
@@ -188,7 +192,7 @@ export const ConstantsEditor: React.FC = () => {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
             <input
               type="text"
-              placeholder="Buscar pelo nome da constante..."
+              placeholder={t('constants_editor.search_placeholder')}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="w-full bg-[#12121a] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-violet-500/50 transition-colors"
@@ -200,7 +204,7 @@ export const ConstantsEditor: React.FC = () => {
             className="flex items-center gap-1.5 px-4.5 py-2 bg-[#1a1a28] hover:bg-[#202035] text-gray-300 hover:text-white border border-white/10 hover:border-violet-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer"
           >
             <Plus size={14} className="text-violet-400" />
-            Nova Constante
+            {t('constants_editor.new_constant_btn')}
           </button>
         </div>
 
@@ -208,11 +212,11 @@ export const ConstantsEditor: React.FC = () => {
         <div className="flex-1 bg-[#12121a] border border-white/5 rounded-2xl flex flex-col overflow-hidden shadow-xl">
           {/* Table Header */}
           <div className="flex items-center gap-4 px-6 py-3.5 bg-[#16161f]/80 border-b border-white/5 text-[10px] font-bold text-gray-400 uppercase tracking-wider select-none">
-            <div className="flex-1">Nome da Constante</div>
-            <div className="w-64">Valor</div>
-            <div className="w-28 text-center">Parâmetro</div>
-            <div className="w-28 text-center">Origem</div>
-            <div className="w-16 text-center">Ações</div>
+            <div className="flex-1">{t('constants_editor.th_name')}</div>
+            <div className="w-64">{t('constants_editor.th_value')}</div>
+            <div className="w-28 text-center">{t('constants_editor.th_parameter')}</div>
+            <div className="w-28 text-center">{t('constants_editor.th_source')}</div>
+            <div className="w-16 text-center">{t('constants_editor.th_actions')}</div>
           </div>
 
           {/* Virtual List Container */}
@@ -225,8 +229,8 @@ export const ConstantsEditor: React.FC = () => {
             ) : filteredConstants.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-600 p-8">
                 <AlertTriangle size={32} className="mb-2 text-gray-700 animate-bounce" />
-                <p className="text-xs font-medium">Nenhuma constante encontrada.</p>
-                {searchText && <p className="text-[11px] text-gray-700 mt-1">Limpe o filtro de busca para ver todas.</p>}
+                <p className="text-xs font-medium">{t('constants_editor.no_constants')}</p>
+                {searchText && <p className="text-[11px] text-gray-700 mt-1">{t('constants_editor.clear_search_hint')}</p>}
               </div>
             ) : (
               <Virtuoso
@@ -280,15 +284,15 @@ export const ConstantsEditor: React.FC = () => {
                       <div className="w-28 flex items-center justify-center">
                         {item._isNew ? (
                           <span className="text-[9px] bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-2 py-0.5 rounded font-mono font-semibold uppercase tracking-wider">
-                            Novo
+                            {t('constants_editor.badge_new')}
                           </span>
                         ) : item._source === 'custom' ? (
                           <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-mono font-semibold uppercase tracking-wider flex items-center gap-1">
-                            <Sparkles size={9} /> Custom
+                            <Sparkles size={9} /> {t('constants_editor.badge_custom')}
                           </span>
                         ) : (
                           <span className="text-[9px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-mono font-semibold uppercase tracking-wider flex items-center gap-0.5">
-                            <Database size={9} /> Core
+                            <Database size={9} /> {t('constants_editor.badge_core')}
                           </span>
                         )}
                       </div>
@@ -298,7 +302,7 @@ export const ConstantsEditor: React.FC = () => {
                         <button
                           onClick={() => handleDeleteRow(index)}
                           disabled={isCore}
-                          title={isCore ? "Constantes originais não podem ser deletadas" : "Deletar constante"}
+                          title={isCore ? t('constants_editor.delete_core_disabled') : t('constants_editor.delete_tooltip')}
                           className={`p-1.5 rounded-lg border transition-all ${
                             isCore
                               ? 'text-gray-700 border-transparent cursor-not-allowed'

@@ -29,7 +29,7 @@ async def get_skills(
     limit: int = Query(50000),
 ):
     if skill_db.is_loading:
-        raise HTTPException(status_code=503, detail="Skill DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     skills = skill_db.get_skills()
     return {
         "total": len(skills),
@@ -42,10 +42,10 @@ async def get_skills(
 @router.get("/{skill_id}")
 async def get_skill(skill_id: int):
     if skill_db.is_loading:
-        raise HTTPException(status_code=503, detail="Skill DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     skill = skill_db.get_skill(skill_id)
     if not skill:
-        raise HTTPException(status_code=404, detail="Skill não encontrada.")
+        raise HTTPException(status_code=404, detail="ERROR_SKILL_NOT_FOUND")
     return skill
 
 
@@ -56,5 +56,5 @@ async def update_skill(skill_id: int, body: SkillUpdate):
         del updated_dict["Id"]
     result = skill_db.update_skill(skill_id, updated_dict)
     if result is None:
-        raise HTTPException(status_code=404, detail="Skill não encontrada.")
+        raise HTTPException(status_code=404, detail="ERROR_SKILL_NOT_FOUND")
     return result

@@ -242,49 +242,63 @@ async def reload_settings():
     item_path = _path("ITEM_DB_PATH", "re/item_db.yml")
     if item_path:
         yaml_db.load_db_async(item_path)
-        reloaded.append(f"item_db → {item_path}")
+        reloaded.append(f"item_db -> {item_path}")
 
     from app.services.mob_parser import mob_db
     mob_path = _path("MOB_DB_PATH", "re/mob_db.yml")
     if mob_path:
         mob_db.load_db_async(mob_path)
-        reloaded.append(f"mob_db → {mob_path}")
+        reloaded.append(f"mob_db -> {mob_path}")
 
     from app.services.skill_parser import skill_db
     skill_path = _path("SKILL_DB_PATH", "re/skill_db.yml")
     if skill_path:
         skill_db.load_db_async(skill_path)
-        reloaded.append(f"skill_db → {skill_path}")
+        reloaded.append(f"skill_db -> {skill_path}")
 
     from app.services.mob_skill_parser import mob_skill_db
     mob_skill_path = _path("MOB_SKILL_DB_PATH", "re/mob_skill_db.txt")
     if mob_skill_path:
         mob_skill_db.load_db_async(mob_skill_path)
-        reloaded.append(f"mob_skill_db → {mob_skill_path}")
+        reloaded.append(f"mob_skill_db -> {mob_skill_path}")
 
     from app.services.combo_parser import combo_db
     combo_path = _path("COMBO_DB_PATH", "re/item_combos.yml")
     if combo_path:
         combo_db.load_db_async(combo_path)
-        reloaded.append(f"combo_db → {combo_path}")
+        reloaded.append(f"combo_db -> {combo_path}")
 
     from app.services.quest_parser import quest_db
     quest_path = _path("QUEST_DB_PATH", "re/quest_db.yml")
     if quest_path:
+        quest_db.client_loaded = False
         quest_db.load_db_async(quest_path)
-        reloaded.append(f"quest_db → {quest_path}")
+        reloaded.append(f"quest_db -> {quest_path}")
 
     from app.services.pet_parser import pet_db
     pet_path = _path("PET_DB_PATH", "re/pet_db.yml")
     if pet_path:
         pet_db.load_db_async(pet_path)
-        reloaded.append(f"pet_db → {pet_path}")
+        reloaded.append(f"pet_db -> {pet_path}")
+
+    from app.services.achievement_parser import achievement_db
+    achievement_path = _path("ACHIEVEMENT_DB_PATH", "re/achievement_db.yml")
+    if achievement_path:
+        achievement_db.client_loaded = False
+        achievement_db.load_db_async(achievement_path)
+        reloaded.append(f"achievement_db -> {achievement_path}")
+
+    from app.services.const_parser import const_db
+    const_path = _path("CONST_DB_PATH", "const.yml")
+    if const_path:
+        const_db.load_db_async(const_path)
+        reloaded.append(f"const_db -> {const_path}")
 
     from app.services.iteminfo_parser import iteminfo_db
     iteminfo_path = env.get("ITEMINFO_PATH", "").strip()
     if iteminfo_path:
         iteminfo_db.load_background(iteminfo_path)
-        reloaded.append(f"iteminfo → {iteminfo_path}")
+        reloaded.append(f"iteminfo -> {iteminfo_path}")
 
     from app.services.randomopt_parser import randomopt_db
     randomopt_db.initialize()

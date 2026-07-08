@@ -48,13 +48,23 @@ class _Config:
             iteminfo = os.environ.get("ITEMINFO_PATH", "").strip()
             if iteminfo:
                 system_dir = os.path.dirname(os.path.dirname(iteminfo))
-                p1 = os.path.join(system_dir, "questid2display.lua").replace("\\", "/")
-                if os.path.exists(p1):
-                    self.quests_lua_path = p1
+                filenames = (
+                    "OngoingQuests.lub", "OngoingQuests.lua",
+                    "OngoingQuestInfoList.lub", "OngoingQuestInfoList.lua",
+                    "questid2display.lua", "questid2display.lub"
+                )
+                for fn in filenames:
+                    p = os.path.join(system_dir, fn).replace("\\", "/")
+                    if os.path.exists(p):
+                        self.quests_lua_path = p
+                        break
                 else:
-                    p2 = os.path.join(system_dir, "questid2display.lub").replace("\\", "/")
-                    if os.path.exists(p2):
-                        self.quests_lua_path = p2
+                    game_root = os.path.dirname(system_dir)
+                    for fn in filenames:
+                        p = os.path.join(game_root, "System", fn).replace("\\", "/")
+                        if os.path.exists(p):
+                            self.quests_lua_path = p
+                            break
 
     def set_server_encoding(self, enc: str):
         self.server_encoding = enc

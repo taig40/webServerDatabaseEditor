@@ -15,25 +15,50 @@ def get_quests_lua_path() -> str:
     iteminfo = os.environ.get("ITEMINFO_PATH", "").strip()
     if iteminfo:
         system_dir = os.path.dirname(os.path.dirname(iteminfo)) # goes up to System/ or SystemEN/
-        p1 = os.path.join(system_dir, "questid2display.lua").replace("\\", "/")
-        if os.path.exists(p1):
-            return p1
-        p2 = os.path.join(system_dir, "questid2display.lub").replace("\\", "/")
-        if os.path.exists(p2):
-            return p2
-            
+        filenames = (
+            "OngoingQuests.lub", "OngoingQuests.lua", 
+            "OngoingQuestInfoList.lub", "OngoingQuestInfoList.lua", 
+            "questid2display.lua", "questid2display.lub"
+        )
+        for fn in filenames:
+            p = os.path.join(system_dir, fn).replace("\\", "/")
+            if os.path.exists(p):
+                return p
+                
         # Try checking in System/ if parent was SystemEN/ or vice versa
         game_root = os.path.dirname(system_dir)
-        p3 = os.path.join(game_root, "System", "questid2display.lua").replace("\\", "/")
-        if os.path.exists(p3):
-            return p3
-        p4 = os.path.join(game_root, "System", "questid2display.lub").replace("\\", "/")
-        if os.path.exists(p4):
-            return p4
-            
-        # Default fallback (create in the same directory as achievements.lub if possible)
-        return os.path.join(system_dir, "questid2display.lua").replace("\\", "/")
+        for fn in filenames:
+            p = os.path.join(game_root, "System", fn).replace("\\", "/")
+            if os.path.exists(p):
+                return p
+                
+        # Default fallback (create OngoingQuests.lub in system_dir)
+        return os.path.join(system_dir, "OngoingQuests.lub").replace("\\", "/")
     return ""
+
+def extract_lua_string(key: str, block: str) -> str:
+    m = re.search(key + r"\s*=\s*\"([^\"]*)\"", block)
+    if m: return m.group(1)
+    m = re.search(key + r"\s*=\s*'([^']*)'", block)
+    if m: return m.group(1)
+    m = re.search(key + r"\s*=\s*\[\[([\s\S]*?)\]\]", block)
+    if m: return m.group(1).strip()
+    return ""
+
+def extract_brace_content(key: str, block: str) -> str:
+    pattern = re.compile(key + r"\s*=\s*\{")
+    m = pattern.search(block)
+    if not m: return ""
+    start_idx = m.end()
+    brace_count = 1
+    content_chars = []
+    for i in range(start_idx, len(block)):
+        char = block[i]
+        if char == '{': brace_count += 1
+        elif char == '}': brace_count -= 1
+        if brace_count == 0: break
+        content_chars.append(char)
+    return "".join(content_chars)
 
 def parse_quest_lua_block(block: str) -> dict:
     data = {
@@ -43,38 +68,34 @@ def parse_quest_lua_block(block: str) -> dict:
         "QuickInfo": []
     }
     
-    # Match Title / Name
-    m_title = re.search(r"Title\s*=\s*\"([^\"]*)\"", block)
-    if not m_title:
-        m_title = re.search(r"Name\s*=\s*\"([^\"]*)\"", block)
-    if m_title: 
-        data["Title"] = m_title.group(1)
-        
-    # Match Summary
-    m_summary = re.search(r"Summary\s*=\s*\"([^\"]*)\"", block)
-    if m_summary: 
-        data["Summary"] = m_summary.group(1)
-        
-    # Match Description as multiline Info string
-    m_desc = re.search(r"Description\s*=\s*\{([\s\S]*?)\}", block)
-    if m_desc:
-        desc_str = m_desc.group(1)
-        lines = re.findall(r'"((?:[^"\\]|\\.)*)"', desc_str)
-        data["Info"] = "\n".join([ln.replace('\\"', '"').replace('\\\\', '\\') for ln in lines])
+    title = extract_lua_string("Title", block) or extract_lua_string("Name", block)
+    data["Title"] = title
+    
+    data["Summary"] = extract_lua_string("Summary", block)
+    
+    # Description
+    desc_block = extract_brace_content("Description", block)
+    if desc_block:
+        lines = []
+        for line in re.findall(r'"((?:[^"\\]|\\.)*)"', desc_block):
+            lines.append(line.replace('\\"', '"').replace('\\\\', '\\'))
+        for line in re.findall(r"'([^']*)'", desc_block):
+            lines.append(line)
+        data["Info"] = "\n".join(lines)
     else:
-        # Fallback to simple string Info = "..." or Description = "..."
-        m_info = re.search(r"Info\s*=\s*\"([^\"]*)\"", block)
-        if not m_info:
-            m_info = re.search(r"Description\s*=\s*\"([^\"]*)\"", block)
-        if m_info: 
-            data["Info"] = m_info.group(1)
-            
-    # Match QuickInfo list of strings
-    m_qinfo = re.search(r"QuickInfo\s*=\s*\{([\s\S]*?)\}", block)
-    if m_qinfo:
-        qinfo_str = m_qinfo.group(1)
-        lines = re.findall(r'"((?:[^"\\]|\\.)*)"', qinfo_str)
-        data["QuickInfo"] = [ln.replace('\\"', '"').replace('\\\\', '\\') for ln in lines]
+        info_str = extract_lua_string("Info", block) or extract_lua_string("Description", block)
+        if info_str:
+            data["Info"] = info_str
+        
+    # QuickInfo
+    qi_block = extract_brace_content("QuickInfo", block)
+    if qi_block:
+        lines = []
+        for line in re.findall(r'"((?:[^"\\]|\\.)*)"', qi_block):
+            lines.append(line.replace('\\"', '"').replace('\\\\', '\\'))
+        for line in re.findall(r"'([^']*)'", qi_block):
+            lines.append(line)
+        data["QuickInfo"] = lines
         
     return data
 
@@ -97,7 +118,7 @@ def parse_quests_lua(filepath: str) -> dict[int, dict]:
         return {}
 
     quest_map = {}
-    re_entry = re.compile(r"^\s*\[(\d+)\]\s*=\s*\{")
+    re_entry = re.compile(r"\[(\d+)\]\s*=\s*\{")
 
     current_id = None
     current_lines = []
@@ -105,11 +126,22 @@ def parse_quests_lua(filepath: str) -> dict[int, dict]:
 
     for line in raw_lines:
         if current_id is None:
-            m = re_entry.match(line)
+            m = re_entry.search(line)
             if m:
                 current_id = int(m.group(1))
-                current_lines = [line]
+                current_lines = [line[m.start():]]
                 brace_count = 1
+                rest = line[m.end():]
+                if "--" in rest:
+                    rest = rest[:rest.index("--")]
+                for char in rest:
+                    if char == '{': brace_count += 1
+                    elif char == '}': brace_count -= 1
+                if brace_count <= 0:
+                    quest_map[current_id] = parse_quest_lua_block("".join(current_lines))
+                    current_id = None
+                    current_lines = []
+                    brace_count = 0
             continue
 
         current_lines.append(line)
@@ -265,10 +297,18 @@ class QuestDatabase(GenericYamlParser):
         for s in server_list:
             quest_id = s.get("Id")
             if quest_id is not None:
+                client_data = self.client_cache.get(quest_id)
+                if client_data is None:
+                    client_data = {
+                        "Title": "",
+                        "Summary": "",
+                        "Info": "",
+                        "QuickInfo": []
+                    }
                 merged[quest_id] = {
                     "Id": quest_id,
                     "server": s,
-                    "client": self.client_cache.get(quest_id),
+                    "client": client_data,
                     "status": "divergent"
                 }
 
@@ -285,8 +325,9 @@ class QuestDatabase(GenericYamlParser):
         # 3. Determine status
         for quest_id, m in merged.items():
             s = m["server"]
+            has_client = quest_id in self.client_cache
             c = m["client"]
-            if s and c:
+            if s and has_client:
                 s_title = s.get("Title", "")
                 c_title = c.get("Title", "")
                 if s_title == c_title:
@@ -310,6 +351,14 @@ class QuestDatabase(GenericYamlParser):
         
         if not server_entry and not client_entry:
             return None
+            
+        if server_entry and not client_entry:
+            client_entry = {
+                "Title": "",
+                "Summary": "",
+                "Info": "",
+                "QuickInfo": []
+            }
             
         return {
             "Id": quest_id,
