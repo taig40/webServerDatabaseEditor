@@ -30,7 +30,7 @@ async def get_constants_status():
 @router.get("/")
 async def get_constants():
     if const_db.is_loading:
-        raise HTTPException(status_code=503, detail="Constantes ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     entries = const_db.get_all()
     return {
         "total": len(entries),
@@ -41,7 +41,7 @@ async def get_constants():
 @router.put("/")
 async def save_constants(body: ConstantsSavePayload):
     if const_db.is_loading:
-        raise HTTPException(status_code=503, detail="Constantes ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     try:
         entries_dict = [entry.model_dump() for entry in body.constants]
         const_db.save_constants(entries_dict)

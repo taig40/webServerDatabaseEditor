@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { ReferencePicker } from '../components/ReferencePicker';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { translateApiError } from '../utils/errors';
 
 interface ClientData {
   UI_Type: number;
@@ -158,7 +159,8 @@ export default function AchievementEditor() {
       alert(t('achievement_editor.save_success'));
       await fetchAchievements();
     } catch (err: any) {
-      alert(t('achievement_editor.save_error', { error: err?.response?.data?.detail || err.message }));
+      const errMsg = translateApiError(err?.response?.data?.detail, t) || err.message;
+      alert(t('achievement_editor.save_error', { error: errMsg }));
     } finally {
       setIsSaving(false);
     }
@@ -278,7 +280,8 @@ export default function AchievementEditor() {
       await fetchAchievements();
       setSelectedId(newId);
     } catch (err: any) {
-      alert(t('achievement_editor.create_error', { error: err?.response?.data?.detail || err.message }));
+      const errMsg = translateApiError(err?.response?.data?.detail, t) || err.message;
+      alert(t('achievement_editor.create_error', { error: errMsg }));
     }
   };
 

@@ -28,7 +28,7 @@ async def get_quests(
     limit: int = Query(50000),
 ):
     if quest_db.is_loading:
-        raise HTTPException(status_code=503, detail="Quest DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     quests = quest_db.get_quest_list()
     return {
         "total": len(quests),
@@ -41,21 +41,21 @@ async def get_quests(
 @router.get("/{quest_id}")
 async def get_quest(quest_id: int):
     if quest_db.is_loading:
-        raise HTTPException(status_code=503, detail="Quest DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     quest = quest_db.get_quest(quest_id)
     if not quest:
-        raise HTTPException(status_code=404, detail="Quest não encontrada.")
+        raise HTTPException(status_code=404, detail="ERROR_QUEST_NOT_FOUND")
     return quest
 
 
 @router.put("/{quest_id}")
 async def update_quest(quest_id: int, body: QuestSavePayload):
     if quest_db.is_loading:
-        raise HTTPException(status_code=503, detail="Quest DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     try:
         result = quest_db.update_quest(quest_id, body.server_data, body.client_data)
         if result is None:
-            raise HTTPException(status_code=404, detail="Quest não encontrada.")
+            raise HTTPException(status_code=404, detail="ERROR_QUEST_NOT_FOUND")
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -64,7 +64,7 @@ async def update_quest(quest_id: int, body: QuestSavePayload):
 @router.post("/{quest_id}")
 async def create_quest_with_id(quest_id: int, body: QuestSavePayload):
     if quest_db.is_loading:
-        raise HTTPException(status_code=503, detail="Quest DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     try:
         result = quest_db.add_quest(quest_id, body.server_data, body.client_data)
         return result
@@ -75,7 +75,7 @@ async def create_quest_with_id(quest_id: int, body: QuestSavePayload):
 @router.post("/")
 async def create_quest_legacy(body: QuestSavePayload):
     if quest_db.is_loading:
-        raise HTTPException(status_code=503, detail="Quest DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     
     # Try to extract ID from server_data or client_data
     quest_id = None
@@ -85,7 +85,7 @@ async def create_quest_legacy(body: QuestSavePayload):
         quest_id = int(body.client_data["Id"])
         
     if not quest_id:
-        raise HTTPException(status_code=400, detail="Quest ID não especificado no payload.")
+        raise HTTPException(status_code=400, detail="ERROR_ID_REQUIRED")
         
     try:
         result = quest_db.add_quest(quest_id, body.server_data, body.client_data)
