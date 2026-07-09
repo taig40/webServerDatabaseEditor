@@ -328,5 +328,161 @@ class DivinePrideMapper:
     def map_item_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
         return map_divinepride_item_to_rathena(dp_json)
 
+    @staticmethod
+    def map_skill_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
+        return map_divinepride_skill_to_rathena(dp_json)
+
+    @staticmethod
+    def map_exp_to_rathena(dp_json: Dict[str, Any], exp_type: str = "normal") -> Dict[str, Any]:
+        return map_divinepride_exp_to_rathena(dp_json, exp_type=exp_type)
+
+
+def map_divinepride_skill_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(dp_json, dict):
+        dp_json = {}
+
+    skill_id = _safe_int(dp_json.get("id"), 0)
+
+    # 1. Iterar sobre array globalization procurando language: 0 para Name e Description
+    globalization = dp_json.get("globalization")
+    name = f"SKILL_{skill_id}"
+    description = ""
+
+    if isinstance(globalization, list) and globalization:
+        selected_entry = None
+        for entry in globalization:
+            if isinstance(entry, dict) and _safe_int(entry.get("language"), -1) == 0:
+                selected_entry = entry
+                break
+        if selected_entry is None:
+            for entry in globalization:
+                if isinstance(entry, dict):
+                    selected_entry = entry
+                    break
+
+        if selected_entry:
+            name = str(selected_entry.get("name") or dp_json.get("name") or f"SKILL_{skill_id}")
+            description = str(selected_entry.get("description") or dp_json.get("description") or "")
+    else:
+        name = str(dp_json.get("name") or f"SKILL_{skill_id}")
+        description = str(dp_json.get("description") or "")
+
+    # 3. maxLevel -> MaxLevel
+    max_level = _safe_int(dp_json.get("maxLevel"), 1)
+
+    result: Dict[str, Any] = {
+        "Id": skill_id,
+        "Name": name,
+        "Description": description,
+        "MaxLevel": max_level,
+    }
+
+    # 4. Outros campos como alcance (range) ou elementos na raiz do JSON
+    if dp_json.get("range") is not None:
+        result["Range"] = _safe_int(dp_json.get("range"), 0)
+
+    if dp_json.get("element") is not None:
+        raw_element = _safe_int(dp_json.get("element"), 0)
+        result["Element"] = ELEMENT_TYPES.get(raw_element, "Neutral")
+
+    if dp_json.get("hit") is not None:
+        result["Hit"] = _safe_int(dp_json.get("hit"), 0)
+
+    if dp_json.get("targetType") is not None:
+        result["TargetType"] = str(dp_json.get("targetType"))
+
+    return result
+
+
+def _get_exp_dict(dp_json: Dict[str, Any], prefix: str, suffix: str) -> Dict[str, Any]:
+    candidates = [f"{prefix}_{suffix}"]
+    if suffix in ("rebirth", "trans", "transcendent"):
+        candidates.extend([f"{prefix}_rebirth", f"{prefix}_transcendent", f"{prefix}_trans"])
+    for cand in candidates:
+        val = dp_json.get(cand)
+        if isinstance(val, dict):
+            return val
+    val = dp_json.get(suffix)
+    if isinstance(val, dict):
+        return val
+    return {}
+
+
+def _dict_to_int_array(exp_dict: Dict[str, Any]) -> List[int]:
+    if not isinstance(exp_dict, dict) or not exp_dict:
+        return []
+    levels = []
+    for k in exp_dict.keys():
+        if str(k).isdigit():
+            levels.append(int(k))
+    if not levels:
+        return []
+    max_level = max(levels)
+    arr = []
+    for lvl in range(1, max_level + 1):
+        arr.append(_safe_int(exp_dict.get(str(lvl), exp_dict.get(lvl)), 0))
+    return arr
+
+
+def map_divinepride_exp_to_rathena(dp_json: Dict[str, Any], exp_type: str = "normal") -> Dict[str, Any]:
+    if not isinstance(dp_json, dict):
+        dp_json = {}
+
+    suffix = str(exp_type or "normal").lower().strip()
+    if suffix.startswith("base_") or suffix.startswith("job_"):
+        suffix = suffix.split("_", 1)[1]
+
+    base_dict = _get_exp_dict(dp_json, "base", suffix)
+    job_dict = _get_exp_dict(dp_json, "job", suffix)
+
+    base_int_array = _dict_to_int_array(base_dict)
+    job_int_array = _dict_to_int_array(job_dict)
+
+    base_curve_objects = [{"Level": idx + 1, "Exp": val} for idx, val in enumerate(base_int_array)]
+    job_curve_objects = [{"Level": idx + 1, "Exp": val} for idx, val in enumerate(job_int_array)]
+
+    return {
+        "type": suffix,
+        "BaseExp": base_int_array,
+        "JobExp": job_int_array,
+        "base_exp": base_curve_objects,
+        "job_exp": job_curve_objects,
+        "MaxBaseLevel": len(base_int_array),
+        "MaxJobLevel": len(job_int_array),
+    }
+
+
+class DivinePrideSkillMapper:
+    """
+    Mapeador responsável pela conversão estrita entre dados JSON de Habilidades da API
+    do DivinePride e a estrutura oficial YAML (skill_db.yml) do rAthena.
+    """
+
+    @staticmethod
+    def map_skill_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
+        return map_divinepride_skill_to_rathena(dp_json)
+
+    @staticmethod
+    def map_divinepride_skill_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
+        return map_divinepride_skill_to_rathena(dp_json)
+
+
+class DivinePrideExpMapper:
+    """
+    Mapeador responsável pela conversão estrita entre dados JSON de Experiência da API
+    do DivinePride e a estrutura de curvas do rAthena/front-end.
+    """
+
+    @staticmethod
+    def map_exp_to_rathena(dp_json: Dict[str, Any], exp_type: str = "normal") -> Dict[str, Any]:
+        return map_divinepride_exp_to_rathena(dp_json, exp_type=exp_type)
+
+    @staticmethod
+    def map_divinepride_exp_to_rathena(dp_json: Dict[str, Any], exp_type: str = "normal") -> Dict[str, Any]:
+        return map_divinepride_exp_to_rathena(dp_json, exp_type=exp_type)
+
+
 map_divinepride_monster_to_rathena = DivinePrideMapper.map_monster_to_rathena
 map_divinepride_item_to_rathena = map_divinepride_item_to_rathena
+map_divinepride_skill_to_rathena = map_divinepride_skill_to_rathena
+map_divinepride_exp_to_rathena = map_divinepride_exp_to_rathena
