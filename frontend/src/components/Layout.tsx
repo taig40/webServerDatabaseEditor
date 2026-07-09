@@ -20,6 +20,9 @@ import {
   ShieldCheck,
   Sparkles,
   Scale,
+  Shield,
+  TrendingUp,
+  Network,
 } from 'lucide-react';
 
 // ─── Module definitions ─────────────────────────────────────────────────────
@@ -36,7 +39,10 @@ export type ModuleId =
   | 'pets'
   | 'constants'
   | 'random_options'
-  | 'size_fix';
+  | 'size_fix'
+  | 'job_database'
+  | 'exp_tables'
+  | 'skill_tree';
 
 interface Module {
   id: ModuleId;
@@ -52,6 +58,9 @@ const MODULES: Module[] = [
   { id: 'items',               label: 'Itens',                sublabel: 'item_db.yml',         icon: Package,      group: 'server', available: true  },
   { id: 'mobs',                label: 'Monstros',             sublabel: 'mob_db.yml',           icon: Skull,        group: 'server', available: true  },
   { id: 'skills',              label: 'Habilidades',          sublabel: 'skill_db.yml',         icon: Zap,          group: 'server', available: true  },
+  { id: 'job_database',        label: 'Classes & Atributos',  sublabel: 'job_stats.yml',       icon: Shield,       group: 'server', available: true  },
+  { id: 'exp_tables',          label: 'Tabelas de Experiência', sublabel: 'job_exp.yml',       icon: TrendingUp,   group: 'server', available: true  },
+  { id: 'skill_tree',          label: 'Árvore de Habilidades', sublabel: 'skill_tree.yml',      icon: Network,      group: 'server', available: true  },
   { id: 'server_quests',       label: 'Quests',               sublabel: 'quest_db.yml',         icon: Scroll,       group: 'server', available: true  },
   { id: 'server_achievements', label: 'Conquistas',           sublabel: 'achievement_db.yml',   icon: Trophy,       group: 'server', available: true  },
   { id: 'item_combos',         label: 'Combos de Itens',      sublabel: 'item_combos.yml',      icon: Layers,       group: 'server', available: true  },

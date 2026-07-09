@@ -42,7 +42,7 @@ if db_base_path:
 # ─── Import Application Modules (Dependent on Env Variables) ────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images, constants
+from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images, constants, progression
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
 from app.services.grf_reader import grf_reader, MAX_GRF_SLOTS
@@ -210,6 +210,17 @@ async def lifespan(app: FastAPI):
     from app.services.sizefix_parser import sizefix_db
     sizefix_db.initialize()
     print("[*] Size Fix database inicializado.")
+
+    from app.services.progression_parser import (
+        job_stats_db, job_basepoints_db, job_exp_db, skill_tree_db, job_aspd_db, job_outfits_db
+    )
+    job_stats_db.load()
+    job_basepoints_db.load()
+    job_exp_db.load()
+    skill_tree_db.load()
+    job_aspd_db.load()
+    job_outfits_db.load()
+    print("[*] Databases de progressão (Job Stats, Basepoints, Job Exp, Skill Tree, ASPD, Outfits) carregados.")
         
     yield
 
@@ -232,6 +243,7 @@ app.include_router(achievements.router,  prefix="/api/achievements", tags=["achi
 app.include_router(constants.router,     prefix="/api/constants",    tags=["constants"])
 app.include_router(randomopt.router,    prefix="/api/server/randomopt", tags=["randomopt"])
 app.include_router(sizefix.router,      prefix="/api/server/sizefix",   tags=["sizefix"])
+app.include_router(progression.router,  prefix="/api/progression",      tags=["progression"])
 
 @app.get("/")
 def read_root():

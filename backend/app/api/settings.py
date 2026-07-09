@@ -333,6 +333,7 @@ async def validate_settings():
     _check("ITEMINFO_PATH", env.get("ITEMINFO_PATH", ""))
     _check("GRF_OVERRIDE_PATH", env.get("GRF_OVERRIDE_PATH", ""))
     _check("ACHIEVEMENTS_LUA_PATH", env.get("ACHIEVEMENTS_LUA_PATH", ""))
+    _check("QUESTS_LUA_PATH", env.get("QUESTS_LUA_PATH", ""))
 
     for i in range(MAX_GRF_SLOTS):
         val = env.get(f"GRF_{i}", "").strip()

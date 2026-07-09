@@ -229,6 +229,7 @@ const SettingsPage: React.FC = () => {
   const [serverEncoding, setServerEncoding] = useState('utf-8');
   const [clientEncoding, setClientEncoding] = useState('euc-kr');
   const [achievementsLuaPath, setAchievementsLuaPath] = useState('');
+  const [questsLuaPath, setQuestsLuaPath] = useState('');
   const [encodingOptions, setEncodingOptions] = useState<{ value: string; label: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -252,6 +253,7 @@ const SettingsPage: React.FC = () => {
         setServerEncoding(d.server_encoding || 'utf-8');
         setClientEncoding(d.client_encoding || 'euc-kr');
         setAchievementsLuaPath(d.achievements_lua_path || '');
+        setQuestsLuaPath(d.quests_lua_path || '');
         setEncodingOptions(d.encoding_options || []);
       })
       .catch(() => { })
@@ -315,6 +317,7 @@ const SettingsPage: React.FC = () => {
         server_encoding: serverEncoding,
         client_encoding: clientEncoding,
         achievements_lua_path: achievementsLuaPath,
+        quests_lua_path: questsLuaPath,
       });
       setGrfList(normalised);
       setSaveStatus('saved');
@@ -476,6 +479,21 @@ const SettingsPage: React.FC = () => {
             {validation['ACHIEVEMENTS_LUA_PATH'] && (
               <div className="flex items-center gap-2 text-[11px]">
                 <StatusBadge status={validation['ACHIEVEMENTS_LUA_PATH']} />
+              </div>
+            )}
+
+            <PathField
+              label={t('settings.client.quests_lua_label')}
+              sublabel={t('settings.client.quests_lua_sublabel')}
+              value={questsLuaPath}
+              onChange={setQuestsLuaPath}
+              placeholder={t('settings.client.quests_lua_placeholder')}
+              type="file"
+              ext="lua"
+            />
+            {validation['QUESTS_LUA_PATH'] && (
+              <div className="flex items-center gap-2 text-[11px]">
+                <StatusBadge status={validation['QUESTS_LUA_PATH']} />
               </div>
             )}
           </div>
