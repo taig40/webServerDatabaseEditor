@@ -19,7 +19,9 @@
     "waitingInit": "Waiting for initialization...",
     "readingFile": "Reading file: {{filename}}...",
     "readingMonstersFile": "Reading monster file: {{filename}}...",
-    "entriesRead": "{{count}} entries read"
+    "entriesRead": "{{count}} entries read",
+    "file": "Loading file: {{file}}",
+    "progress": "{{percent}}% completed"
   },
   "settings": {
     "title": "Application Settings",
@@ -172,7 +174,25 @@
     "lint_npc_error": "Invalid NPC command in item script. Item scripts should only use item ecosystem instructions (e.g. bonus).",
     "title": "Items",
     "new_item": "New Item",
-    "search_placeholder": "Search by ID, Name...",
+    "search_placeholder": "Search items...",
+    "search_btn": "Search",
+    "search_target": {
+      "name": "Item Name / ID",
+      "script": "Script Content"
+    },
+    "search_type": {
+      "all": "All Types",
+      "weapon": "Weapon",
+      "armor": "Armor",
+      "consumable": "Consumable",
+      "healing": "Healing",
+      "usable": "Usable",
+      "card": "Card",
+      "ammo": "Ammo",
+      "etc": "Etc",
+      "petegg": "Pet Egg",
+      "petarmor": "Pet Armor"
+    },
     "results": "Results: {count}",
     "total": "Total: {count}",
     "unknown": "Unknown",
@@ -273,8 +293,31 @@
       "add_mvp_drop": "Add MVP Drop"
     },
     "ai": {
-      "title": "AI Modes (Behavior Flags)",
-      "subtitle": "Click on the buttons to toggle the behavior flags of the monster."
+      "title": "AI & Behavior Settings",
+      "base_title": "Base AI (Aegis Mobtype)",
+      "base_subtitle": "Select the core engine AI behavior template for this monster.",
+      "modes_title": "Additional Behavior Modes (Flags)",
+      "modes_subtitle": "Stack individual behavior flag overrides on top of the base AI.",
+      "subtitle": "Click on the buttons to toggle the behavior flags of the monster.",
+      "types": {
+        "01": "01: Passive",
+        "02": "02: Passive, Looter",
+        "03": "03: Passive, Assist",
+        "04": "04: Passive, Looter, Assist",
+        "05": "05: Aggressive",
+        "06": "06: Aggressive, Looter",
+        "07": "07: Aggressive, Assist",
+        "08": "08: Aggressive, Looter, Assist",
+        "09": "09: Passive, Cast Sensor Idle",
+        "10": "10: Passive, Looter, Cast Sensor Idle",
+        "11": "11: Passive, Assist, Cast Sensor Idle",
+        "12": "12: Passive, Looter, Assist, Cast Sensor Idle",
+        "13": "13: Aggressive, Cast Sensor Idle",
+        "17": "17: Aggressive, Change Target Melee / Chase",
+        "19": "19: Passive, Cast Sensor Chase",
+        "21": "21: Aggressive, Cast Sensor Idle/Chase, Change Target",
+        "25": "25: Passive, Can Move, Can Attack"
+      }
     },
     "skills": {
       "title": "Monster Skills",
@@ -285,7 +328,7 @@
       "skill_name": "Skill Name",
       "state": "State",
       "level": "Level",
-      "rate": "Rate‰",
+      "rate": "Rate (%)",
       "add_skill": "Add Skill",
       "delete_skill": "Delete",
       "modal_title": "Add Skill to Monster",
@@ -524,6 +567,7 @@
       "skill_lv_hint": "Skill level (1-10).",
       "state": "State",
       "state_hint": "State in which the monster must be to use the skill.",
+      "rate": "Rate (%)",
       "target": "Target",
       "target_hint": "Target of the skill.",
       "cancelable": "Cancelable",
@@ -1017,6 +1061,18 @@
     "save_btn": "Save Skill Tree",
     "save_success": "Skill tree saved successfully!",
     "save_error": "Error saving skill tree: {error}"
+  },
+  "global_loading": {
+    "title": "Loading rAthena Databases",
+    "subtitle": "Please wait while YAML files are parsed and cached into memory...",
+    "database": "Reading database: {{db}}",
+    "progress": "{{percent}}% completed",
+    "completed": "Loading completed successfully!",
+    "connecting": "Connecting to server..."
+  },
+  "pagination": {
+    "loading_more": "Loading more items...",
+    "showing": "Showing {{loaded}} of {{total}} records"
   }
 }
 

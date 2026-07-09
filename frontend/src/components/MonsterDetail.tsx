@@ -28,11 +28,18 @@ const RACES = ['Formless', 'Undead', 'Brute', 'Plant', 'Insect', 'Fish', 'Demon'
 const SIZES = ['Small', 'Medium', 'Large'];
 
 const AI_MODES = [
-  'CanMove', 'CastSensor', 'Detector', 'ChangeTargetMelee',
-  'Looter', 'Boss', 'ChangeTarget', 'ChangeTargetChase',
-  'Aggressive', 'Plant', 'ChangeChase', 'TargetWeak',
-  'Assist', 'CanAttack', 'Angry', 'RandomTarget',
-  'NoCast',
+  'CanMove', 'Looter', 'Aggressive', 'Assist',
+  'CastSensorIdle', 'NoRandomWalk', 'NoCast', 'CanAttack',
+  'CastSensorChase', 'ChangeChase', 'Angry', 'ChangeTargetMelee',
+  'ChangeTargetChase', 'TargetWeak', 'RandomTarget', 'IgnoreMelee',
+  'IgnoreMagic', 'IgnoreRanged', 'Mvp', 'IgnoreMisc',
+  'KnockBackImmune', 'TeleportBlock', 'FixedItemDrop', 'Detector',
+  'StatusImmune', 'SkillImmune',
+];
+
+const AI_BASE_TYPES = [
+  '01', '02', '03', '04', '05', '06', '07', '08',
+  '09', '10', '11', '12', '13', '17', '19', '21', '25'
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -139,7 +146,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
   const [newSkillForm, setNewSkillForm] = useState({
     skill_id: 1,
     skill_lv: 1,
-    rate: 1000,
+    rate: 100,
     state: 'idle',
     condition_type: 'always',
     condition_value: 0,
@@ -201,7 +208,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
         dummy_name: local.AegisName || local.Name || String(mob.Id),
         skill_id: Number(newSkillForm.skill_id),
         skill_lv: Number(newSkillForm.skill_lv),
-        rate: Number(newSkillForm.rate),
+        rate: Math.min(10000, Math.max(0, Math.round(Number(newSkillForm.rate) * 100))),
         state: newSkillForm.state,
         condition_type: newSkillForm.condition_type,
         condition_value: Number(newSkillForm.condition_value),
@@ -784,32 +791,55 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
           </div>
         )}
 
-        {/* ── AI MODES ── */}
+        {/* ── AI / BEHAVIOR SETTINGS ── */}
         {activeTab === 'ai' && (
-          <SectionCard icon={Brain} title={t('monster_detail.ai.title')} iconClass="text-fuchsia-400">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {AI_MODES.map(modeKey => {
-                const active = !!(local.Modes?.[modeKey]);
-                return (
-                  <button
-                    key={modeKey}
-                    onClick={() => setModes(modeKey, !active)}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
-                      active
-                        ? 'bg-violet-600/20 border-violet-500/50 text-violet-300 shadow-inner shadow-violet-900/20'
-                        : 'bg-dark-900/60 border-white/5 text-gray-500 hover:border-white/10 hover:text-gray-400'
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${active ? 'bg-violet-400 animate-pulse' : 'bg-gray-700'}`} />
-                    {modeKey}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-[10px] text-gray-600 mt-4 italic">
-              {t('monster_detail.ai.subtitle')}
-            </p>
-          </SectionCard>
+          <div className="flex flex-col gap-4">
+            {/* Base AI Section */}
+            <SectionCard icon={Brain} title={t('monster_detail.ai.base_title')} iconClass="text-fuchsia-400">
+              <p className="text-xs text-gray-400 mb-3">{t('monster_detail.ai.base_subtitle')}</p>
+              <div className="max-w-md">
+                <select
+                  value={local.Ai || '01'}
+                  onChange={e => set('Ai', e.target.value)}
+                  className="w-full bg-dark-900 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 transition-all"
+                >
+                  {AI_BASE_TYPES.map(typeCode => (
+                    <option key={typeCode} value={typeCode}>
+                      {t((`monster_detail.ai.types.${typeCode}`) as any) || `${typeCode}: Engine Default`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </SectionCard>
+
+            {/* Additional Modes Section */}
+            <SectionCard icon={Brain} title={t('monster_detail.ai.modes_title')} iconClass="text-fuchsia-400">
+              <p className="text-xs text-gray-400 mb-4">{t('monster_detail.ai.modes_subtitle')}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {AI_MODES.map(modeKey => {
+                  const active = Boolean(local.Modes?.[modeKey] || local.Modes?.[modeKey.toLowerCase()]);
+                  return (
+                    <button
+                      key={modeKey}
+                      type="button"
+                      onClick={() => setModes(modeKey, !active)}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                        active
+                          ? 'bg-violet-600/20 border-violet-500/50 text-violet-300 shadow-inner shadow-violet-900/20'
+                          : 'bg-dark-900/60 border-white/5 text-gray-500 hover:border-white/10 hover:text-gray-400'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${active ? 'bg-violet-400 animate-pulse' : 'bg-gray-700'}`} />
+                      {modeKey}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-gray-600 mt-4 italic">
+                {t('monster_detail.ai.subtitle')}
+              </p>
+            </SectionCard>
+          </div>
         )}
 
         {/* ── SKILLS ── */}
@@ -882,7 +912,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                           skill.rate >= 1000 ? 'bg-blue-500/20 border border-blue-500/30 text-blue-300' :
                           'bg-dark-800 border border-white/10 text-gray-400'
                         }`}>
-                          {skill.rate}‰
+                          {Number(((skill.rate ?? 0) / 100).toFixed(2))}%
                         </span>
                       </div>
                       <div>
@@ -1000,8 +1030,9 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                     <label className="text-xs text-gray-400">{t('monster_detail.skills.rate')}</label>
                     <input
                       type="number"
-                      min={1}
-                      max={10000}
+                      step="0.01"
+                      min={0}
+                      max={100}
                       value={newSkillForm.rate}
                       onChange={e => setNewSkillForm(f => ({ ...f, rate: Number(e.target.value) }))}
                       className="px-3 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"

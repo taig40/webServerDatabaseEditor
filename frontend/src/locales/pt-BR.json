@@ -19,7 +19,9 @@
     "waitingInit": "Aguardando inicialização...",
     "readingFile": "Lendo arquivo: {{filename}}...",
     "readingMonstersFile": "Lendo arquivo de monstros: {{filename}}...",
-    "entriesRead": "{{count}} registros lidos"
+    "entriesRead": "{{count}} registros lidos",
+    "file": "Carregando arquivo: {{file}}",
+    "progress": "{{percent}}% concluído"
   },
   "settings": {
     "title": "Configurações do Sistema",
@@ -172,7 +174,25 @@
     "lint_npc_error": "Comando de NPC inválido para scripts de item. Utilize apenas instruções do ecossistema de itens (ex: bônus).",
     "title": "Itens",
     "new_item": "Novo Item",
-    "search_placeholder": "Buscar por ID, Nome...",
+    "search_placeholder": "Pesquisar itens...",
+    "search_btn": "Buscar",
+    "search_target": {
+      "name": "Nome / ID do Item",
+      "script": "Conteúdo do Script"
+    },
+    "search_type": {
+      "all": "Todos os Tipos",
+      "weapon": "Arma (Weapon)",
+      "armor": "Armadura (Armor)",
+      "consumable": "Consumível (Consumable)",
+      "healing": "Cura (Healing)",
+      "usable": "Usável (Usable)",
+      "card": "Carta (Card)",
+      "ammo": "Munição (Ammo)",
+      "etc": "Outros (Etc)",
+      "petegg": "Ovo de Pet (PetEgg)",
+      "petarmor": "Armadura de Pet (PetArmor)"
+    },
     "results": "Resultados: {count}",
     "total": "Total: {count}",
     "unknown": "Desconhecido",
@@ -273,8 +293,31 @@
       "add_mvp_drop": "Adicionar Drop MVP"
     },
     "ai": {
-      "title": "Modos de IA (Behavior Flags)",
-      "subtitle": "Clique nos botões para ativar/desativar os flags de comportamento do monstro."
+      "title": "Configurações de IA e Comportamento",
+      "base_title": "IA Base (Aegis Mobtype)",
+      "base_subtitle": "Selecione o modelo base de comportamento da IA na engine para este monstro.",
+      "modes_title": "Modos Adicionais de Comportamento (Flags)",
+      "modes_subtitle": "Ative/desative flags individuais de comportamento sobre a IA base.",
+      "subtitle": "Clique nos botões para ativar/desativar os flags de comportamento do monstro.",
+      "types": {
+        "01": "01: Passivo",
+        "02": "02: Passivo, Looter",
+        "03": "03: Passivo, Assistência",
+        "04": "04: Passivo, Looter, Assistência",
+        "05": "05: Agressivo",
+        "06": "06: Agressivo, Looter",
+        "07": "07: Agressivo, Assistência",
+        "08": "08: Agressivo, Looter, Assistência",
+        "09": "09: Passivo, Cast Sensor Idle",
+        "10": "10: Passivo, Looter, Cast Sensor Idle",
+        "11": "11: Passivo, Assistência, Cast Sensor Idle",
+        "12": "12: Passivo, Looter, Assistência, Cast Sensor Idle",
+        "13": "13: Agressivo, Cast Sensor Idle",
+        "17": "17: Agressivo, Change Target Melee / Chase",
+        "19": "19: Passivo, Cast Sensor Chase",
+        "21": "21: Agressivo, Cast Sensor Idle/Chase, Change Target",
+        "25": "25: Passivo, Can Move, Can Attack"
+      }
     },
     "skills": {
       "title": "Skills do Monstro",
@@ -285,7 +328,7 @@
       "skill_name": "Habilidade",
       "state": "Estado",
       "level": "Nível",
-      "rate": "Taxa‰",
+      "rate": "Taxa (%)",
       "add_skill": "Adicionar Habilidade",
       "delete_skill": "Excluir",
       "modal_title": "Adicionar Habilidade ao Monstro",
@@ -524,6 +567,7 @@
       "skill_lv_hint": "Nível da habilidade (1-10).",
       "state": "State",
       "state_hint": "Estado em que o monstro deve estar para usar a skill.",
+      "rate": "Taxa (%)",
       "target": "Target",
       "target_hint": "Alvo da habilidade.",
       "cancelable": "Cancelable",
@@ -1017,6 +1061,18 @@
     "save_btn": "Salvar Árvore",
     "save_success": "Árvore de habilidades salva com sucesso!",
     "save_error": "Erro ao salvar árvore de habilidades: {error}"
+  },
+  "global_loading": {
+    "title": "Carregando Bancos de Dados do rAthena",
+    "subtitle": "Aguarde enquanto os arquivos YAML são cacheados na memória...",
+    "database": "Lendo banco: {{db}}",
+    "progress": "{{percent}}% concluído",
+    "completed": "Carregamento concluído com sucesso!",
+    "connecting": "Conectando ao servidor..."
+  },
+  "pagination": {
+    "loading_more": "Carregando mais itens...",
+    "showing": "Exibindo {{loaded}} de {{total}} registros"
   }
 }
 

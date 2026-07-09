@@ -1,6 +1,7 @@
 from ruamel.yaml import YAML
 import os
 import threading
+from app.services.load_progress import progress_tracker
 
 class MobDatabase:
     def __init__(self):
@@ -18,6 +19,9 @@ class MobDatabase:
         
         self.rathena_root = ""
         
+        # Cache em memória para buscas instantâneas
+        self.cached_mobs_list = None
+        
         # Async loading state
         self.is_loading = False
         self.loading_status = "Aguardando inicialização..."
@@ -30,6 +34,7 @@ class MobDatabase:
         self.is_loading = True
         self.mobs_loaded = 0
         self.loading_status = "Iniciando engine de parse de monstros YAML..."
+        progress_tracker.update(current_db="mob_db.yml", status=self.loading_status, progress=50.0)
         
         thread = threading.Thread(target=self._load_db_sync, args=(main_filepath,))
         thread.daemon = True
@@ -38,9 +43,12 @@ class MobDatabase:
     def _load_db_sync(self, main_filepath: str):
         try:
             self.load_db(main_filepath)
+            self.rebuild_cache()
+            progress_tracker.finish_loading(status="Carregamento Finalizado.")
         except Exception as e:
             print(f"[!] Erro fatal no carregamento background de monstros: {e}")
             self.loading_status = f"Erro: {e}"
+            progress_tracker.update(status=f"Erro em monstros: {e}")
         finally:
             self.is_loading = False
             if "Erro" not in self.loading_status:
@@ -80,6 +88,7 @@ class MobDatabase:
             
         filename = os.path.basename(filepath)
         self.loading_status = f"Lendo arquivo de monstros: {filename}..."
+        progress_tracker.update(current_db=filename, status=self.loading_status, progress=min(95.0, progress_tracker.progress + 10.0))
 
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -108,7 +117,7 @@ class MobDatabase:
         except Exception as e:
             print(f"[!] Falha ao fazer parse de {filepath}: {e}")
 
-    def get_mobs(self):
+    def rebuild_cache(self):
         all_mobs = []
         for filepath, data in self.db_cache.items():
             if data and 'Body' in data and isinstance(data['Body'], list):
@@ -118,7 +127,39 @@ class MobDatabase:
                     annotated = dict(mob)
                     annotated['_source'] = 'custom' if is_custom else 'rathena'
                     all_mobs.append(annotated)
-        return all_mobs
+        all_mobs.sort(key=lambda x: x.get('Id', 0))
+        self.cached_mobs_list = all_mobs
+
+    def get_mobs(self):
+        if self.cached_mobs_list is None:
+            self.rebuild_cache()
+        return self.cached_mobs_list
+
+    def search_mobs(self, page: int = 1, limit: int = 50, search: str = "", source: str = "", skip: int = None):
+        mobs = self.get_mobs()
+        filtered = mobs
+
+        if source and source in ('rathena', 'custom'):
+            filtered = [m for m in filtered if m.get('_source') == source]
+
+        if search:
+            q = search.strip().lower()
+            filtered = [
+                m for m in filtered
+                if q in str(m.get('Id', ''))
+                or (m.get('Name') and q in str(m.get('Name')).lower())
+                or (m.get('AegisName') and q in str(m.get('AegisName')).lower())
+                or (m.get('JapaneseName') and q in str(m.get('JapaneseName')).lower())
+            ]
+
+        total_count = len(filtered)
+        if skip is not None:
+            start = skip
+        else:
+            start = max(0, (page - 1) * limit)
+        end = start + limit
+        paginated = filtered[start:end]
+        return paginated, total_count
 
     def save_file(self, filepath: str):
         if filepath not in self.db_cache:
@@ -224,6 +265,7 @@ class MobDatabase:
             self.save_file(import_db_path)
             self.mob_index[mob_id] = import_db_path
             saved_mob['_source'] = 'custom'
+            self.rebuild_cache()
             return saved_mob
 
         # --- Mob already lives in db/import/: update in place ---
@@ -239,6 +281,7 @@ class MobDatabase:
                 self.save_file(target_filepath)
                 result = dict(mob)
                 result['_source'] = 'custom'
+                self.rebuild_cache()
                 return result
         return None
 
@@ -264,6 +307,7 @@ class MobDatabase:
         data['Body'].insert(0, mob_data)
         self.save_file(import_db_path)
         self.mob_index[mob_data['Id']] = import_db_path
+        self.rebuild_cache()
         return mob_data
 
 mob_db = MobDatabase()
