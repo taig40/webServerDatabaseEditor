@@ -147,11 +147,18 @@ class DivinePrideMapper:
         aegis_name = str(dp_json.get("dbname") or dp_json.get("aegisName") or f"MOB_{mob_id}")
 
         # 1. Elemento
+        # A API do DivinePride / RO Client armazena o elemento como: (nível * 20) + tipo
+        # Tipo do elemento = raw_element % 10 (0=Neutral, 1=Water, ..., 9=Undead)
+        # Nível do elemento = raw_element // 20 (ou clamped entre 1 e 4)
         raw_element = _safe_int(stats.get("element"), 0)
-        element_type_idx = (raw_element // 10) % 10
-        element_level = raw_element % 10
-        if element_level <= 0:
+        element_type_idx = raw_element % 10
+        if raw_element >= 20:
+            element_level = raw_element // 20
+        elif raw_element >= 10:
+            element_level = raw_element // 10
+        else:
             element_level = 1
+        element_level = max(1, min(4, element_level))
         element_str = ELEMENT_TYPES.get(element_type_idx, "Neutral")
 
         # 2. Tamanho (Size)
