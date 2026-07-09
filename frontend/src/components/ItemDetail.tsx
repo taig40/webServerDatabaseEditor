@@ -7,7 +7,7 @@ import { initRathenaItemScript, validateItemScript } from '../monaco/rathenaItem
 import NpcShopModal from './NpcShopModal';
 import { ItemIcon } from './ItemIcon';
 import { useLanguageStore } from '../store/useLanguageStore';
-import { getDivinePrideApiKey } from '../utils/divinePride';
+import { DivinePrideImportButton } from './DivinePrideImportButton';
 
 interface ItemDetailProps {
   item: any;
@@ -24,37 +24,16 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
   const [selectedShop, setSelectedShop] = useState<any | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isImportingDP, setIsImportingDP] = useState(false);
   const [dpMessage, setDpMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const handleImportDivinePride = async () => {
-    const key = getDivinePrideApiKey();
-    if (!key) {
-      alert(t('divinepride.missing_key_alert'));
-      return;
-    }
-    setIsImportingDP(true);
-    setDpMessage(null);
-    try {
-      const res = await axios.get(`${API_URL}/api/divinepride/import/item/${item.Id}`, {
-        headers: { 'x-divine-pride-key': key }
-      });
-      if (res.data && res.data.mapped) {
-        setLocalItem((prev: any) => ({
-          ...prev,
-          ...res.data.mapped,
-          Id: item.Id
-        }));
-        setDpMessage({ type: 'success', text: t('divinepride.import_success') });
-        setTimeout(() => setDpMessage(null), 6000);
-      }
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || err.message || 'Error';
-      setDpMessage({ type: 'error', text: t('divinepride.import_error', { message: msg }) });
-      setTimeout(() => setDpMessage(null), 6000);
-    } finally {
-      setIsImportingDP(false);
-    }
+  const handleDPImportSuccess = (mappedData: any) => {
+    setLocalItem((prev: any) => ({
+      ...prev,
+      ...mappedData,
+      Id: item.Id
+    }));
+    setDpMessage({ type: 'success', text: t('divinepride.import_success') });
+    setTimeout(() => setDpMessage(null), 6000);
   };
 
   useEffect(() => {
@@ -138,20 +117,11 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
             <div className="flex items-center gap-3 text-sm font-mono text-gray-400 flex-wrap">
               <span className="flex items-center gap-1.5 bg-dark-800 px-2 py-0.5 rounded border border-white/10">
                 <span>ID: <span className="text-violet-400">{localItem.Id}</span></span>
-                <button
-                  type="button"
-                  onClick={handleImportDivinePride}
-                  disabled={isImportingDP}
-                  title={t('divinepride.import_button')}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-semibold text-[11px] transition-colors disabled:opacity-50"
-                >
-                  {isImportingDP ? (
-                    <Loader2 size={12} className="animate-spin" />
-                  ) : (
-                    <DownloadCloud size={12} />
-                  )}
-                  {isImportingDP ? t('divinepride.importing') : t('divinepride.import_button')}
-                </button>
+                <DivinePrideImportButton
+                  resourceType="item"
+                  resourceId={localItem.Id}
+                  onImportSuccess={handleDPImportSuccess}
+                />
               </span>
               <span className="flex items-center gap-1 bg-dark-800 px-2 py-0.5 rounded border border-white/10">AegisName: <span className="text-blue-400">{localItem.AegisName}</span></span>
             </div>

@@ -8,6 +8,7 @@ import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { localizeLoadingStatus } from '../utils/i18nHelpers';
+import { DivinePrideImportButton } from '../components/DivinePrideImportButton';
 
 type SourceTab = 'rathena' | 'custom';
 
@@ -86,6 +87,17 @@ export const SkillEditor: React.FC = () => {
   const selectedSkill = useMemo(() => {
     return skills.find(s => s.Id === selectedSkillId) || null;
   }, [skills, selectedSkillId]);
+
+  const handleDPImportSuccess = (mappedData: any) => {
+    if (!selectedSkill) return;
+    setSkills(prev => prev.map(s => {
+      if (s.Id === selectedSkill.Id) {
+        return { ...s, ...mappedData, Id: selectedSkill.Id };
+      }
+      return s;
+    }));
+  };
+
 
   const handleUpdateField = (fieldKey: string, value: any) => {
     if (!selectedSkill) return;
@@ -236,6 +248,11 @@ export const SkillEditor: React.FC = () => {
                   <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded">
                     ID: {selectedSkill.Id}
                   </span>
+                  <DivinePrideImportButton
+                    resourceType="skill"
+                    resourceId={selectedSkill.Id}
+                    onImportSuccess={handleDPImportSuccess}
+                  />
                   <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${selectedSkill._source === 'custom' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-dark-800 text-gray-400'}`}>
                     {selectedSkill._source === 'custom' ? t('skill_editor.source.custom') : t('skill_editor.source.rathena')}
                   </span>
