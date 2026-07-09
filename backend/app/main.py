@@ -42,7 +42,7 @@ if db_base_path:
 # ─── Import Application Modules (Dependent on Env Variables) ────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images, constants, progression
+from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images, constants, progression, editor
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
 from app.services.grf_reader import grf_reader, MAX_GRF_SLOTS
@@ -244,6 +244,7 @@ app.include_router(constants.router,     prefix="/api/constants",    tags=["cons
 app.include_router(randomopt.router,    prefix="/api/server/randomopt", tags=["randomopt"])
 app.include_router(sizefix.router,      prefix="/api/server/sizefix",   tags=["sizefix"])
 app.include_router(progression.router,  prefix="/api/progression",      tags=["progression"])
+app.include_router(editor.router,       prefix="/api/editor",           tags=["editor"])
 
 @app.get("/")
 def read_root():

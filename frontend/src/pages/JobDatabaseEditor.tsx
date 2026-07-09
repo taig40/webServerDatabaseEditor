@@ -29,6 +29,9 @@ interface JobStatsEntry {
   SpIncrease?: number;
   ApFactor?: number;
   ApIncrease?: number;
+  category?: string;
+  has_alternate_sprite?: boolean;
+  is_alternate_sprite?: boolean;
   BonusStats?: Array<{
     Level?: number;
     Str?: number;
@@ -78,6 +81,7 @@ const JobDatabaseEditor: React.FC = () => {
   const [selectedJobIndex, setSelectedJobIndex] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'stats' | 'basepoints' | 'aspd' | 'outfits'>('stats');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'Non-Transcendent' | 'Transcendent' | 'Baby'>('all');
   const [saving, setSaving] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [newOutfitName, setNewOutfitName] = useState<string>('');
@@ -111,6 +115,8 @@ const JobDatabaseEditor: React.FC = () => {
   };
 
   const filteredEntries = statsEntries.filter(entry => {
+    if (entry.is_alternate_sprite) return false;
+    if (categoryFilter !== 'all' && entry.category && entry.category !== categoryFilter) return false;
     const names = getJobNames(entry).join(' ').toLowerCase();
     return names.includes(searchTerm.toLowerCase());
   });
@@ -201,6 +207,27 @@ const JobDatabaseEditor: React.FC = () => {
             placeholder={t('jobs_editor.search_placeholder')}
             className="w-full bg-black/30 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-all"
           />
+        </div>
+        <div className="grid grid-cols-2 gap-1.5 mt-3">
+          {(['all', 'Non-Transcendent', 'Transcendent', 'Baby'] as const).map(cat => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`text-[10px] font-semibold py-1 px-2 rounded-lg transition-all text-center truncate ${
+                categoryFilter === cat
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/30'
+                  : 'bg-black/30 text-gray-400 hover:bg-white/5 hover:text-gray-300'
+              }`}
+            >
+              {cat === 'all'
+                ? t('jobs_editor.cat_all')
+                : cat === 'Non-Transcendent'
+                ? t('jobs_editor.cat_non_transcendent')
+                : cat === 'Transcendent'
+                ? t('jobs_editor.cat_transcendent')
+                : t('jobs_editor.cat_baby')}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -677,10 +704,18 @@ const JobDatabaseEditor: React.FC = () => {
         {/* Header */}
         <div className="px-8 py-6 border-b border-white/10 flex items-center justify-between bg-[#13131c]/60 backdrop-blur-md sticky top-0 z-10">
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2.5">
-              <Layers className="w-6 h-6 text-indigo-400" />
-              {selectedStats ? getJobNames(selectedStats).join(' / ') : t('jobs_editor.title')}
-            </h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl font-bold text-white flex items-center gap-2.5">
+                <Layers className="w-6 h-6 text-indigo-400" />
+                {selectedStats ? getJobNames(selectedStats).join(' / ') : t('jobs_editor.title')}
+              </h1>
+              {selectedStats?.has_alternate_sprite && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <Shield className="w-3.5 h-3.5 text-amber-400" />
+                  {t('jobs_editor.has_alternate_sprite')}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-400 mt-1">{t('jobs_editor.subtitle')}</p>
           </div>
 

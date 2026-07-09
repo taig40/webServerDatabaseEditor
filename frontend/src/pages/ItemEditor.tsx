@@ -7,6 +7,7 @@ import { useLanguageStore } from '../store/useLanguageStore';
 
 import NewItemModal from '../components/NewItemModal';
 import ItemDetail from '../components/ItemDetail';
+import { localizeLoadingStatus } from '../utils/i18nHelpers';
 
 type SourceTab = 'rathena' | 'custom';
 
@@ -39,19 +40,13 @@ const ItemEditor: React.FC = () => {
         const statusRes = await axios.get(`${API_URL}/api/items/status`);
         const { is_loading, message, items_loaded } = statusRes.data;
         
-        let displayMessage = message;
-        if (message === "Conectando ao Backend...") {
-          displayMessage = t('item_editor.status.connecting');
-        } else if (message === "Carregando lista de Itens...") {
-          displayMessage = t('item_editor.status.loading_list');
-        }
-        setLoadingStatus(displayMessage);
+        setLoadingStatus(localizeLoadingStatus(message, t));
         setItemsLoaded(items_loaded);
 
         if (!is_loading && message !== "Aguardando inicialização...") {
           if (intervalId) clearInterval(intervalId);
           
-          setLoadingStatus(t('item_editor.status.loading_list'));
+          setLoadingStatus(t('loading.loadingItems'));
           try {
              const itemsRes = await axios.get(`${API_URL}/api/items/?skip=0&limit=150000`);
              setItems(itemsRes.data.items);
@@ -146,12 +141,13 @@ const ItemEditor: React.FC = () => {
       {isLoading && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-dark-900/90 backdrop-blur-sm">
            <div className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-           <h3 className="text-2xl text-white font-semibold mb-2">{t('item_editor.status.loading_title')}</h3>
-           <p className="text-gray-400 mb-2 font-mono text-sm">{loadingStatus}</p>
-           <div className="bg-dark-800 px-4 py-2 rounded-full border border-white/10">
-              <span className="text-violet-400 font-bold text-lg">{itemsLoaded.toLocaleString()}</span>
-              <span className="text-gray-500 ml-2">{t('item_editor.status.entries_read')}</span>
-           </div>
+            <h3 className="text-2xl text-white font-semibold mb-2">{t('item_editor.status.loading_title')}</h3>
+            <p className="text-gray-400 mb-2 font-mono text-sm">{loadingStatus}</p>
+            <div className="bg-dark-800 px-4 py-2 rounded-full border border-white/10">
+               <span className="text-violet-400 font-bold text-sm">
+                 {t('loading.entriesRead', { count: itemsLoaded })}
+               </span>
+            </div>
         </div>
       )}
 

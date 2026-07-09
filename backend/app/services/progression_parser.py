@@ -13,6 +13,44 @@ import threading
 from ruamel.yaml import YAML
 from typing import List, Dict, Any, Optional
 
+TRANSCENDENT_JOBS = {
+    "Swordman_High", "Mage_High", "Archer_High", "Acolyte_High", "Merchant_High", "Thief_High",
+    "Novice_High", "Lord_Knight", "High_Priest", "High_Wizard", "Whitesmith", "Sniper",
+    "Assassin_Cross", "Paladin", "Champion", "Professor", "Stalker", "Creator", "Clown", "Gypsy",
+    "Lord_Knight2", "Paladin2", "Rune_Knight_T", "Rune_Knight_T2", "Warlock_T", "Ranger_T", "Ranger_T2",
+    "Arch_Bishop_T", "Mechanic_T", "Mechanic_T2", "Guillotine_Cross_T", "Royal_Guard_T", "Royal_Guard_T2",
+    "Sorcerer_T", "Minstrel_T", "Wanderer_T", "Sura_T", "Genetic_T", "Shadow_Chaser_T",
+    "Dragon_Knight_T", "Arch_Mage_T", "Windhawk_T", "Cardinal_T", "Meister_T", "Shadow_Cross_T",
+    "Imperial_Guard_T", "Elemental_Master_T", "Troubadour_T", "Trouvere_T", "Inquisitor_T",
+    "Biolo_T", "Abyss_Chaser_T"
+}
+
+def is_alternate_sprite(job_name: str) -> bool:
+    """
+    Identifica se a classe é uma Roupa Secundária / Traje Alternativo.
+    Exemplos: _2nd, _3rd, _Alternate, _Alt.
+    """
+    if not job_name or not isinstance(job_name, str):
+        return False
+    if job_name.endswith("_2nd") or job_name.endswith("_3rd") or job_name.endswith("_Alternate") or job_name.endswith("_Alt"):
+        return True
+    return False
+
+def classify_job_category(job_name: str) -> str:
+    """
+    Classifica a classe em uma das 3 categorias principais:
+    - 'Baby': classes Baby ou Super_Baby
+    - 'Transcendent': classes renascidas (High, Transcendent, 4ª Classe Transcendente)
+    - 'Non-Transcendent': classes normais e iniciais
+    """
+    if not job_name or not isinstance(job_name, str):
+        return "Non-Transcendent"
+    if job_name.startswith("Baby") or job_name == "Super_Baby" or "Baby_" in job_name:
+        return "Baby"
+    if job_name.endswith("_High") or job_name.endswith("_T") or job_name.endswith("_T2") or job_name in TRANSCENDENT_JOBS:
+        return "Transcendent"
+    return "Non-Transcendent"
+
 class BaseProgressionParser:
     def __init__(self, default_filename: str):
         self.yaml = YAML()
@@ -198,6 +236,57 @@ class JobExpParser(BaseProgressionParser):
             res["_index"] = index
             return res
         return None
+
+    def get_aggregated_tables(self) -> List[Dict[str, Any]]:
+        raw_list = self.get_all()
+        job_to_base = {}
+        job_to_job = {}
+
+        for entry in raw_list:
+            idx = entry["_index"]
+            jobs_field = entry.get("Jobs", {})
+            job_names = list(jobs_field.keys()) if isinstance(jobs_field, dict) else (list(jobs_field) if isinstance(jobs_field, list) else [])
+
+            if "BaseExp" in entry:
+                for j in job_names:
+                    if not is_alternate_sprite(j):
+                        job_to_base[j] = (idx, entry.get("BaseExp", []), entry.get("MaxBaseLevel", 99))
+            if "JobExp" in entry:
+                for j in job_names:
+                    if not is_alternate_sprite(j):
+                        job_to_job[j] = (idx, entry.get("JobExp", []), entry.get("MaxJobLevel", 50))
+
+        all_jobs = sorted(set(job_to_base.keys()) | set(job_to_job.keys()))
+        aggregated = []
+        for j in all_jobs:
+            base_info = job_to_base.get(j, (-1, [], 99))
+            job_info = job_to_job.get(j, (-1, [], 50))
+            aggregated.append({
+                "className": j,
+                "category": classify_job_category(j),
+                "base_exp": base_info[1],
+                "job_exp": job_info[1],
+                "base_index": base_info[0],
+                "job_index": job_info[0],
+                "MaxBaseLevel": base_info[2],
+                "MaxJobLevel": job_info[2]
+            })
+        return aggregated
+
+    def update_aggregated_exp(self, base_index: int, job_index: int, base_exp: Optional[List[Dict[str, Any]]] = None, job_exp: Optional[List[Dict[str, Any]]] = None) -> bool:
+        if not self.raw_data or "Body" not in self.raw_data or not isinstance(self.raw_data["Body"], list):
+            return False
+        body = self.raw_data["Body"]
+        changed = False
+        if base_index >= 0 and base_index < len(body) and base_exp is not None:
+            body[base_index]["BaseExp"] = base_exp
+            changed = True
+        if job_index >= 0 and job_index < len(body) and job_exp is not None:
+            body[job_index]["JobExp"] = job_exp
+            changed = True
+        if changed:
+            return self.save()
+        return False
 
 
 class SkillTreeParser(BaseProgressionParser):

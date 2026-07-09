@@ -14,7 +14,9 @@ from app.services.progression_parser import (
     job_exp_db,
     skill_tree_db,
     job_aspd_db,
-    job_outfits_db
+    job_outfits_db,
+    is_alternate_sprite,
+    classify_job_category
 )
 
 router = APIRouter()
@@ -36,8 +38,13 @@ class JobOutfitsUpdatePayload(BaseModel):
     data: Dict[str, Any]
 
 class ExpGroupUpdatePayload(BaseModel):
-    index: int
-    data: Dict[str, Any]
+    index: Optional[int] = None
+    data: Optional[Dict[str, Any]] = None
+    className: Optional[str] = None
+    base_index: Optional[int] = -1
+    job_index: Optional[int] = -1
+    base_exp: Optional[List[Dict[str, Any]]] = None
+    job_exp: Optional[List[Dict[str, Any]]] = None
 
 class SkillTreeUpdatePayload(BaseModel):
     tree: List[Dict[str, Any]]
@@ -50,16 +57,42 @@ class SkillTreeUpdatePayload(BaseModel):
 async def get_all_jobs():
     """
     Retorna a lista combinada de classes com atributos básicos, pontos base,
-    ASPD e outfits alternativos.
+    ASPD e outfits alternativos, enriquecida com categorias e trajes alternativos.
     """
     stats_list = job_stats_db.get_all()
     basepoints_list = job_basepoints_db.get_all()
     aspd_list = job_aspd_db.get_all()
     outfits_list = job_outfits_db.get_all()
 
-    print(f"[progression] GET /jobs - stats: {len(stats_list)}, basepoints: {len(basepoints_list)}, aspd: {len(aspd_list)}, outfits: {len(outfits_list)}")
+    alt_base_jobs = set()
+    for o in outfits_list:
+        alts = o.get("AlternateOutfits")
+        if alts:
+            jobs = o.get("Jobs", {})
+            if isinstance(jobs, dict):
+                alt_base_jobs.update(jobs.keys())
+            elif isinstance(jobs, list):
+                alt_base_jobs.update(jobs)
+
+    enriched_stats = []
+    for entry in stats_list:
+        jobs_field = entry.get("Jobs", {})
+        job_names = list(jobs_field.keys()) if isinstance(jobs_field, dict) else (list(jobs_field) if isinstance(jobs_field, list) else [])
+        non_alt_names = [j for j in job_names if not is_alternate_sprite(j)]
+        if not non_alt_names:
+            entry["is_alternate_sprite"] = True
+            primary_name = job_names[0] if job_names else "Unknown"
+        else:
+            entry["is_alternate_sprite"] = False
+            primary_name = non_alt_names[0]
+
+        entry["category"] = classify_job_category(primary_name)
+        entry["has_alternate_sprite"] = any(j in alt_base_jobs for j in job_names)
+        enriched_stats.append(entry)
+
+    print(f"[progression] GET /jobs - stats: {len(enriched_stats)}, basepoints: {len(basepoints_list)}, aspd: {len(aspd_list)}, outfits: {len(outfits_list)}")
     return {
-        "job_stats": stats_list,
+        "job_stats": enriched_stats,
         "job_basepoints": basepoints_list,
         "job_aspd": aspd_list,
         "job_outfits": outfits_list,
@@ -140,24 +173,37 @@ async def update_job_outfits(payload: JobOutfitsUpdatePayload):
 @router.get("/exp")
 async def get_experience_tables():
     """
-    Retorna todas as tabelas de experiência configuradas em job_exp.yml.
+    Retorna as tabelas de experiência agregadas e mescladas por classe.
     """
-    exp_tables = job_exp_db.get_all()
-    print(f"[progression] GET /exp - tables: {len(exp_tables)}")
+    aggregated_tables = job_exp_db.get_aggregated_tables()
+    print(f"[progression] GET /exp - aggregated tables: {len(aggregated_tables)}")
     return {
-        "tables": exp_tables,
+        "tables": aggregated_tables,
         "is_loading": job_exp_db.is_loading
     }
 
 @router.put("/exp")
 async def update_experience_table(payload: ExpGroupUpdatePayload):
     """
-    Atualiza uma tabela de experiência em job_exp.yml.
+    Atualiza uma ou ambas as curvas de experiência em job_exp.yml.
     """
-    updated = job_exp_db.update_group(payload.index, payload.data)
-    if not updated:
-        raise HTTPException(status_code=400, detail="ERROR_UPDATE_EXP_TABLE_FAILED")
-    return updated
+    if payload.className is not None and (payload.base_index is not None or payload.job_index is not None):
+        success = job_exp_db.update_aggregated_exp(
+            base_index=payload.base_index if payload.base_index is not None else -1,
+            job_index=payload.job_index if payload.job_index is not None else -1,
+            base_exp=payload.base_exp,
+            job_exp=payload.job_exp
+        )
+        if not success:
+            raise HTTPException(status_code=400, detail="ERROR_UPDATE_EXP_TABLE_FAILED")
+        return {"status": "success", "className": payload.className}
+    elif payload.index is not None and payload.data is not None:
+        updated = job_exp_db.update_group(payload.index, payload.data)
+        if not updated:
+            raise HTTPException(status_code=400, detail="ERROR_UPDATE_EXP_TABLE_FAILED")
+        return updated
+    else:
+        raise HTTPException(status_code=400, detail="INVALID_PAYLOAD")
 
 
 # ─── VISUAL SKILL TREE ENDPOINTS ──────────────────────────────────────────
@@ -170,10 +216,14 @@ async def get_all_skill_trees():
     trees = skill_tree_db.get_all_raw()
     summary = []
     for t in trees:
+        job_name = t.get("Job", "")
+        if is_alternate_sprite(job_name):
+            continue
         summary.append({
-            "Job": t.get("Job"),
+            "Job": job_name,
             "Inherit": t.get("Inherit", {}),
-            "SkillCount": len(t.get("Tree", [])) if isinstance(t.get("Tree"), list) else 0
+            "SkillCount": len(t.get("Tree", [])) if isinstance(t.get("Tree"), list) else 0,
+            "category": classify_job_category(job_name)
         })
     print(f"[progression] GET /skill_tree - summary entries: {len(summary)}")
     return {

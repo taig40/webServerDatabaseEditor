@@ -34,7 +34,6 @@ export type ModuleId =
   | 'skills'
   | 'server_quests'
   | 'item_combos'
-  | 'mob_skills'
   | 'server_achievements'
   | 'pets'
   | 'constants'
@@ -64,7 +63,6 @@ const MODULES: Module[] = [
   { id: 'server_quests',       label: 'Quests',               sublabel: 'quest_db.yml',         icon: Scroll,       group: 'server', available: true  },
   { id: 'server_achievements', label: 'Conquistas',           sublabel: 'achievement_db.yml',   icon: Trophy,       group: 'server', available: true  },
   { id: 'item_combos',         label: 'Combos de Itens',      sublabel: 'item_combos.yml',      icon: Layers,       group: 'server', available: true  },
-  { id: 'mob_skills',          label: 'Skills de Mobs',       sublabel: 'mob_skill_db.txt',     icon: Sword,        group: 'server', available: true  },
   { id: 'pets',                label: 'Mascotes',             sublabel: 'pet_db.yml',           icon: Star,         group: 'server', available: true  },
   { id: 'random_options',      label: 'Opções Aleatórias',    sublabel: 'item_randomopt_group.yml', icon: Sparkles,  group: 'server', available: true  },
   { id: 'size_fix',            label: 'Penalidades de Tamanho', sublabel: 'size_fix.yml',        icon: Scale,     group: 'server', available: true  },

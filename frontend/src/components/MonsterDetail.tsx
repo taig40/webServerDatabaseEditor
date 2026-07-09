@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
   Save, Upload, Shield, Heart, Sword, Star, Award, Zap,
-  ChevronRight, AlertCircle, Plus, Trash2, RefreshCw, Loader2, Brain
+  ChevronRight, AlertCircle, Plus, Trash2, RefreshCw, Loader2, Brain,
+  Search, X
 } from 'lucide-react';
 import { API_URL } from '../config/env';
 import MonsterAnimator from './MonsterAnimator';
@@ -87,6 +88,23 @@ function SectionCard({ icon: Icon, title, iconClass = 'text-violet-400', childre
   );
 }
 
+const getStateBadgeClass = (state: string) => {
+  const s = String(state || '').toLowerCase();
+  if (s === 'attack') return 'bg-red-500/15 border border-red-500/30 text-red-300';
+  if (s === 'chase') return 'bg-amber-500/15 border border-amber-500/30 text-amber-300';
+  if (s === 'idle') return 'bg-blue-500/15 border border-blue-500/30 text-blue-300';
+  if (s === 'any') return 'bg-purple-500/15 border border-purple-500/30 text-purple-300';
+  return 'bg-dark-800 border border-white/10 text-gray-300';
+};
+
+const getConditionBadgeClass = (cond: string) => {
+  const c = String(cond || '').toLowerCase();
+  if (c === 'always') return 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300';
+  if (c.includes('hp')) return 'bg-rose-500/15 border border-rose-500/30 text-rose-300';
+  if (c.includes('cast')) return 'bg-cyan-500/15 border border-cyan-500/30 text-cyan-300';
+  return 'bg-slate-700/40 border border-white/10 text-gray-300';
+};
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface MonsterDetailProps {
@@ -113,23 +131,55 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
   const sprInputRef = useRef<HTMLInputElement>(null);
   const actInputRef = useRef<HTMLInputElement>(null);
 
+  // Skill lookup cache & Add Modal State
+  const [allSkillsMap, setAllSkillsMap] = useState<Record<number, { Name: string; Description?: string }>>({});
+  const [allSkillsList, setAllSkillsList] = useState<any[]>([]);
+  const [showAddSkillModal, setShowAddSkillModal] = useState(false);
+  const [skillSearchQuery, setSkillSearchQuery] = useState('');
+  const [newSkillForm, setNewSkillForm] = useState({
+    skill_id: 1,
+    skill_lv: 1,
+    rate: 1000,
+    state: 'idle',
+    condition_type: 'always',
+    condition_value: 0,
+    cast_time: 0,
+    delay: 5000,
+    cancelable: false,
+    target: 'target',
+  });
+
   // Sync when mob changes
   useEffect(() => {
     setLocal(mob);
     setSpriteKey(k => k + 1);
-    setSkills([]);
+    setSkills(mob.MobSkills || []);
     setActiveTab('status');
-  }, [mob.Id]);
+  }, [mob.Id, mob]);
 
-  // Load skills on tab switch
+  // Load skills on tab switch if needed + load global skills cache
   useEffect(() => {
     if (activeTab !== 'skills') return;
-    if (skills.length > 0) return;
-    setSkillsLoading(true);
-    axios.get(`${API_URL}/api/mobs/${mob.Id}/skills`)
-      .then(r => setSkills(r.data.skills || []))
-      .catch(() => setSkills([]))
-      .finally(() => setSkillsLoading(false));
+    if (!local.MobSkills && skills.length === 0) {
+      setSkillsLoading(true);
+      axios.get(`${API_URL}/api/mobs/${mob.Id}/skills`)
+        .then(r => setSkills(r.data.skills || []))
+        .catch(() => setSkills([]))
+        .finally(() => setSkillsLoading(false));
+    }
+    if (Object.keys(allSkillsMap).length === 0) {
+      axios.get(`${API_URL}/api/skills/?limit=50000`)
+        .then(r => {
+          const list = r.data.skills || [];
+          setAllSkillsList(list);
+          const map: Record<number, { Name: string; Description?: string }> = {};
+          list.forEach((s: any) => {
+            map[s.Id] = { Name: s.Name || s.Description || `Skill #${s.Id}` };
+          });
+          setAllSkillsMap(map);
+        })
+        .catch(() => {});
+    }
   }, [activeTab, mob.Id]);
 
   const set = (field: string, val: any) =>
@@ -140,6 +190,37 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
       ...prev,
       Modes: { ...(prev.Modes || {}), [key]: val }
     }));
+
+  const activeMobSkills = local.MobSkills || skills || [];
+
+  const handleAddSkill = () => {
+    const updated = [
+      ...activeMobSkills,
+      {
+        mob_id: mob.Id,
+        dummy_name: local.AegisName || local.Name || String(mob.Id),
+        skill_id: Number(newSkillForm.skill_id),
+        skill_lv: Number(newSkillForm.skill_lv),
+        rate: Number(newSkillForm.rate),
+        state: newSkillForm.state,
+        condition_type: newSkillForm.condition_type,
+        condition_value: Number(newSkillForm.condition_value),
+        cast_time: Number(newSkillForm.cast_time),
+        delay: Number(newSkillForm.delay),
+        cancelable: Boolean(newSkillForm.cancelable),
+        target: newSkillForm.target,
+      }
+    ];
+    set('MobSkills', updated);
+    setSkills(updated);
+    setShowAddSkillModal(false);
+  };
+
+  const handleDeleteSkill = (index: number) => {
+    const updated = activeMobSkills.filter((_: any, idx: number) => idx !== index);
+    set('MobSkills', updated);
+    setSkills(updated);
+  };
 
   const isModified = JSON.stringify(local) !== JSON.stringify(mob);
 
@@ -734,54 +815,282 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
         {/* ── SKILLS ── */}
         {activeTab === 'skills' && (
           <SectionCard icon={Zap} title={t('monster_detail.skills.title')} iconClass="text-cyan-400">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-xs text-gray-400">
+                {activeMobSkills.length} {t('monster_detail.skills.title')}
+              </span>
+              <button
+                onClick={() => setShowAddSkillModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 text-xs font-semibold transition-all shadow-sm"
+              >
+                <Plus size={14} />
+                {t('monster_detail.skills.add_skill')}
+              </button>
+            </div>
+
             {skillsLoading ? (
               <div className="flex items-center justify-center py-8 gap-3 text-gray-500">
                 <Loader2 size={18} className="animate-spin" />
                 <span className="text-sm">{t('monster_detail.skills.loading')}</span>
               </div>
-            ) : skills.length === 0 ? (
-              <div className="text-center py-8 text-gray-600 text-sm italic">
-                {t('monster_detail.skills.no_skills')}
+            ) : activeMobSkills.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm italic flex flex-col items-center gap-3">
+                <span>{t('monster_detail.skills.no_skills')}</span>
+                <button
+                  onClick={() => setShowAddSkillModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600/30 border border-violet-500/40 text-violet-300 hover:bg-violet-600/40 text-xs font-semibold"
+                >
+                  <Plus size={14} />
+                  {t('monster_detail.skills.add_skill')}
+                </button>
               </div>
             ) : (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5 overflow-x-auto">
                 {/* Header */}
-                <div className="grid grid-cols-[70px_1fr_70px_80px_1fr] gap-2 text-[10px] text-gray-500 uppercase tracking-widest px-2 mb-1">
+                <div className="grid grid-cols-[60px_1.8fr_60px_80px_100px_1.4fr_36px] gap-2 text-[10px] text-gray-400 uppercase tracking-widest px-3 py-1 font-semibold">
                   <span>{t('monster_detail.skills.skill_id')}</span>
-                  <span>{t('monster_detail.skills.state')}</span>
+                  <span>{t('monster_detail.skills.skill_name')}</span>
                   <span className="text-center">{t('monster_detail.skills.level')}</span>
                   <span className="text-center">{t('monster_detail.skills.rate')}</span>
+                  <span>{t('monster_detail.skills.state')}</span>
                   <span>{t('monster_detail.skills.condition')}</span>
+                  <span />
                 </div>
-                {skills.map((skill: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="grid grid-cols-[70px_1fr_70px_80px_1fr] gap-2 items-center bg-dark-900/60 border border-white/5 rounded-lg px-2 py-2 hover:border-violet-500/20 transition-colors text-sm"
-                  >
-                    <span className="text-violet-400 font-mono font-bold">{skill.skill_id}</span>
-                    <span className="text-gray-300 capitalize truncate">{skill.state}</span>
-                    <span className="text-center text-white font-semibold">{skill.skill_lv}</span>
-                    <div className="text-center">
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
-                        skill.rate >= 5000 ? 'bg-green-900/60 text-green-400' :
-                        skill.rate >= 1000 ? 'bg-blue-900/60 text-blue-400' :
-                        'bg-dark-800 text-gray-400'
-                      }`}>
-                        {skill.rate}‰
-                      </span>
+                {activeMobSkills.map((skill: any, idx: number) => {
+                  const skillInfo = allSkillsMap[skill.skill_id];
+                  const displayName = skillInfo?.Name || `Skill #${skill.skill_id}`;
+                  return (
+                    <div
+                      key={idx}
+                      className="grid grid-cols-[60px_1.8fr_60px_80px_100px_1.4fr_36px] gap-2 items-center bg-dark-900/70 border border-white/5 rounded-xl px-3 py-2.5 hover:border-violet-500/30 transition-all text-xs"
+                    >
+                      <span className="text-violet-400 font-mono font-bold">#{skill.skill_id}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Zap size={13} className="text-cyan-400 flex-shrink-0" />
+                        <span className="text-gray-200 font-medium truncate" title={displayName}>
+                          {displayName}
+                        </span>
+                      </div>
+                      <div className="text-center">
+                        <span className="px-1.5 py-0.5 rounded bg-white/10 text-white font-bold">
+                          Lv.{skill.skill_lv}
+                        </span>
+                      </div>
+                      <div className="text-center">
+                        <span className={`px-1.5 py-0.5 rounded font-bold ${
+                          skill.rate >= 5000 ? 'bg-green-500/20 border border-green-500/30 text-green-300' :
+                          skill.rate >= 1000 ? 'bg-blue-500/20 border border-blue-500/30 text-blue-300' :
+                          'bg-dark-800 border border-white/10 text-gray-400'
+                        }`}>
+                          {skill.rate}‰
+                        </span>
+                      </div>
+                      <div>
+                        <span className={`px-2 py-0.5 rounded-full uppercase text-[10px] font-bold ${getStateBadgeClass(skill.state)}`}>
+                          {skill.state}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold truncate ${getConditionBadgeClass(skill.condition_type)}`}>
+                          {skill.condition_type}
+                          {skill.condition_value ? ` (${skill.condition_value})` : ''}
+                        </span>
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => handleDeleteSkill(idx)}
+                          title={t('monster_detail.skills.delete_skill')}
+                          className="p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                    <span className="text-gray-500 text-xs truncate">
-                      {skill.condition_type}
-                      {skill.condition_value ? `: ${skill.condition_value}` : ''}
-                    </span>
-                  </div>
-                ))}
-                <p className="text-[10px] text-gray-600 mt-3 italic">
+                  );
+                })}
+                <p className="text-[10px] text-gray-500 mt-3 italic">
                   {t('monster_detail.skills.footer_tip')}
                 </p>
               </div>
             )}
           </SectionCard>
+        )}
+
+        {/* ── ADD SKILL MODAL ── */}
+        {showAddSkillModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-dark-900 border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <Zap size={18} className="text-cyan-400" />
+                  <h3 className="text-sm font-bold text-white">{t('monster_detail.skills.modal_title')}</h3>
+                </div>
+                <button
+                  onClick={() => setShowAddSkillModal(false)}
+                  className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-5 flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
+                {/* Search / Select Skill */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-gray-300">
+                    {t('monster_detail.skills.select_skill')}
+                  </label>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                    <input
+                      type="text"
+                      value={skillSearchQuery}
+                      onChange={e => setSkillSearchQuery(e.target.value)}
+                      placeholder={t('monster_detail.skills.search_placeholder')}
+                      className="w-full pl-9 pr-3 py-2 bg-dark-800 border border-white/10 rounded-xl text-xs text-white placeholder-gray-500 focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                  {skillSearchQuery.trim() && (
+                    <div className="max-h-36 overflow-y-auto bg-dark-800 border border-white/10 rounded-xl divide-y divide-white/5 mt-1 shadow-lg">
+                      {allSkillsList
+                        .filter(s => {
+                          const q = skillSearchQuery.toLowerCase();
+                          return String(s.Id).includes(q) || (s.Name || '').toLowerCase().includes(q) || (s.Description || '').toLowerCase().includes(q);
+                        })
+                        .slice(0, 15)
+                        .map(s => (
+                          <button
+                            key={s.Id}
+                            onClick={() => {
+                              setNewSkillForm(f => ({ ...f, skill_id: s.Id }));
+                              setSkillSearchQuery(`${s.Id} - ${s.Name || s.Description || ''}`);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-white/5 transition-colors"
+                          >
+                            <span className="text-white font-medium truncate">{s.Name || s.Description}</span>
+                            <span className="text-violet-400 font-mono text-[11px]">#{s.Id}</span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[11px] text-gray-400">{t('monster_detail.skills.skill_id')}:</span>
+                    <input
+                      type="number"
+                      value={newSkillForm.skill_id}
+                      onChange={e => setNewSkillForm(f => ({ ...f, skill_id: Number(e.target.value) }))}
+                      className="w-24 px-2 py-1 bg-dark-800 border border-white/10 rounded text-xs text-violet-300 font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Level and Rate */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.level')}</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={newSkillForm.skill_lv}
+                      onChange={e => setNewSkillForm(f => ({ ...f, skill_lv: Number(e.target.value) }))}
+                      className="px-3 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.rate')}</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10000}
+                      value={newSkillForm.rate}
+                      onChange={e => setNewSkillForm(f => ({ ...f, rate: Number(e.target.value) }))}
+                      className="px-3 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* State and Condition Type */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.state')}</label>
+                    <select
+                      value={newSkillForm.state}
+                      onChange={e => setNewSkillForm(f => ({ ...f, state: e.target.value }))}
+                      className="px-3 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    >
+                      <option value="idle">idle</option>
+                      <option value="attack">attack</option>
+                      <option value="chase">chase</option>
+                      <option value="any">any</option>
+                      <option value="walk">walk</option>
+                      <option value="dead">dead</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.condition_type')}</label>
+                    <select
+                      value={newSkillForm.condition_type}
+                      onChange={e => setNewSkillForm(f => ({ ...f, condition_type: e.target.value }))}
+                      className="px-3 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    >
+                      <option value="always">always</option>
+                      <option value="myhpltmaxrate">myhpltmaxrate</option>
+                      <option value="myhpgtmaxrate">myhpgtmaxrate</option>
+                      <option value="castsensor">castsensor</option>
+                      <option value="friendhpltmaxrate">friendhpltmaxrate</option>
+                      <option value="statuson">statuson</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Condition Value, Cast Time, Delay */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.condition_value')}</label>
+                    <input
+                      type="number"
+                      value={newSkillForm.condition_value}
+                      onChange={e => setNewSkillForm(f => ({ ...f, condition_value: Number(e.target.value) }))}
+                      className="px-2 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.cast_time')}</label>
+                    <input
+                      type="number"
+                      value={newSkillForm.cast_time}
+                      onChange={e => setNewSkillForm(f => ({ ...f, cast_time: Number(e.target.value) }))}
+                      className="px-2 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.delay')}</label>
+                    <input
+                      type="number"
+                      value={newSkillForm.delay}
+                      onChange={e => setNewSkillForm(f => ({ ...f, delay: Number(e.target.value) }))}
+                      className="px-2 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 px-5 py-4 border-t border-white/10 bg-dark-800/50">
+                <button
+                  onClick={() => setShowAddSkillModal(false)}
+                  className="px-4 py-2 rounded-xl border border-white/10 text-xs text-gray-400 hover:text-white transition-colors"
+                >
+                  {t('monster_detail.skills.cancel')}
+                </button>
+                <button
+                  onClick={handleAddSkill}
+                  className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-dark-900 font-bold text-xs transition-colors shadow-lg shadow-cyan-500/20"
+                >
+                  {t('monster_detail.skills.confirm_add')}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
       </div>

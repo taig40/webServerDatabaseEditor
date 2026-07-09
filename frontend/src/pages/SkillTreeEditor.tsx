@@ -20,6 +20,7 @@ import {
   Edge
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import dagre from 'dagre';
 import {
   Network,
   Save,
@@ -172,11 +173,56 @@ const PrerequisiteEdgeComponent = ({
   );
 };
 
+const getLayoutedElements = (
+  nodes: Node[],
+  edges: Edge[],
+  direction: 'TB' | 'LR' = 'TB'
+) => {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+  // SkillNodeComponent width and height matching UI components
+  const nodeWidth = 240;
+  const nodeHeight = 100;
+
+  dagreGraph.setGraph({
+    rankdir: direction,
+    ranksep: 80,
+    nodesep: 60,
+  });
+
+  nodes.forEach(node => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  edges.forEach(edge => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const layoutedNodes = nodes.map(node => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    return {
+      ...node,
+      targetPosition: direction === 'TB' ? Position.Top : Position.Left,
+      sourcePosition: direction === 'TB' ? Position.Bottom : Position.Right,
+      position: {
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2
+      }
+    };
+  });
+
+  return { nodes: layoutedNodes, edges };
+};
+
 // ─── MAIN SKILL TREE EDITOR PAGE ─────────────────────────────────────────────
 
 interface JobSummary {
   Job: string;
   SkillCount: number;
+  category?: string;
 }
 
 const SkillTreeEditor: React.FC = () => {
@@ -302,8 +348,9 @@ const SkillTreeEditor: React.FC = () => {
         });
       });
 
-      setNodes(flowNodes);
-      setEdges(flowEdges);
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(flowNodes, flowEdges);
+      setNodes(layoutedNodes);
+      setEdges(layoutedEdges);
     } catch (err: any) {
       console.error(`Error loading tree for ${jobName}:`, err);
       setToastMessage({ text: t('skill_tree_editor.save_error', { error: err.message }), type: 'error' });
@@ -338,64 +385,11 @@ const SkillTreeEditor: React.FC = () => {
     [setEdges, handleLevelChange, handleDeleteEdge]
   );
 
-  const handleAutoLayout = () => {
-    // Build adjacency list of parent -> children and vice-versa
-    const adj: Record<string, string[]> = {};
-    const parents: Record<string, string[]> = {};
-    nodes.forEach(n => {
-      adj[n.id] = [];
-      parents[n.id] = [];
-    });
-    edges.forEach(e => {
-      if (adj[e.source]) adj[e.source].push(e.target);
-      if (parents[e.target]) parents[e.target].push(e.source);
-    });
-
-    // Compute depth of each node in the DAG
-    const depths: Record<string, number> = {};
-    const getDepth = (id: string): number => {
-      if (id in depths) return depths[id];
-      const pList = parents[id] || [];
-      if (pList.length === 0) {
-        depths[id] = 0;
-        return 0;
-      }
-      depths[id] = 0; // Temp assignment to prevent infinite recursion
-      let maxP = 0;
-      pList.forEach(p => {
-        maxP = Math.max(maxP, getDepth(p) + 1);
-      });
-      depths[id] = maxP;
-      return maxP;
-    };
-
-    nodes.forEach(n => getDepth(n.id));
-
-    // Group nodes by depth
-    const nodesByDepth: Record<number, string[]> = {};
-    nodes.forEach(n => {
-      const d = depths[n.id] || 0;
-      if (!nodesByDepth[d]) nodesByDepth[d] = [];
-      nodesByDepth[d].push(n.id);
-    });
-
-    // Reposition nodes based on depth group
-    const updatedNodes = nodes.map(n => {
-      const d = depths[n.id] || 0;
-      const indexInDepth = nodesByDepth[d].indexOf(n.id);
-      const totalInDepth = nodesByDepth[d].length;
-      
-      const x = (indexInDepth - (totalInDepth - 1) / 2) * 280 + 350;
-      const y = d * 180 + 50;
-
-      return {
-        ...n,
-        position: { x, y }
-      };
-    });
-
-    setNodes(updatedNodes);
-  };
+  const handleAutoLayout = useCallback(() => {
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges);
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
+  }, [nodes, edges, setNodes, setEdges]);
 
 
   const handleSaveTree = async () => {
@@ -485,11 +479,24 @@ const SkillTreeEditor: React.FC = () => {
             onChange={e => setSelectedJob(e.target.value)}
             className="bg-black/40 border border-white/10 text-white text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500"
           >
-            {jobsSummary.map(js => (
-              <option key={js.Job} value={js.Job}>
-                {js.Job} ({js.SkillCount} skills)
-              </option>
-            ))}
+            <optgroup label={t('skill_tree_editor.cat_non_transcendent')}>
+              {jobsSummary
+                .filter(js => js.category !== 'Transcendent')
+                .map(js => (
+                  <option key={js.Job} value={js.Job}>
+                    {js.Job} ({js.SkillCount} skills)
+                  </option>
+                ))}
+            </optgroup>
+            <optgroup label={t('skill_tree_editor.cat_transcendent')}>
+              {jobsSummary
+                .filter(js => js.category === 'Transcendent')
+                .map(js => (
+                  <option key={js.Job} value={js.Job}>
+                    {js.Job} ({js.SkillCount} skills)
+                  </option>
+                ))}
+            </optgroup>
           </select>
 
           <button

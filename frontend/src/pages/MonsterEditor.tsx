@@ -9,6 +9,7 @@ import { useLanguageStore } from '../store/useLanguageStore';
 import MonsterAnimator from '../components/MonsterAnimator';
 import MonsterDetail from '../components/MonsterDetail';
 import NewMobModal from '../components/NewMobModal';
+import { localizeLoadingStatus } from '../utils/i18nHelpers';
 
 type SourceTab = 'rathena' | 'custom';
 
@@ -45,18 +46,13 @@ const MonsterEditor: React.FC = () => {
       try {
         const statusRes = await axios.get(`${API_URL}/api/mobs/status`);
         const { is_loading, message, mobs_loaded } = statusRes.data;
-        let displayMessage = message;
-        if (message === "Conectando ao Backend...") {
-          displayMessage = t('monster_editor.status.connecting');
-        } else if (message === "Carregando lista de monstros...") {
-          displayMessage = t('monster_editor.status.loading_list');
-        }
-        setLoadingStatus(displayMessage);
+        
+        setLoadingStatus(localizeLoadingStatus(message, t));
         setMobsLoaded(mobs_loaded);
-
+ 
         if (!is_loading && message !== 'Aguardando inicialização...') {
           if (intervalId) clearInterval(intervalId);
-          setLoadingStatus(t('monster_editor.status.loading_list'));
+          setLoadingStatus(t('loading.loadingMonsters'));
           try {
             const mobsRes = await axios.get(`${API_URL}/api/mobs/?skip=0&limit=50000`);
             setMobs(mobsRes.data.mobs);
@@ -194,8 +190,9 @@ const MonsterEditor: React.FC = () => {
           <h3 className="text-2xl text-white font-semibold mb-2">{t('monster_editor.status.loading_title')}</h3>
           <p className="text-gray-400 mb-2 font-mono text-sm">{loadingStatus}</p>
           <div className="bg-dark-800 px-4 py-2 rounded-full border border-white/10">
-            <span className="text-violet-400 font-bold text-lg">{mobsLoaded.toLocaleString()}</span>
-            <span className="text-gray-500 ml-2">{t('monster_editor.status.entries_read')}</span>
+            <span className="text-violet-400 font-bold text-sm">
+              {t('loading.entriesRead', { count: mobsLoaded })}
+            </span>
           </div>
         </div>
       )}
