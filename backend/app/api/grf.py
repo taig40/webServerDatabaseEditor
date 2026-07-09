@@ -63,3 +63,14 @@ async def get_resource_image(
     # Fallback to dummy png if not found
     return Response(content=grf_reader.generate_dummy_png(), media_type="image/png")
 
+
+@router.get("/skill_icon")
+async def get_skill_icon(
+    name: str = Query("", description="Skill resource Name, e.g. SM_SWORD"),
+    id: int = Query(0, description="Skill numeric Id")
+):
+    """Returns PNG image of a skill icon from GRF."""
+    png_bytes = grf_reader.get_skill_icon(name, id)
+    return Response(content=png_bytes, media_type="image/png")
+
+

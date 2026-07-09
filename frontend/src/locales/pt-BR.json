@@ -42,7 +42,10 @@
       "placeholder": "Caminho completo do arquivo...",
       "achievements_lua_label": "Conquistas LUA (ACHIEVEMENTS_LUA_PATH)",
       "achievements_lua_sublabel": "Caminho para o achievements.lub ou achievement_list.lub do seu cliente.",
-      "achievements_lua_placeholder": "Deixe em branco para detectar automaticamente relativo ao ItemInfo"
+      "achievements_lua_placeholder": "Deixe em branco para detectar automaticamente relativo ao ItemInfo",
+      "quests_lua_label": "Quests LUA (QUESTS_LUA_PATH)",
+      "quests_lua_sublabel": "Caminho para o OngoingQuests.lub ou OngoingQuestInfoList.lub do seu cliente.",
+      "quests_lua_placeholder": "Deixe em branco para detectar automaticamente relativo ao ItemInfo"
     },
     "grf": {
       "title": "Arquivos GRF",
@@ -145,7 +148,10 @@
       "client_items": "Itens (Cliente)",
       "client_quests": "Quests (Cliente)",
       "constants": "Constantes",
-      "random_options": "Opções Aleatórias"
+      "random_options": "Opções Aleatórias",
+      "job_database": "Classes & Atributos",
+      "exp_tables": "Tabelas de Experiência",
+      "skill_tree": "Árvore de Habilidades"
     }
   },
   "app": {
@@ -921,5 +927,59 @@
     "new_objective": "Novo objetivo",
     "alert_create_error": "Erro ao criar quest: {error}",
     "alert_save_success": "Quest salva com sucesso!"
+  },
+  "jobs_editor": {
+    "title": "Editor de Classes & Atributos",
+    "subtitle": "Gerencie atributos básicos, peso, modificadores de HP/SP e pontos base de cada classe.",
+    "search_placeholder": "Buscar classe...",
+    "tab_stats": "Atributos Básicos",
+    "tab_basepoints": "Pontos de Evolução",
+    "tab_aspd": "Velocidade de Ataque (ASPD)",
+    "tab_outfits": "Trajes Alternativos",
+    "max_weight": "Peso Máximo",
+    "hp_factor": "Fator HP (%)",
+    "hp_increase": "Aumento Linear HP",
+    "sp_factor": "Fator SP (%)",
+    "sp_increase": "Aumento Linear SP",
+    "ap_factor": "Fator AP (%)",
+    "ap_increase": "Aumento Linear AP",
+    "bonus_stats": "Bônus de Atributos por Nível de Classe",
+    "base_hp_table": "Tabela de HP Base por Nível",
+    "base_sp_table": "Tabela de SP Base por Nível",
+    "base_ap_table": "Tabela de AP Base por Nível",
+    "level": "Nível",
+    "save_btn": "Salvar Alterações",
+    "save_success": "Atributos de classe salvos com sucesso!",
+    "save_error": "Erro ao salvar atributos: {error}"
+  },
+  "exp_table_editor": {
+    "title": "Editor de Curvas de Experiência",
+    "subtitle": "Edite as tabelas de experiência Base e Job com pré-visualização gráfica em tempo real.",
+    "select_table": "Selecione a Tabela de EXP",
+    "chart_title": "Progresso da Curva de Experiência",
+    "level": "Nível",
+    "exp_required": "EXP Necessária",
+    "delta": "Diferença (Anterior)",
+    "scale_btn": "Ajustar Curva (%)",
+    "scale_prompt": "Informe a porcentagem de ajuste (ex: 110 para +10%, 90 para -10%):",
+    "save_btn": "Salvar Tabela de EXP",
+    "save_success": "Tabela de experiência salva com sucesso!",
+    "save_error": "Erro ao salvar tabela de experiência: {error}"
+  },
+  "skill_tree_editor": {
+    "title": "Árvore Visual de Habilidades",
+    "subtitle": "Crie e organize pré-requisitos de habilidades de forma visual arrastando e conectando nós.",
+    "select_job": "Selecione a Classe",
+    "add_skill_btn": "Adicionar Habilidade",
+    "auto_layout_btn": "Organizar Árvore",
+    "max_level": "Nv. Máx: {level}",
+    "required_level": "Nv. Necessário",
+    "modal_add_title": "Adicionar Habilidade à Árvore",
+    "modal_search_placeholder": "Buscar habilidade por nome ou ID...",
+    "btn_add": "Adicionar",
+    "save_btn": "Salvar Árvore",
+    "save_success": "Árvore de habilidades salva com sucesso!",
+    "save_error": "Erro ao salvar árvore de habilidades: {error}"
   }
 }
+

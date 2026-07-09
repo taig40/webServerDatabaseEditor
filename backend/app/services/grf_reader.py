@@ -432,6 +432,32 @@ class GRFReader:
                 return self.convert_bmp_to_png(bmp_data)
         return None
 
+    def get_skill_icon(self, skill_name: str, skill_id: int = 0) -> bytes:
+        """Returns PNG bytes of a skill icon from GRF."""
+        if not self.loaded:
+            return self.generate_dummy_png()
+        paths_to_try = []
+        if skill_name:
+            paths_to_try.extend([
+                f"data/texture/{_KOREAN_UI_FOLDER}/item/{skill_name}.bmp".lower(),
+                f"data/texture/userinterface/item/{skill_name}.bmp".lower(),
+                f"data/texture/{_KOREAN_UI_FOLDER}/skill/{skill_name}.bmp".lower(),
+                f"data/texture/userinterface/skill/{skill_name}.bmp".lower(),
+            ])
+        if skill_id > 0:
+            paths_to_try.extend([
+                f"data/texture/{_KOREAN_UI_FOLDER}/item/{skill_id}.bmp".lower(),
+                f"data/texture/userinterface/item/{skill_id}.bmp".lower(),
+            ])
+        for path in paths_to_try:
+            bmp_data = self.extract_file(path)
+            if bmp_data:
+                png = self.convert_bmp_to_png(bmp_data)
+                if png:
+                    return png
+        return self.generate_dummy_png()
+
+
     def get_collection_by_resource_name(self, resource_name: str) -> Optional[bytes]:
         """Returns PNG bytes of item collection BMP matching resource_name."""
         if not self.loaded or not resource_name:

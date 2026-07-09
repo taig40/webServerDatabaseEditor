@@ -42,7 +42,10 @@
       "placeholder": "Full file path...",
       "achievements_lua_label": "Achievements LUA (ACHIEVEMENTS_LUA_PATH)",
       "achievements_lua_sublabel": "System/achievements.lub or achievement_list.lub path of your client.",
-      "achievements_lua_placeholder": "Leave blank to auto-detect relative to ItemInfo"
+      "achievements_lua_placeholder": "Leave blank to auto-detect relative to ItemInfo",
+      "quests_lua_label": "Quests LUA (QUESTS_LUA_PATH)",
+      "quests_lua_sublabel": "Path to OngoingQuests.lub or OngoingQuestInfoList.lub in your client.",
+      "quests_lua_placeholder": "Leave blank to auto-detect relative to ItemInfo"
     },
     "grf": {
       "title": "GRF Files",
@@ -145,7 +148,10 @@
       "client_items": "Client Items",
       "client_quests": "Client Quests",
       "constants": "Constants",
-      "random_options": "Random Options"
+      "random_options": "Random Options",
+      "job_database": "Job Database",
+      "exp_tables": "Experience Tables",
+      "skill_tree": "Skill Tree"
     }
   },
   "app": {
@@ -921,5 +927,59 @@
     "new_objective": "New objective",
     "alert_create_error": "Error creating quest: {error}",
     "alert_save_success": "Quest saved successfully!"
+  },
+  "jobs_editor": {
+    "title": "Job & Stats Editor",
+    "subtitle": "Manage base stats, weight, HP/SP modifiers, and base evolution points for each job.",
+    "search_placeholder": "Search job...",
+    "tab_stats": "Base Attributes",
+    "tab_basepoints": "Evolution Points",
+    "tab_aspd": "Attack Speed (ASPD)",
+    "tab_outfits": "Alternate Outfits",
+    "max_weight": "Max Weight",
+    "hp_factor": "HP Factor (%)",
+    "hp_increase": "Linear HP Increase",
+    "sp_factor": "SP Factor (%)",
+    "sp_increase": "Linear SP Increase",
+    "ap_factor": "AP Factor (%)",
+    "ap_increase": "Linear AP Increase",
+    "bonus_stats": "Bonus Stats by Job Level",
+    "base_hp_table": "Base HP Table by Level",
+    "base_sp_table": "Base SP Table by Level",
+    "base_ap_table": "Base AP Table by Level",
+    "level": "Level",
+    "save_btn": "Save Changes",
+    "save_success": "Job attributes saved successfully!",
+    "save_error": "Error saving job attributes: {error}"
+  },
+  "exp_table_editor": {
+    "title": "Experience Curve Editor",
+    "subtitle": "Edit Base and Job experience tables with real-time chart preview.",
+    "select_table": "Select EXP Table",
+    "chart_title": "Experience Curve Progression",
+    "level": "Level",
+    "exp_required": "Required EXP",
+    "delta": "Difference (Prev)",
+    "scale_btn": "Scale Curve (%)",
+    "scale_prompt": "Enter adjustment percentage (e.g. 110 for +10%, 90 for -10%):",
+    "save_btn": "Save EXP Table",
+    "save_success": "Experience table saved successfully!",
+    "save_error": "Error saving experience table: {error}"
+  },
+  "skill_tree_editor": {
+    "title": "Visual Skill Tree Editor",
+    "subtitle": "Create and organize skill prerequisites visually by dragging and connecting nodes.",
+    "select_job": "Select Job Class",
+    "add_skill_btn": "Add Skill",
+    "auto_layout_btn": "Auto Layout",
+    "max_level": "Max Lv: {level}",
+    "required_level": "Required Level",
+    "modal_add_title": "Add Skill to Tree",
+    "modal_search_placeholder": "Search skill by name or ID...",
+    "btn_add": "Add",
+    "save_btn": "Save Skill Tree",
+    "save_success": "Skill tree saved successfully!",
+    "save_error": "Error saving skill tree: {error}"
   }
 }
+
