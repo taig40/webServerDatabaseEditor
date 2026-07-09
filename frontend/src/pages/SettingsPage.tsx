@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { API_URL } from '../config/env';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { getDivinePrideApiKey, setDivinePrideApiKey } from '../utils/divinePride';
 
 const MAX_GRF = 10;
 
@@ -230,6 +231,7 @@ const SettingsPage: React.FC = () => {
   const [clientEncoding, setClientEncoding] = useState('euc-kr');
   const [achievementsLuaPath, setAchievementsLuaPath] = useState('');
   const [questsLuaPath, setQuestsLuaPath] = useState('');
+  const [divinePrideKey, setDivinePrideKey] = useState(() => getDivinePrideApiKey());
   const [encodingOptions, setEncodingOptions] = useState<{ value: string; label: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -692,6 +694,32 @@ const SettingsPage: React.FC = () => {
                 </select>
                 <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">▾</div>
               </div>
+            </div>
+          </SectionCard>
+        </div>
+
+        {/* ── DivinePride Integration ── */}
+        <div className="xl:col-span-2">
+          <SectionCard
+            icon={Globe}
+            title={t('divinepride.settings_title')}
+            subtitle={t('divinepride.settings_subtitle')}
+            iconClass="text-amber-400"
+          >
+            <div className="flex flex-col gap-1.5 max-w-xl">
+              <label className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">
+                {t('divinepride.api_key_label')}
+              </label>
+              <input
+                type="password"
+                value={divinePrideKey}
+                onChange={e => {
+                  setDivinePrideKey(e.target.value);
+                  setDivinePrideApiKey(e.target.value);
+                }}
+                placeholder={t('divinepride.api_key_placeholder')}
+                className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 font-mono focus:outline-none focus:border-amber-500/60 transition-colors"
+              />
             </div>
           </SectionCard>
         </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { AlertTriangle, Settings } from 'lucide-react';
-import { API_URL } from './config/env';
+import { API_URL, getSSEUrl } from './config/env';
 import Layout, { type ModuleId } from './components/Layout';
 import { useLanguageStore } from './store/useLanguageStore';
 import GlobalLoadingOverlay from './components/GlobalLoadingOverlay';
@@ -37,12 +37,20 @@ function App() {
   const [isCacheReady, setIsCacheReady] = useState(false);
   const [currentLoadingFile, setCurrentLoadingFile] = useState('');
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [connectionError, setConnectionError] = useState(false);
 
   useEffect(() => {
-    const es = new EventSource(`${API_URL}/api/system/initialize-cache`);
+    const es = new EventSource(getSSEUrl('/api/system/initialize-cache'));
+
+    es.onopen = () => {
+      setConnectionError(false);
+      setStatusMessage(t('global_loading.readingFiles'));
+    };
 
     es.onmessage = (event) => {
       try {
+        setConnectionError(false);
         const data = JSON.parse(event.data);
         if (data.status === 'complete') {
           es.close();
@@ -50,20 +58,24 @@ function App() {
         } else if (data.status === 'loading') {
           if (data.file) setCurrentLoadingFile(data.file);
           if (typeof data.progress === 'number') setLoadingProgress(data.progress);
+          setStatusMessage(t('global_loading.readingFiles'));
         }
       } catch (e) {
         console.error('[App] Erro ao processar evento SSE de inicialização:', e);
       }
     };
 
-    es.onerror = () => {
-      // Tratar falhas temporárias do SSE
+    es.onerror = (err) => {
+      console.error('[App] Erro de conexão com SSE /api/system/initialize-cache:', err);
+      setConnectionError(true);
+      setStatusMessage(t('global_loading.connectionFailed'));
+      es.close();
     };
 
     return () => {
       es.close();
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
@@ -116,6 +128,8 @@ function App() {
         forceShow={true}
         file={currentLoadingFile}
         progress={loadingProgress}
+        statusMsg={statusMessage}
+        isError={connectionError}
       />
     );
   }

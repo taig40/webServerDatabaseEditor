@@ -3,11 +3,12 @@ import axios from 'axios';
 import {
   Save, Upload, Shield, Heart, Sword, Star, Award, Zap,
   ChevronRight, AlertCircle, Plus, Trash2, RefreshCw, Loader2, Brain,
-  Search, X
+  Search, X, DownloadCloud
 } from 'lucide-react';
 import { API_URL } from '../config/env';
 import MonsterAnimator from './MonsterAnimator';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { getDivinePrideApiKey } from '../utils/divinePride';
 
 // ─── Element & Race definitions ───────────────────────────────────────────────
 
@@ -39,7 +40,8 @@ const AI_MODES = [
 
 const AI_BASE_TYPES = [
   '01', '02', '03', '04', '05', '06', '07', '08',
-  '09', '10', '11', '12', '13', '17', '19', '21', '25'
+  '09', '10', '11', '12', '13', '17', '19', '20',
+  '21', '24', '25', '26', '27'
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -155,6 +157,43 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
     cancelable: false,
     target: 'target',
   });
+
+  // DivinePride Import
+  const [isImportingDP, setIsImportingDP] = useState(false);
+  const [dpMessage, setDpMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleImportDivinePride = async () => {
+    const key = getDivinePrideApiKey();
+    if (!key) {
+      alert(t('divinepride.missing_key_alert'));
+      return;
+    }
+    setIsImportingDP(true);
+    setDpMessage(null);
+    try {
+      const res = await axios.get(`${API_URL}/api/divinepride/import/monster/${mob.Id}`, {
+        headers: { 'x-divine-pride-key': key }
+      });
+      if (res.data && res.data.mapped) {
+        setLocal(prev => ({
+          ...prev,
+          ...res.data.mapped,
+          Id: mob.Id
+        }));
+        if (res.data.mapped.MobSkills && Array.isArray(res.data.mapped.MobSkills)) {
+          setSkills(res.data.mapped.MobSkills);
+        }
+        setDpMessage({ type: 'success', text: t('divinepride.import_success') });
+        setTimeout(() => setDpMessage(null), 6000);
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || err.message || 'Error';
+      setDpMessage({ type: 'error', text: t('divinepride.import_error', { message: msg }) });
+      setTimeout(() => setDpMessage(null), 6000);
+    } finally {
+      setIsImportingDP(false);
+    }
+  };
 
   // Sync when mob changes
   useEffect(() => {
@@ -481,8 +520,22 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-gray-400">
-              <span className="bg-dark-800 px-2 py-0.5 rounded border border-white/10">
-                ID: <span className="text-violet-400">{mob.Id}</span>
+              <span className="bg-dark-800 px-2 py-0.5 rounded border border-white/10 flex items-center gap-2">
+                <span>ID: <span className="text-violet-400">{mob.Id}</span></span>
+                <button
+                  type="button"
+                  onClick={handleImportDivinePride}
+                  disabled={isImportingDP}
+                  title={t('divinepride.import_button')}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-semibold text-[11px] transition-colors disabled:opacity-50"
+                >
+                  {isImportingDP ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <DownloadCloud size={12} />
+                  )}
+                  {isImportingDP ? t('divinepride.importing') : t('divinepride.import_button')}
+                </button>
               </span>
               <span className="bg-dark-800 px-2 py-0.5 rounded border border-white/10 truncate max-w-[200px]">
                 Aegis: <span className="text-blue-400">{local.AegisName}</span>
@@ -497,6 +550,16 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                 {local.Size}
               </span>
             </div>
+            {dpMessage && (
+              <div className={`mt-2.5 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
+                dpMessage.type === 'success'
+                  ? 'bg-emerald-950/80 border-emerald-700/60 text-emerald-300'
+                  : 'bg-red-950/80 border-red-700/60 text-red-300'
+              }`}>
+                <AlertCircle size={14} />
+                <span>{dpMessage.text}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -805,7 +868,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                 >
                   {AI_BASE_TYPES.map(typeCode => (
                     <option key={typeCode} value={typeCode}>
-                      {t((`monster_detail.ai.types.${typeCode}`) as any) || `${typeCode}: Engine Default`}
+                      {`${typeCode} - ${t((`monster_detail.ai.types.${typeCode}`) as any) || 'Engine Default'}`}
                     </option>
                   ))}
                 </select>

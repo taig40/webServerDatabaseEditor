@@ -21,7 +21,9 @@
     "readingMonstersFile": "Lendo arquivo de monstros: {{filename}}...",
     "entriesRead": "{{count}} registros lidos",
     "file": "Carregando arquivo: {{file}}",
-    "progress": "{{percent}}% concluído"
+    "progress": "{{value}}% concluído",
+    "readingFiles": "Lendo arquivos...",
+    "connectionFailed": "Falha na conexão! Verifique se o servidor Backend está em execução."
   },
   "settings": {
     "title": "Configurações do Sistema",
@@ -300,23 +302,50 @@
       "modes_subtitle": "Ative/desative flags individuais de comportamento sobre a IA base.",
       "subtitle": "Clique nos botões para ativar/desativar os flags de comportamento do monstro.",
       "types": {
-        "01": "01: Passivo",
-        "02": "02: Passivo, Looter",
-        "03": "03: Passivo, Assistência",
-        "04": "04: Passivo, Looter, Assistência",
-        "05": "05: Agressivo",
-        "06": "06: Agressivo, Looter",
-        "07": "07: Agressivo, Assistência",
-        "08": "08: Agressivo, Looter, Assistência",
-        "09": "09: Passivo, Cast Sensor Idle",
-        "10": "10: Passivo, Looter, Cast Sensor Idle",
-        "11": "11: Passivo, Assistência, Cast Sensor Idle",
-        "12": "12: Passivo, Looter, Assistência, Cast Sensor Idle",
-        "13": "13: Agressivo, Cast Sensor Idle",
-        "17": "17: Agressivo, Change Target Melee / Chase",
-        "19": "19: Passivo, Cast Sensor Chase",
-        "21": "21: Agressivo, Cast Sensor Idle/Chase, Change Target",
-        "25": "25: Passivo, Can Move, Can Attack"
+        "01": "Passivo",
+        "02": "Passivo, Saqueador (Looter)",
+        "03": "Passivo, Assistência e Mudança de Alvo Melee",
+        "04": "Irritável (Angry), Mudança de Alvo Melee/Perseguição",
+        "05": "Agressivo, Mudança de Alvo na Perseguição",
+        "06": "Passivo, Imóvel, Não Pode Atacar [Plantas]",
+        "07": "Passivo, Saqueador, Assistência, Mudança de Alvo Melee",
+        "08": "Agressivo, Mudança de Alvo Melee/Perseguição, Ataca Inimigos Fracos",
+        "09": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado [Guardião]",
+        "10": "Agressivo, Imóvel",
+        "11": "Agressivo, Imóvel [Guardião]",
+        "12": "Agressivo, Mudança de Alvo na Perseguição [Guardião]",
+        "13": "Agressivo, Mudança de Alvo Melee/Perseguição, Assistência",
+        "17": "Passivo, Sensor de Conjuração Parado",
+        "19": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado",
+        "20": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado/Perseguindo",
+        "21": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado/Perseguindo, Perseguindo-Mudança de Alvo",
+        "24": "Passivo, Não anda aleatoriamente [Escravo]",
+        "25": "Passivo, Não Pode Atacar [Mascote]",
+        "26": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado/Perseguindo, Perseguindo-Mudança de Alvo, Alvo Aleatório",
+        "27": "Agressivo, Imóvel, Alvo Aleatório"
+      },
+      "aegisTypes": {
+        "01": "Passivo",
+        "02": "Passivo, Saqueador (Looter)",
+        "03": "Passivo, Assistência e Mudança de Alvo Melee",
+        "04": "Irritável (Angry), Mudança de Alvo Melee/Perseguição",
+        "05": "Agressivo, Mudança de Alvo na Perseguição",
+        "06": "Passivo, Imóvel, Não Pode Atacar [Plantas]",
+        "07": "Passivo, Saqueador, Assistência, Mudança de Alvo Melee",
+        "08": "Agressivo, Mudança de Alvo Melee/Perseguição, Ataca Inimigos Fracos",
+        "09": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado [Guardião]",
+        "10": "Agressivo, Imóvel",
+        "11": "Agressivo, Imóvel [Guardião]",
+        "12": "Agressivo, Mudança de Alvo na Perseguição [Guardião]",
+        "13": "Agressivo, Mudança de Alvo Melee/Perseguição, Assistência",
+        "17": "Passivo, Sensor de Conjuração Parado",
+        "19": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado",
+        "20": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado/Perseguindo",
+        "21": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado/Perseguindo, Perseguindo-Mudança de Alvo",
+        "24": "Passivo, Não anda aleatoriamente [Escravo]",
+        "25": "Passivo, Não Pode Atacar [Mascote]",
+        "26": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado/Perseguindo, Perseguindo-Mudança de Alvo, Alvo Aleatório",
+        "27": "Agressivo, Imóvel, Alvo Aleatório"
       }
     },
     "skills": {
@@ -1066,13 +1095,26 @@
     "title": "Carregando Bancos de Dados do rAthena",
     "subtitle": "Aguarde enquanto os arquivos YAML são cacheados na memória...",
     "database": "Lendo banco: {{db}}",
-    "progress": "{{percent}}% concluído",
+    "progress": "{{value}}% concluído",
     "completed": "Carregamento concluído com sucesso!",
-    "connecting": "Conectando ao servidor..."
+    "connecting": "Conectando ao servidor...",
+    "readingFiles": "Lendo arquivos...",
+    "connectionFailed": "Falha na conexão! Verifique se o servidor Backend está em execução."
   },
   "pagination": {
     "loading_more": "Carregando mais itens...",
     "showing": "Exibindo {{loaded}} de {{total}} registros"
+  },
+  "divinepride": {
+    "settings_title": "Integração DivinePride",
+    "settings_subtitle": "Configure sua chave de API para importação automática de dados do divine-pride.net",
+    "api_key_label": "DivinePride API Key",
+    "api_key_placeholder": "Insira sua chave de API do DivinePride...",
+    "import_button": "Importar do DivinePride",
+    "importing": "Importando...",
+    "missing_key_alert": "API Key do DivinePride não configurada. Configure na tela de Configurações do Sistema.",
+    "import_success": "Dados importados do DivinePride com sucesso! Verifique e salve as alterações.",
+    "import_error": "Falha ao importar do DivinePride: {{message}}"
   }
 }
 

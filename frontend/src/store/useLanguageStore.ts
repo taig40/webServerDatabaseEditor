@@ -85,11 +85,12 @@ export const useLanguageStore = create<LanguageState>((set, get) => {
         }
       }
 
-      // Interpolate variables if provided
+      // Interpolate variables if provided (supporting both {{key}} and {key})
       if (variables) {
         let str = result;
         Object.entries(variables).forEach(([vKey, vVal]) => {
-          str = str.replace(new RegExp(`{${vKey}}`, 'g'), String(vVal));
+          str = str.replace(new RegExp(`\\{\\{${vKey}\\}\\}`, 'g'), String(vVal));
+          str = str.replace(new RegExp(`\\{${vKey}\\}`, 'g'), String(vVal));
         });
         return str;
       }
