@@ -6,6 +6,7 @@ import { Search, BookOpen, Package } from 'lucide-react';
 import ClientItemDetail from '../components/ClientItemDetail';
 import ClientAssetAudit from '../components/ClientAssetAudit';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { localizeLoadingStatus } from '../utils/i18nHelpers';
 
 const ClientItemEditor: React.FC = () => {
   const t = useLanguageStore(state => state.t);
@@ -26,18 +27,12 @@ const ClientItemEditor: React.FC = () => {
         const statusRes = await axios.get(`${API_URL}/api/items/status`);
         const { is_loading, message, items_loaded } = statusRes.data;
 
-        let displayMessage = message;
-        if (message === "Conectando ao Backend...") {
-          displayMessage = t('item_editor.status.connecting');
-        } else if (message === "Carregando lista de Itens...") {
-          displayMessage = t('item_editor.status.loading_list');
-        }
-        setLoadingStatus(displayMessage);
+        setLoadingStatus(localizeLoadingStatus(message, t));
         setItemsLoaded(items_loaded);
 
         if (!is_loading && message !== 'Aguardando inicialização...') {
           clearInterval(intervalId);
-          setLoadingStatus(t('item_editor.status.loading_list'));
+          setLoadingStatus(t('loading.loadingItems'));
           try {
             const res = await axios.get(`${API_URL}/api/items/?skip=0&limit=150000`);
             setItems(res.data.items);
@@ -122,8 +117,9 @@ const ClientItemEditor: React.FC = () => {
             <h3 className="text-xl text-white font-semibold mb-2">{t('client_item_editor.loading_title')}</h3>
             <p className="text-gray-400 mb-2 font-mono text-sm">{loadingStatus}</p>
             <div className="bg-[#1a1a28] px-4 py-2 rounded-full border border-white/10">
-              <span className="text-cyan-400 font-bold text-lg">{itemsLoaded.toLocaleString()}</span>
-              <span className="text-gray-500 ml-2">{t('item_editor.status.entries_read')}</span>
+              <span className="text-cyan-400 font-bold text-sm">
+                {t('loading.entriesRead', { count: itemsLoaded })}
+              </span>
             </div>
           </div>
         )}

@@ -6,7 +6,6 @@ import { useLanguageStore } from './store/useLanguageStore';
 import ItemEditor from './pages/ItemEditor';
 import MonsterEditor from './pages/MonsterEditor';
 import SkillEditor from './pages/SkillEditor';
-import MobSkillEditor from './pages/MobSkillEditor';
 import ComboEditor from './pages/ComboEditor';
 import QuestEditor from './pages/QuestEditor';
 import PetEditor from './pages/PetEditor';
@@ -56,7 +55,6 @@ function App() {
       case 'items':          return <ItemEditor />;
       case 'mobs':           return <MonsterEditor />;
       case 'skills':         return <SkillEditor />;
-      case 'mob_skills':     return <MobSkillEditor />;
       case 'item_combos':    return <ComboEditor />;
       case 'server_quests':  return <QuestEditor />;
       case 'pets':           return <PetEditor />;

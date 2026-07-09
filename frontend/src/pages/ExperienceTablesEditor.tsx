@@ -10,7 +10,8 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  CartesianGrid
+  CartesianGrid,
+  Legend
 } from 'recharts';
 import {
   TrendingUp,
@@ -18,7 +19,6 @@ import {
   Sliders,
   CheckCircle,
   AlertCircle,
-  Database,
   BarChart3,
   Table as TableIcon
 } from 'lucide-react';
@@ -29,10 +29,16 @@ interface ExpEntry {
 }
 
 interface ExpTableEntry {
-  _index: number;
+  className?: string;
+  category?: string;
+  base_exp?: ExpEntry[];
+  job_exp?: ExpEntry[];
+  base_index?: number;
+  job_index?: number;
   MaxBaseLevel?: number;
-  BaseExp?: ExpEntry[];
   MaxJobLevel?: number;
+  _index?: number;
+  BaseExp?: ExpEntry[];
   JobExp?: ExpEntry[];
   Jobs?: Record<string, boolean> | string[];
 }
@@ -41,7 +47,6 @@ const ExperienceTablesEditor: React.FC = () => {
   const t = useLanguageStore(state => state.t);
   const [tables, setTables] = useState<ExpTableEntry[]>([]);
   const [selectedTableIndex, setSelectedTableIndex] = useState<number>(0);
-  const [activeCurve, setActiveCurve] = useState<'BaseExp' | 'JobExp'>('BaseExp');
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -65,27 +70,39 @@ const ExperienceTablesEditor: React.FC = () => {
   };
 
   const currentTable = tables[selectedTableIndex] || null;
-  const currentExpList = (currentTable?.[activeCurve] || []) as ExpEntry[];
 
   const chartData = useMemo(() => {
-    return currentExpList.map((entry, idx) => {
-      const prevVal = idx > 0 ? currentExpList[idx - 1].Exp : 0;
-      return {
-        level: entry.Level,
-        exp: entry.Exp,
-        delta: entry.Exp - prevVal
-      };
-    });
-  }, [currentExpList]);
+    const baseList = currentTable?.base_exp || currentTable?.BaseExp || [];
+    const jobList = currentTable?.job_exp || currentTable?.JobExp || [];
+    const maxLen = Math.max(baseList.length, jobList.length);
+    const result = [];
+    for (let i = 0; i < maxLen; i++) {
+      const baseEntry = baseList[i];
+      const jobEntry = jobList[i];
+      result.push({
+        level: baseEntry?.Level || jobEntry?.Level || i + 1,
+        baseExp: baseEntry?.Exp || 0,
+        jobExp: jobEntry?.Exp || 0
+      });
+    }
+    return result;
+  }, [currentTable]);
 
-  const handleValueChange = (idx: number, newExp: number) => {
+  const handleValueChange = (curveType: 'base_exp' | 'job_exp', idx: number, newExp: number) => {
     if (!currentTable) return;
-    const newList = [...currentExpList];
-    newList[idx] = { ...newList[idx], Exp: Math.max(0, newExp) };
+    const currentList = curveType === 'base_exp'
+      ? (currentTable.base_exp || currentTable.BaseExp || [])
+      : (currentTable.job_exp || currentTable.JobExp || []);
+
+    const newList = [...currentList];
+    newList[idx] = {
+      Level: newList[idx]?.Level || idx + 1,
+      Exp: Math.max(0, newExp)
+    };
 
     const updatedTable = {
       ...currentTable,
-      [activeCurve]: newList
+      [curveType]: newList
     };
 
     const newTables = [...tables];
@@ -100,13 +117,22 @@ const ExperienceTablesEditor: React.FC = () => {
     const factor = parseFloat(input) / 100;
     if (isNaN(factor) || factor <= 0) return;
 
-    const newList = currentExpList.map(entry => ({
+    const baseList = currentTable.base_exp || currentTable.BaseExp || [];
+    const jobList = currentTable.job_exp || currentTable.JobExp || [];
+
+    const newBaseList = baseList.map(entry => ({
       ...entry,
       Exp: Math.round(entry.Exp * factor)
     }));
+    const newJobList = jobList.map(entry => ({
+      ...entry,
+      Exp: Math.round(entry.Exp * factor)
+    }));
+
     const updatedTable = {
       ...currentTable,
-      [activeCurve]: newList
+      base_exp: newBaseList,
+      job_exp: newJobList
     };
 
     const newTables = [...tables];
@@ -120,8 +146,11 @@ const ExperienceTablesEditor: React.FC = () => {
     setToastMessage(null);
     try {
       await axios.put(`${API_URL}/api/progression/exp`, {
-        index: currentTable._index,
-        data: currentTable
+        className: currentTable.className || 'Unknown',
+        base_index: currentTable.base_index !== undefined ? currentTable.base_index : (currentTable._index ?? -1),
+        job_index: currentTable.job_index !== undefined ? currentTable.job_index : (currentTable._index ?? -1),
+        base_exp: currentTable.base_exp || currentTable.BaseExp || [],
+        job_exp: currentTable.job_exp || currentTable.JobExp || []
       });
       setToastMessage({ text: t('exp_table_editor.save_success'), type: 'success' });
     } catch (err: any) {
@@ -133,6 +162,7 @@ const ExperienceTablesEditor: React.FC = () => {
   };
 
   const getTableTitle = (entry: ExpTableEntry, idx: number) => {
+    if (entry.className) return entry.className;
     if (entry.Jobs) {
       if (Array.isArray(entry.Jobs)) return entry.Jobs.slice(0, 3).join(', ');
       if (typeof entry.Jobs === 'object') return Object.keys(entry.Jobs).slice(0, 3).join(', ');
@@ -153,11 +183,11 @@ const ExperienceTablesEditor: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Table Selector */}
+          {/* Table / Class Selector */}
           <select
             value={selectedTableIndex}
             onChange={e => setSelectedTableIndex(parseInt(e.target.value))}
-            className="bg-black/40 border border-white/10 text-white text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 animate-fade"
+            className="bg-black/40 border border-white/10 text-white text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-all"
           >
             {tables.map((tbl, idx) => (
               <option key={idx} value={idx}>
@@ -165,30 +195,6 @@ const ExperienceTablesEditor: React.FC = () => {
               </option>
             ))}
           </select>
-
-          {/* Curve Toggle */}
-          <div className="bg-black/40 border border-white/10 rounded-xl p-1 flex items-center">
-            <button
-              onClick={() => setActiveCurve('BaseExp')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeCurve === 'BaseExp'
-                  ? 'bg-indigo-600 text-white shadow'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Base EXP
-            </button>
-            <button
-              onClick={() => setActiveCurve('JobExp')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeCurve === 'JobExp'
-                  ? 'bg-indigo-600 text-white shadow'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Job EXP
-            </button>
-          </div>
 
           <button
             onClick={handleScaleCurve}
@@ -227,20 +233,20 @@ const ExperienceTablesEditor: React.FC = () => {
       </div>
 
       {loading ? (
-        <div className="p-16 text-center text-gray-500 text-sm">Carregando tabelas de experiência...</div>
+        <div className="p-16 text-center text-gray-500 text-sm">...</div>
       ) : !currentTable ? (
-        <div className="p-16 text-center text-gray-500 text-sm">Nenhuma tabela encontrada.</div>
+        <div className="p-16 text-center text-gray-500 text-sm">---</div>
       ) : (
         <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
           {/* Interactive Recharts Visualization */}
-          <div className="lg:col-span-2 bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col justify-between h-[500px]">
+          <div className="lg:col-span-2 bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col justify-between h-[520px]">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-sm text-white flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-indigo-400" />
-                {t('exp_table_editor.chart_title')} — {activeCurve}
+                {t('exp_table_editor.chart_title')}
               </h3>
               <span className="text-xs text-gray-400">
-                Max Level: {currentExpList.length}
+                Max Level: {chartData.length}
               </span>
             </div>
 
@@ -248,42 +254,44 @@ const ExperienceTablesEditor: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <defs>
-                    <linearGradient id="expGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.5} />
+                    <linearGradient id="baseGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6} />
                       <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
+                    </linearGradient>
+                    <linearGradient id="jobGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.6} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                  <XAxis dataKey="level" stroke="#888888" tick={{ fontSize: 10 }} />
-                  <YAxis
-                    stroke="#888888"
-                    tick={{ fontSize: 10 }}
-                    tickFormatter={value =>
-                      value >= 1000000
-                        ? `${(value / 1000000).toFixed(1)}M`
-                        : value >= 1000
-                        ? `${(value / 1000).toFixed(0)}k`
-                        : value
-                    }
-                  />
+                  <XAxis dataKey="level" stroke="#9ca3af" fontSize={11} />
+                  <YAxis stroke="#9ca3af" fontSize={11} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#13131c',
-                      borderColor: '#ffffff20',
+                      backgroundColor: '#181824',
+                      borderColor: '#ffffff15',
                       borderRadius: '12px',
-                      color: '#fff',
                       fontSize: '12px'
                     }}
-                    formatter={(value: any) => [value.toLocaleString(), 'EXP']}
-                    labelFormatter={(label) => `Lv ${label}`}
                   />
+                  <Legend wrapperStyle={{ fontSize: '12px', color: '#9ca3af' }} />
                   <Area
                     type="monotone"
-                    dataKey="exp"
+                    dataKey="baseExp"
+                    name={t('exp_table_editor.col_base_exp')}
                     stroke="#6366f1"
                     strokeWidth={2.5}
                     fillOpacity={1}
-                    fill="url(#expGradient)"
+                    fill="url(#baseGradient)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="jobExp"
+                    name={t('exp_table_editor.col_job_exp')}
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#jobGradient)"
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -291,20 +299,20 @@ const ExperienceTablesEditor: React.FC = () => {
           </div>
 
           {/* Editable Data Table with Virtual Scroll */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col h-[500px]">
+          <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col h-[520px]">
             <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
               <h3 className="font-bold text-sm text-white flex items-center gap-2">
                 <TableIcon className="w-4 h-4 text-indigo-400" />
-                EXP Data Grid
+                {currentTable.className || 'EXP Data Grid'}
               </h3>
             </div>
 
             <div className="flex-1 flex flex-col min-h-0 bg-black/25">
               {/* Header Row */}
               <div className="flex items-center text-xs font-semibold text-gray-400 bg-black/40 border-b border-white/10 px-5 py-3 sticky top-0 z-10">
-                <div className="w-16 shrink-0">{t('exp_table_editor.level')}</div>
-                <div className="flex-1 px-4">{t('exp_table_editor.exp_required')}</div>
-                <div className="w-28 shrink-0 text-right">{t('exp_table_editor.delta')}</div>
+                <div className="w-16 shrink-0">{t('exp_table_editor.col_level')}</div>
+                <div className="flex-1 px-2">{t('exp_table_editor.col_base_exp')}</div>
+                <div className="flex-1 px-2">{t('exp_table_editor.col_job_exp')}</div>
               </div>
 
               {/* Virtualized Rows */}
@@ -315,20 +323,25 @@ const ExperienceTablesEditor: React.FC = () => {
                   <div className="flex items-center text-xs text-gray-300 border-b border-white/5 hover:bg-white/5 transition-all px-5 py-2">
                     {/* Level */}
                     <div className="w-16 shrink-0 font-bold text-indigo-300">Lv {row.level}</div>
-                    
-                    {/* Value Input */}
-                    <div className="flex-1 px-4">
+
+                    {/* Base EXP Input */}
+                    <div className="flex-1 px-2">
                       <input
                         type="number"
-                        value={row.exp}
-                        onChange={e => handleValueChange(index, parseInt(e.target.value) || 0)}
+                        value={row.baseExp}
+                        onChange={e => handleValueChange('base_exp', index, parseInt(e.target.value) || 0)}
                         className="bg-black/40 border border-white/10 rounded-lg px-2.5 py-1 text-white font-mono text-xs w-full focus:outline-none focus:border-indigo-500"
                       />
                     </div>
 
-                    {/* Delta */}
-                    <div className="w-28 shrink-0 text-right font-mono text-gray-400">
-                      {row.delta > 0 ? `+${row.delta.toLocaleString()}` : row.delta.toLocaleString()}
+                    {/* Job EXP Input */}
+                    <div className="flex-1 px-2">
+                      <input
+                        type="number"
+                        value={row.jobExp}
+                        onChange={e => handleValueChange('job_exp', index, parseInt(e.target.value) || 0)}
+                        className="bg-black/40 border border-white/10 rounded-lg px-2.5 py-1 text-white font-mono text-xs w-full focus:outline-none focus:border-emerald-500"
+                      />
                     </div>
                   </div>
                 )}

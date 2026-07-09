@@ -7,6 +7,7 @@ import { LevelArrayEditor } from '../components/LevelArrayEditor';
 import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { localizeLoadingStatus } from '../utils/i18nHelpers';
 
 type SourceTab = 'rathena' | 'custom';
 
@@ -53,13 +54,7 @@ export const SkillEditor: React.FC = () => {
     const checkStatus = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/skills/status`);
-        let msg = res.data.message;
-        if (msg === "Conectando ao Backend...") {
-          msg = t('skill_editor.status.connecting');
-        } else if (msg === "Carregando banco de habilidades...") {
-          msg = t('skill_editor.status.loading_list');
-        }
-        setLoadingStatus(msg);
+        setLoadingStatus(localizeLoadingStatus(res.data.message, t));
         if (!res.data.is_loading && res.data.message !== "Aguardando inicialização...") {
           if (intervalId) clearInterval(intervalId);
           fetchSkills();

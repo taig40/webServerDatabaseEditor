@@ -1,4 +1,4 @@
-﻿"""
+"""
 mob_skill_parser.py -- Parser for mob_skill_db.txt (CSV format).
 
 Format per line (non-comment, non-empty):
@@ -295,6 +295,30 @@ class MobSkillDatabase:
                 self._import_entries = [e for e in self._import_entries if e['_line_index'] != line_index]
                 return True
         return False
+
+    def sync_mob_skills(self, mob_id: int, dummy_name: str, new_skills: list):
+        existing = self.get_by_mob(mob_id)
+        retained_indices = set()
+        for skill in new_skills:
+            line_idx = skill.get('_line_index')
+            if line_idx is not None and isinstance(line_idx, int) and line_idx >= 0:
+                retained_indices.add((line_idx, skill.get('_source', 'rathena')))
+
+        for old_skill in existing:
+            key = (old_skill['_line_index'], old_skill.get('_source', 'rathena'))
+            if key not in retained_indices:
+                self.delete_entry(old_skill['_line_index'], old_skill.get('_source', 'rathena'))
+
+        for skill in new_skills:
+            skill_dict = dict(skill)
+            skill_dict['mob_id'] = mob_id
+            if not skill_dict.get('dummy_name'):
+                skill_dict['dummy_name'] = dummy_name or str(mob_id)
+            line_idx = skill_dict.get('_line_index')
+            if line_idx is not None and isinstance(line_idx, int) and line_idx >= 0:
+                self.update_entry(line_idx, skill_dict)
+            else:
+                self.add_entry(skill_dict)
 
 
 mob_skill_db = MobSkillDatabase()

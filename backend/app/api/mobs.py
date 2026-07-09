@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from app.services.mob_parser import mob_db
+from app.services.mob_skill_parser import mob_skill_db
 from app.services.sprite_parser import get_mob_animation_data, get_sprite_name_for_mob
 
 router = APIRouter()
@@ -45,7 +46,8 @@ class MobUpdate(BaseModel):
     Title: Optional[str] = None
     Ai: Optional[str] = None
     Class: Optional[str] = None
-    Modes: Optional[Dict[str, bool]] = None
+    Modes: Optional[Dict[str, Any]] = None
+    MobSkills: Optional[List[Dict[str, Any]]] = None
     Drops: Optional[List[Dict[str, Any]]] = None
     MvpDrops: Optional[List[Dict[str, Any]]] = None
 
@@ -57,6 +59,21 @@ async def get_status():
         "mobs_loaded": mob_db.mobs_loaded
     }
 
+def _normalize_mob_entry(mob: dict) -> dict:
+    result = dict(mob)
+    mob_id = result.get("Id")
+    modes_val = result.get("Modes")
+    clean_modes = {}
+    if isinstance(modes_val, dict):
+        for k, v in modes_val.items():
+            clean_modes[str(k)] = bool(v)
+    result["Modes"] = clean_modes
+    if mob_id is not None:
+        result["MobSkills"] = mob_skill_db.get_by_mob(mob_id)
+    else:
+        result["MobSkills"] = []
+    return result
+
 @router.get("/")
 async def get_mobs(
     skip: int = Query(0, description="Número de monstros a pular"),
@@ -67,7 +84,7 @@ async def get_mobs(
         
     mobs = mob_db.get_mobs()
     total = len(mobs)
-    paginated_mobs = mobs[skip: skip + limit]
+    paginated_mobs = [_normalize_mob_entry(m) for m in mobs[skip: skip + limit]]
     
     return {
         "total": total,
@@ -89,7 +106,7 @@ async def get_mob(mob_id: int):
     if data and 'Body' in data:
         for mob in data['Body']:
             if mob.get('Id') == mob_id:
-                return mob
+                return _normalize_mob_entry(mob)
                 
     raise HTTPException(status_code=404, detail="ERROR_MOB_NOT_FOUND")
 
@@ -106,12 +123,21 @@ async def update_mob(
     
     if "Id" in updated_dict:
         del updated_dict["Id"]
+
+    mob_skills = updated_dict.pop("MobSkills", None)
+    if "Modes" in updated_dict and isinstance(updated_dict["Modes"], dict):
+        clean_modes = {k: True for k, v in updated_dict["Modes"].items() if v}
+        updated_dict["Modes"] = clean_modes
         
     updated_mob = mob_db.update_mob(mob_id, updated_dict, save_mode=save_mode)
     if not updated_mob:
         raise HTTPException(status_code=404, detail="ERROR_MOB_NOT_FOUND")
+
+    if mob_skills is not None and isinstance(mob_skills, list):
+        dummy_name = updated_mob.get("AegisName") or updated_mob.get("Name") or str(mob_id)
+        mob_skill_db.sync_mob_skills(mob_id, str(dummy_name), mob_skills)
         
-    return updated_mob
+    return _normalize_mob_entry(updated_mob)
 
 @router.post("/")
 async def create_mob(mob_data: dict):

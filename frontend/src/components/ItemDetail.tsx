@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Package, Shield, Sword, Box, Save, Plus, X, Users, Store } from 'lucide-react';
 import { API_URL } from '../config/env';
 import Editor from '@monaco-editor/react';
+import { initRathenaItemScript, validateItemScript } from '../monaco/rathenaItemScript';
 import NpcShopModal from './NpcShopModal';
 import { useLanguageStore } from '../store/useLanguageStore';
 
@@ -351,10 +352,14 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               <div className="h-48 border border-white/10 rounded-lg overflow-hidden focus-within:border-blue-500/50 transition-colors">
                 <Editor
                   height="100%"
-                  defaultLanguage="c"
+                  defaultLanguage="rathena-item-script"
                   theme="vs-dark"
                   value={getScriptString(localItem.Script)}
-                  onChange={(val) => setLocalItem({...localItem, Script: val || '' })}
+                  beforeMount={(monaco) => initRathenaItemScript(monaco)}
+                  onMount={(editor, monaco) => validateItemScript(monaco, editor.getModel(), t)}
+                  onChange={(val) => {
+                    setLocalItem({...localItem, Script: val || '' });
+                  }}
                   options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false }}
                 />
               </div>
@@ -366,10 +371,14 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                 <div className="h-32 border border-white/10 rounded-lg overflow-hidden focus-within:border-blue-500/50 transition-colors">
                   <Editor
                     height="100%"
-                    defaultLanguage="c"
+                    defaultLanguage="rathena-item-script"
                     theme="vs-dark"
                     value={getScriptString(localItem.EquipScript)}
-                    onChange={(val) => setLocalItem({...localItem, EquipScript: val || '' })}
+                    beforeMount={(monaco) => initRathenaItemScript(monaco)}
+                    onMount={(editor, monaco) => validateItemScript(monaco, editor.getModel(), t)}
+                    onChange={(val) => {
+                      setLocalItem({...localItem, EquipScript: val || '' });
+                    }}
                     options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false }}
                   />
                 </div>
@@ -379,10 +388,14 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                 <div className="h-32 border border-white/10 rounded-lg overflow-hidden focus-within:border-blue-500/50 transition-colors">
                   <Editor
                     height="100%"
-                    defaultLanguage="c"
+                    defaultLanguage="rathena-item-script"
                     theme="vs-dark"
                     value={getScriptString(localItem.UnEquipScript)}
-                    onChange={(val) => setLocalItem({...localItem, UnEquipScript: val || '' })}
+                    beforeMount={(monaco) => initRathenaItemScript(monaco)}
+                    onMount={(editor, monaco) => validateItemScript(monaco, editor.getModel(), t)}
+                    onChange={(val) => {
+                      setLocalItem({...localItem, UnEquipScript: val || '' });
+                    }}
                     options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false }}
                   />
                 </div>
