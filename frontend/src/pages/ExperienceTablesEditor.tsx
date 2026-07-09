@@ -43,6 +43,13 @@ interface ExpTableEntry {
   Jobs?: Record<string, boolean> | string[];
 }
 
+const formatYAxisTick = (val: number) => {
+  if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)}B`;
+  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
+  if (val >= 1_000) return `${(val / 1_000).toFixed(0)}k`;
+  return String(val);
+};
+
 const ExperienceTablesEditor: React.FC = () => {
   const t = useLanguageStore(state => state.t);
   const [tables, setTables] = useState<ExpTableEntry[]>([]);
@@ -238,68 +245,117 @@ const ExperienceTablesEditor: React.FC = () => {
         <div className="p-16 text-center text-gray-500 text-sm">---</div>
       ) : (
         <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
-          {/* Interactive Recharts Visualization */}
-          <div className="lg:col-span-2 bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col justify-between h-[520px]">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-indigo-400" />
-                {t('exp_table_editor.chart_title')}
-              </h3>
-              <span className="text-xs text-gray-400">
-                Max Level: {chartData.length}
-              </span>
+          {/* Interactive Stacked Recharts Visualization */}
+          <div className="lg:col-span-2 flex flex-col gap-4 h-[580px]">
+            {/* Top Chart: Base EXP */}
+            <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col min-h-0">
+              <div className="flex items-center justify-between mb-2 shrink-0">
+                <h3 className="font-bold text-xs text-white flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-indigo-400" />
+                  {t('exp_table_editor.base_curve')}
+                </h3>
+                <span className="text-[11px] text-gray-400">
+                  Max Lv: {chartData.length}
+                </span>
+              </div>
+
+              <div className="w-full flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} syncId="expSync">
+                    <defs>
+                      <linearGradient id="baseGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6} />
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                    <XAxis dataKey="level" stroke="#9ca3af" fontSize={11} />
+                    <YAxis
+                      stroke="#9ca3af"
+                      fontSize={11}
+                      tickFormatter={formatYAxisTick}
+                      domain={['auto', 'auto']}
+                    />
+                    <Tooltip
+                      formatter={(value: any) => [Number(value || 0).toLocaleString(), t('exp_table_editor.col_base_exp')]}
+                      labelFormatter={(label) => `Lv ${label}`}
+                      contentStyle={{
+                        backgroundColor: '#181824',
+                        borderColor: '#ffffff15',
+                        borderRadius: '12px',
+                        fontSize: '12px'
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="baseExp"
+                      name={t('exp_table_editor.col_base_exp')}
+                      stroke="#6366f1"
+                      strokeWidth={2.5}
+                      fillOpacity={1}
+                      fill="url(#baseGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
-            <div className="h-80 w-full flex-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="baseGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
-                    </linearGradient>
-                    <linearGradient id="jobGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.6} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                  <XAxis dataKey="level" stroke="#9ca3af" fontSize={11} />
-                  <YAxis stroke="#9ca3af" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#181824',
-                      borderColor: '#ffffff15',
-                      borderRadius: '12px',
-                      fontSize: '12px'
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '12px', color: '#9ca3af' }} />
-                  <Area
-                    type="monotone"
-                    dataKey="baseExp"
-                    name={t('exp_table_editor.col_base_exp')}
-                    stroke="#6366f1"
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                    fill="url(#baseGradient)"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="jobExp"
-                    name={t('exp_table_editor.col_job_exp')}
-                    stroke="#10b981"
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                    fill="url(#jobGradient)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            {/* Bottom Chart: Job EXP */}
+            <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col min-h-0">
+              <div className="flex items-center justify-between mb-2 shrink-0">
+                <h3 className="font-bold text-xs text-white flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-emerald-400" />
+                  {t('exp_table_editor.job_curve')}
+                </h3>
+                <span className="text-[11px] text-gray-400">
+                  Max Lv: {chartData.length}
+                </span>
+              </div>
+
+              <div className="w-full flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} syncId="expSync">
+                    <defs>
+                      <linearGradient id="jobGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.6} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                    <XAxis dataKey="level" stroke="#9ca3af" fontSize={11} />
+                    <YAxis
+                      stroke="#9ca3af"
+                      fontSize={11}
+                      tickFormatter={formatYAxisTick}
+                      domain={['auto', 'auto']}
+                    />
+                    <Tooltip
+                      formatter={(value: any) => [Number(value || 0).toLocaleString(), t('exp_table_editor.col_job_exp')]}
+                      labelFormatter={(label) => `Lv ${label}`}
+                      contentStyle={{
+                        backgroundColor: '#181824',
+                        borderColor: '#ffffff15',
+                        borderRadius: '12px',
+                        fontSize: '12px'
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="jobExp"
+                      name={t('exp_table_editor.col_job_exp')}
+                      stroke="#10b981"
+                      strokeWidth={2.5}
+                      fillOpacity={1}
+                      fill="url(#jobGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
           {/* Editable Data Table with Virtual Scroll */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col h-[520px]">
+          <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col h-[580px]">
             <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
               <h3 className="font-bold text-sm text-white flex items-center gap-2">
                 <TableIcon className="w-4 h-4 text-indigo-400" />

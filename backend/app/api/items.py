@@ -48,10 +48,18 @@ async def get_item_sold_by(item_id: int):
         })
     return result
 
+from typing import Optional
+
 @router.get("/")
 async def get_items(
-    skip: int = Query(0, description="Número de itens a pular"),
-    limit: int = Query(50000, description="Número de itens a retornar")
+    page: int = Query(1, ge=1, description="Página atual (1-based)"),
+    limit: int = Query(50, ge=1, le=5000, description="Número de itens a retornar"),
+    search: str = Query("", description="Termo de busca retrocompatível"),
+    search_query: str = Query("", description="O texto digitado pelo usuário"),
+    search_target: str = Query("name", description="Onde procurar: name ou script"),
+    item_type: str = Query("", description="O tipo do item no YAML (ex: Equipment, Consumable, etc.)"),
+    source: str = Query("", description="Filtra por origem: rathena ou custom"),
+    skip: Optional[int] = Query(None, description="Opcional retrocompatibilidade com skip")
 ):
     """
     Returns a paginated list of items from the in-memory YAML database.
@@ -59,17 +67,21 @@ async def get_items(
     if yaml_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando na memória RAM.")
 
-    items = yaml_db.get_items()
-    total = len(items)
-    
-    # Paginate
-    paginated_items = items[skip : skip + limit]
-    
+    paginated_items, total_count = yaml_db.search_items(
+        page=page,
+        limit=limit,
+        search=search,
+        source=source,
+        skip=skip,
+        search_query=search_query,
+        search_target=search_target,
+        item_type=item_type
+    )
+
     # Merge client database LUA properties (identifiedDisplayName, identifiedResourceName)
     from app.services.iteminfo_parser import iteminfo_db
     merged_items = []
     for item in paginated_items:
-        # Create a shallow copy to prevent modifying the cache directly
         it = dict(item)
         item_id = it.get("Id")
         if item_id and iteminfo_db.loaded:
@@ -78,11 +90,16 @@ async def get_items(
                 it["identifiedDisplayName"] = entry.get("identifiedDisplayName")
                 it["identifiedResourceName"] = entry.get("identifiedResourceName")
         merged_items.append(it)
-    
+
+    effective_skip = skip if skip is not None else (page - 1) * limit
+
     return {
-        "total": total,
-        "skip": skip,
+        "total": total_count,
+        "total_count": total_count,
+        "page": page,
         "limit": limit,
+        "skip": effective_skip,
+        "has_more": (effective_skip + len(merged_items)) < total_count,
         "items": merged_items
     }
 

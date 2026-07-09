@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import { Virtuoso } from 'react-virtuoso';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { API_URL } from '../config/env';
 import { Search, Plus, Package, Database, Sparkles } from 'lucide-react';
 import { useLanguageStore } from '../store/useLanguageStore';
@@ -15,22 +15,116 @@ const ItemEditor: React.FC = () => {
   const t = useLanguageStore(state => state.t);
   const [items, setItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   
   // Status de carregamento para arquivos YAML
   const [loadingStatus, setLoadingStatus] = useState(t('item_editor.status.connecting'));
   const [itemsLoaded, setItemsLoaded] = useState(0);
   
-  // Estado para o campo de busca
+  // Estado para a barra de pesquisa
   const [searchText, setSearchText] = useState("");
+  const [searchTarget, setSearchTarget] = useState<"name" | "script">("name");
+  const [searchType, setSearchType] = useState("all");
+
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState("");
+  const [appliedSearchTarget, setAppliedSearchTarget] = useState<"name" | "script">("name");
+  const [appliedSearchType, setAppliedSearchType] = useState("all");
   
   // Aba de origem
   const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
+
+  // Referência para rolar a lista virtualizada de volta ao topo
+  const virtuosoRef = React.useRef<VirtuosoHandle>(null);
 
   // Modal de novo item
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Item Selecionado
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+
+  // Limpeza explícita de memória RAM na desmontagem
+  useEffect(() => {
+    return () => {
+      setItems([]);
+    };
+  }, []);
+
+  const fetchItemsPage = useCallback(async (
+    targetPage: number,
+    replace: boolean = false,
+    overrideParams?: {
+      searchQuery?: string;
+      searchTarget?: "name" | "script";
+      searchType?: string;
+      source?: SourceTab;
+    }
+  ) => {
+    try {
+      if (targetPage > 1) setIsLoadingMore(true);
+      const query = overrideParams?.searchQuery !== undefined ? overrideParams.searchQuery : appliedSearchQuery;
+      const target = overrideParams?.searchTarget !== undefined ? overrideParams.searchTarget : appliedSearchTarget;
+      const typeVal = overrideParams?.searchType !== undefined ? overrideParams.searchType : appliedSearchType;
+      const src = overrideParams?.source !== undefined ? overrideParams.source : sourceTab;
+
+      const res = await axios.get(`${API_URL}/api/items/`, {
+        params: {
+          page: targetPage,
+          limit: 50,
+          search_query: query,
+          search_target: target,
+          item_type: typeVal === 'all' ? '' : typeVal,
+          source: src
+        }
+      });
+      const data = res.data;
+      const newItems = data.items || [];
+      if (replace) {
+        setItems(newItems);
+      } else {
+        setItems(prev => [...prev, ...newItems]);
+      }
+      setTotalCount(data.total_count || 0);
+      setHasMore(Boolean(data.has_more));
+      setPage(targetPage);
+    } catch (err) {
+      console.error("[ItemEditor] Erro na busca paginada:", err);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [appliedSearchQuery, appliedSearchTarget, appliedSearchType, sourceTab]);
+
+  const handleSearch = useCallback(async () => {
+    setAppliedSearchQuery(searchText);
+    setAppliedSearchTarget(searchTarget);
+    setAppliedSearchType(searchType);
+    setIsLoading(true);
+    setPage(1);
+    virtuosoRef.current?.scrollToIndex({ index: 0 });
+    await fetchItemsPage(1, true, {
+      searchQuery: searchText,
+      searchTarget: searchTarget,
+      searchType: searchType,
+      source: sourceTab
+    });
+  }, [searchText, searchTarget, searchType, sourceTab, fetchItemsPage]);
+
+  const handleSourceChange = useCallback(async (newSource: SourceTab) => {
+    setSourceTab(newSource);
+    setSelectedItemId(null);
+    setIsLoading(true);
+    setPage(1);
+    virtuosoRef.current?.scrollToIndex({ index: 0 });
+    await fetchItemsPage(1, true, {
+      searchQuery: appliedSearchQuery,
+      searchTarget: appliedSearchTarget,
+      searchType: appliedSearchType,
+      source: newSource
+    });
+  }, [appliedSearchQuery, appliedSearchTarget, appliedSearchType, fetchItemsPage]);
 
   useEffect(() => {
     let intervalId: any;
@@ -45,16 +139,8 @@ const ItemEditor: React.FC = () => {
 
         if (!is_loading && message !== "Aguardando inicialização...") {
           if (intervalId) clearInterval(intervalId);
-          
-          setLoadingStatus(t('loading.loadingItems'));
-          try {
-             const itemsRes = await axios.get(`${API_URL}/api/items/?skip=0&limit=150000`);
-             setItems(itemsRes.data.items);
-             setIsLoading(false);
-          } catch (err) {
-             console.error("Erro ao baixar array final:", err);
-             setLoadingStatus(t('item_editor.status.error_final_array'));
-          }
+          setIsLoading(true);
+          await fetchItemsPage(1, true);
         }
       } catch (err) {
         console.error("Erro ao checar status. Servidor offline?", err);
@@ -66,42 +152,13 @@ const ItemEditor: React.FC = () => {
     intervalId = setInterval(checkStatusAndFetch, 1000);
 
     return () => clearInterval(intervalId);
-  }, []);
+  }, [fetchItemsPage]);
 
-  // Separate items by source, then sort by Id
-  const rathenaItems = useMemo(() =>
-    [...items.filter(i => i._source !== 'custom')].sort((a, b) => a.Id - b.Id),
-    [items]
-  );
-  const customItems = useMemo(() =>
-    [...items.filter(i => i._source === 'custom')].sort((a, b) => a.Id - b.Id),
-    [items]
-  );
-
-  const activeItems = sourceTab === 'rathena' ? rathenaItems : customItems;
-
-  const filteredItems = useMemo(() => {
-    if (!searchText) return activeItems;
-    const lower = searchText.toLowerCase().trim();
-
-    if (lower.startsWith('[script]')) {
-      let query = lower.slice(8).trim();
-      if (query.startsWith(':')) {
-        query = query.slice(1).trim();
-      }
-      return activeItems.filter(item =>
-        (item.Script && String(item.Script).toLowerCase().includes(query)) ||
-        (item.EquipScript && String(item.EquipScript).toLowerCase().includes(query)) ||
-        (item.UnequipScript && String(item.UnequipScript).toLowerCase().includes(query))
-      );
+  const handleEndReached = useCallback(() => {
+    if (hasMore && !isLoadingMore && !isLoading) {
+      fetchItemsPage(page + 1, false);
     }
-
-    return activeItems.filter(item =>
-      String(item.Id).includes(lower) ||
-      (item.Name && item.Name.toLowerCase().includes(lower)) ||
-      (item.AegisName && item.AegisName.toLowerCase().includes(lower))
-    );
-  }, [activeItems, searchText]);
+  }, [hasMore, isLoadingMore, isLoading, page, fetchItemsPage]);
 
   const selectedItem = useMemo(() => {
     if (selectedItemId === null) return null;
@@ -185,7 +242,7 @@ const ItemEditor: React.FC = () => {
           {/* Source Tabs */}
           <div className="flex gap-1 mb-3 bg-dark-900/60 rounded-lg p-1 border border-white/5">
             <button
-              onClick={() => { setSourceTab('rathena'); setSelectedItemId(null); }}
+              onClick={() => handleSourceChange('rathena')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all duration-200 ${
                 sourceTab === 'rathena'
                   ? 'bg-violet-600/80 text-white shadow-md shadow-violet-900/40'
@@ -194,12 +251,9 @@ const ItemEditor: React.FC = () => {
             >
               <Database size={12} />
               rAthena
-              <span className={`ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded ${sourceTab === 'rathena' ? 'bg-white/15 text-white' : 'bg-dark-700 text-gray-500'}`}>
-                {rathenaItems.length.toLocaleString()}
-              </span>
             </button>
             <button
-              onClick={() => { setSourceTab('custom'); setSelectedItemId(null); }}
+              onClick={() => handleSourceChange('custom')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all duration-200 ${
                 sourceTab === 'custom'
                   ? 'bg-emerald-600/80 text-white shadow-md shadow-emerald-900/40'
@@ -208,25 +262,68 @@ const ItemEditor: React.FC = () => {
             >
               <Sparkles size={12} />
               Custom
-              <span className={`ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded ${sourceTab === 'custom' ? 'bg-white/15 text-white' : 'bg-dark-700 text-gray-500'}`}>
-                {customItems.length.toLocaleString()}
-              </span>
             </button>
           </div>
           
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-            <input
-              type="text"
-              placeholder={t('item_editor.search_placeholder')}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="w-full bg-dark-900 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-violet-500/50 transition-colors"
-            />
+          {/* Advanced Search Bar */}
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <select
+                value={searchTarget}
+                onChange={(e) => setSearchTarget(e.target.value as "name" | "script")}
+                className="flex-1 bg-dark-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-violet-500/50 transition-colors"
+              >
+                <option value="name">{t('item_editor.search_target.name')}</option>
+                <option value="script">{t('item_editor.search_target.script')}</option>
+              </select>
+
+              <select
+                value={searchType}
+                onChange={(e) => setSearchType(e.target.value)}
+                className="flex-1 bg-dark-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-violet-500/50 transition-colors"
+              >
+                <option value="all">{t('item_editor.search_type.all')}</option>
+                <option value="Weapon">{t('item_editor.search_type.weapon')}</option>
+                <option value="Armor">{t('item_editor.search_type.armor')}</option>
+                <option value="Consumable">{t('item_editor.search_type.consumable')}</option>
+                <option value="Healing">{t('item_editor.search_type.healing')}</option>
+                <option value="Usable">{t('item_editor.search_type.usable')}</option>
+                <option value="Card">{t('item_editor.search_type.card')}</option>
+                <option value="Ammo">{t('item_editor.search_type.ammo')}</option>
+                <option value="Etc">{t('item_editor.search_type.etc')}</option>
+                <option value="PetEgg">{t('item_editor.search_type.petegg')}</option>
+                <option value="PetArmor">{t('item_editor.search_type.petarmor')}</option>
+              </select>
+            </div>
+
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder={t('item_editor.search_placeholder')}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearch();
+                    }
+                  }}
+                  className="w-full bg-dark-900 border border-white/10 rounded-lg pl-9 pr-3 py-1.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-violet-500/50 transition-colors"
+                />
+              </div>
+              <button
+                onClick={handleSearch}
+                className="flex items-center gap-1 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-violet-900/30 transition-all duration-150 shrink-0"
+              >
+                <Search size={13} />
+                {t('item_editor.search_btn')}
+              </button>
+            </div>
           </div>
+
           <div className="text-[11px] text-gray-500 mt-2 font-mono flex justify-between">
-            <span>{t('item_editor.results', { count: filteredItems.length.toLocaleString() })}</span>
-            <span>{t('item_editor.total', { count: items.length.toLocaleString() })}</span>
+            <span>{t('pagination.showing', { loaded: items.length.toLocaleString(), total: totalCount.toLocaleString() })}</span>
           </div>
         </div>
 
@@ -234,8 +331,17 @@ const ItemEditor: React.FC = () => {
         <div className="flex-1 overflow-hidden">
           {!isLoading && (
             <Virtuoso
-              data={filteredItems}
+              ref={virtuosoRef}
+              data={items}
+              endReached={handleEndReached}
               style={{ height: '100%' }}
+              components={{
+                Footer: () => isLoadingMore ? (
+                  <div className="p-3 text-center text-xs text-violet-400 font-mono animate-pulse">
+                    {t('pagination.loading_more')}
+                  </div>
+                ) : null
+              }}
               itemContent={(index, item) => {
                 const isSelected = selectedItemId === item.Id;
                 const isCustom = item._source === 'custom';

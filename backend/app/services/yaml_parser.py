@@ -1,6 +1,7 @@
 from ruamel.yaml import YAML
 import os
 import threading
+from app.services.load_progress import progress_tracker
 
 class YamlDatabase:
     def __init__(self):
@@ -18,6 +19,9 @@ class YamlDatabase:
         
         self.rathena_root = ""
         
+        # Cache em memória para buscas instantâneas
+        self.cached_items_list = None
+        
         # Estados para a Thread de Carregamento Assíncrono
         self.is_loading = False
         self.loading_status = "Aguardando inicialização..."
@@ -31,6 +35,7 @@ class YamlDatabase:
         self.is_loading = True
         self.items_loaded = 0
         self.loading_status = "Iniciando engine de parse YAML..."
+        progress_tracker.start_loading(initial_db="item_db.yml", status=self.loading_status)
         
         thread = threading.Thread(target=self._load_db_sync, args=(main_filepath,))
         thread.daemon = True
@@ -40,9 +45,12 @@ class YamlDatabase:
         """Função encapsuladora que executa na thread background."""
         try:
             self.load_db(main_filepath)
+            self.rebuild_cache()
+            progress_tracker.update(progress=50.0, current_db="item_db.yml", status="Banco de itens carregado na memória.")
         except Exception as e:
             print(f"[!] Erro fatal no carregamento background: {e}")
             self.loading_status = f"Erro: {e}"
+            progress_tracker.update(status=f"Erro em itens: {e}")
         finally:
             self.is_loading = False
             if "Erro" not in self.loading_status:
@@ -87,6 +95,7 @@ class YamlDatabase:
             
         filename = os.path.basename(filepath)
         self.loading_status = f"Lendo arquivo: {filename}..."
+        progress_tracker.update(current_db=filename, status=self.loading_status, progress=min(45.0, progress_tracker.progress + 5.0))
 
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -118,20 +127,84 @@ class YamlDatabase:
         except Exception as e:
             print(f"[!] Falha ao fazer parse de {filepath}: {e}")
 
-    def get_items(self):
-        """Retorna uma lista contínua com TODOS os itens de TODOS os arquivos, anotados com _source."""
+    def rebuild_cache(self):
         all_items = []
         for filepath, data in self.db_cache.items():
             if data and 'Body' in data and isinstance(data['Body'], list):
-                # Normalize path separators for cross-platform comparison
                 norm_path = filepath.replace('\\', '/')
                 is_custom = '/db/import/' in norm_path
                 for item in data['Body']:
-                    # We annotate in a shallow copy to avoid mutating the in-memory YAML object
                     annotated = dict(item)
                     annotated['_source'] = 'custom' if is_custom else 'rathena'
                     all_items.append(annotated)
-        return all_items
+        all_items.sort(key=lambda x: x.get('Id', 0))
+        self.cached_items_list = all_items
+
+    def get_items(self):
+        """Retorna a lista em cache com TODOS os itens de TODOS os arquivos."""
+        if self.cached_items_list is None:
+            self.rebuild_cache()
+        return self.cached_items_list
+
+    def search_items(
+        self,
+        page: int = 1,
+        limit: int = 50,
+        search: str = "",
+        source: str = "",
+        skip: int = None,
+        search_query: str = "",
+        search_target: str = "name",
+        item_type: str = ""
+    ):
+        items = self.get_items()
+        filtered = items
+
+        # 1. Filtro por origem (_source)
+        if source and source in ('rathena', 'custom'):
+            filtered = [i for i in filtered if i.get('_source') == source]
+
+        # 2. Filtro por tipo de item (item_type)
+        if item_type and item_type.strip() and item_type.strip().lower() not in ('all', 'todos', ''):
+            target_type = item_type.strip().lower()
+            filtered = [i for i in filtered if str(i.get('Type', '')).lower() == target_type]
+
+        # 3. Filtro por texto de busca (search_query ou search) e alvo (search_target)
+        effective_query = (search_query or search).strip().lower()
+        if effective_query:
+            # Compatibilidade com prefixo antigo [script] se não for passado explicitamente search_target="script"
+            if effective_query.startswith('[script]'):
+                search_target = "script"
+                effective_query = effective_query[8:].strip()
+                if effective_query.startswith(':'):
+                    effective_query = effective_query[1:].strip()
+
+            if (search_target or "").lower() == "script":
+                filtered = [
+                    i for i in filtered
+                    if (i.get('Script') and effective_query in str(i.get('Script')).lower())
+                    or (i.get('EquipScript') and effective_query in str(i.get('EquipScript')).lower())
+                    or (i.get('OnEquipScript') and effective_query in str(i.get('OnEquipScript')).lower())
+                    or (i.get('UnequipScript') and effective_query in str(i.get('UnequipScript')).lower())
+                    or (i.get('OnUnequipScript') and effective_query in str(i.get('OnUnequipScript')).lower())
+                ]
+            else:  # padrão: "name" (ID, Name, AegisName ou identifiedDisplayName)
+                filtered = [
+                    i for i in filtered
+                    if effective_query in str(i.get('Id', ''))
+                    or (i.get('Name') and effective_query in str(i.get('Name')).lower())
+                    or (i.get('AegisName') and effective_query in str(i.get('AegisName')).lower())
+                    or (i.get('identifiedDisplayName') and effective_query in str(i.get('identifiedDisplayName')).lower())
+                ]
+
+        total_count = len(filtered)
+        if skip is not None:
+            start = skip
+        else:
+            start = max(0, (page - 1) * limit)
+        end = start + limit
+        paginated = filtered[start:end]
+        return paginated, total_count
 
     def get_item(self, item_id: int):
         if item_id not in self.item_index:
@@ -243,6 +316,7 @@ class YamlDatabase:
             self.save_file(import_db_path)
             self.item_index[item_id] = import_db_path
             saved_item['_source'] = 'custom'
+            self.rebuild_cache()
             return saved_item
 
         # --- Item already lives in db/import/ OR user requested overwrite in original rAthena file ---
@@ -255,6 +329,7 @@ class YamlDatabase:
                 self.save_file(target_filepath)
                 result = dict(item)
                 result['_source'] = 'custom' if '/db/import/' in norm_path else 'rathena'
+                self.rebuild_cache()
                 return result
         return None
 
@@ -336,6 +411,7 @@ class YamlDatabase:
 
         result = dict(clean_item)
         result['_source'] = 'custom'
+        self.rebuild_cache()
         return result
 
 

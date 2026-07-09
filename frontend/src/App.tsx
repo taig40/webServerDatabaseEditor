@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { AlertTriangle, Settings } from 'lucide-react';
+import { API_URL } from './config/env';
 import Layout, { type ModuleId } from './components/Layout';
 import { useLanguageStore } from './store/useLanguageStore';
+import GlobalLoadingOverlay from './components/GlobalLoadingOverlay';
 import ItemEditor from './pages/ItemEditor';
 import MonsterEditor from './pages/MonsterEditor';
 import SkillEditor from './pages/SkillEditor';
@@ -31,6 +33,37 @@ function App() {
   const t = useLanguageStore(state => state.t);
   const [activeView, setActiveView] = useState<ActiveView>('items');
   const [encodingError, setEncodingError] = useState<EncodingErrorPayload | null>(null);
+
+  const [isCacheReady, setIsCacheReady] = useState(false);
+  const [currentLoadingFile, setCurrentLoadingFile] = useState('');
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
+  useEffect(() => {
+    const es = new EventSource(`${API_URL}/api/system/initialize-cache`);
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.status === 'complete') {
+          es.close();
+          setIsCacheReady(true);
+        } else if (data.status === 'loading') {
+          if (data.file) setCurrentLoadingFile(data.file);
+          if (typeof data.progress === 'number') setLoadingProgress(data.progress);
+        }
+      } catch (e) {
+        console.error('[App] Erro ao processar evento SSE de inicialização:', e);
+      }
+    };
+
+    es.onerror = () => {
+      // Tratar falhas temporárias do SSE
+    };
+
+    return () => {
+      es.close();
+    };
+  }, []);
 
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
@@ -76,6 +109,16 @@ function App() {
       );
     }
   };
+
+  if (!isCacheReady) {
+    return (
+      <GlobalLoadingOverlay
+        forceShow={true}
+        file={currentLoadingFile}
+        progress={loadingProgress}
+      />
+    );
+  }
 
   return (
     <>

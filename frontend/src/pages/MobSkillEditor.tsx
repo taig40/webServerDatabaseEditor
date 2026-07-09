@@ -260,7 +260,7 @@ export const MobSkillEditor: React.FC = () => {
                 </div>
                 <div className="text-[11px] text-gray-400 flex justify-between">
                   <span>{sk.state}</span>
-                  <span>{((sk.rate ?? 0) / 100).toFixed(0)}%</span>
+                  <span>{Number(((sk.rate ?? 0) / 100).toFixed(2))}%</span>
                 </div>
                 <div className="text-[10px] text-gray-500 mt-0.5">{sk.condition_type}</div>
               </div>
@@ -335,7 +335,7 @@ export const MobSkillEditor: React.FC = () => {
                     {TARGETS.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </Field>
-                <PercentBadge label="Rate (Chance)" value={s.rate ?? 1000}
+                <PercentBadge label={t('mob_skill_editor.fields.rate')} value={s.rate ?? 1000}
                   onChange={v => upd('rate', v)} scale={100} max={10000} />
                 <Field label={t('mob_skill_editor.fields.cancelable')} hint={t('mob_skill_editor.fields.cancelable_hint')}>
                   <select value={s.cancelable ? 'yes' : 'no'}

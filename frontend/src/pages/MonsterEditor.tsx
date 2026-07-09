@@ -31,12 +31,62 @@ const MonsterEditor: React.FC = () => {
   const t = useLanguageStore(state => state.t);
   const [mobs, setMobs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+
   const [loadingStatus, setLoadingStatus] = useState(t('monster_editor.status.connecting'));
   const [mobsLoaded, setMobsLoaded] = useState(0);
   const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedMobId, setSelectedMobId] = useState<number | null>(null);
   const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Debounce na busca
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  // Limpeza explícita de memória RAM na desmontagem
+  useEffect(() => {
+    return () => {
+      setMobs([]);
+    };
+  }, []);
+
+  const fetchMobsPage = useCallback(async (targetPage: number, replace: boolean = false) => {
+    try {
+      if (targetPage > 1) setIsLoadingMore(true);
+      const res = await axios.get(`${API_URL}/api/mobs/`, {
+        params: {
+          page: targetPage,
+          limit: 50,
+          search: debouncedSearch,
+          source: sourceTab
+        }
+      });
+      const data = res.data;
+      const newMobs = data.mobs || [];
+      if (replace) {
+        setMobs(newMobs);
+      } else {
+        setMobs(prev => [...prev, ...newMobs]);
+      }
+      setTotalCount(data.total_count || 0);
+      setHasMore(Boolean(data.has_more));
+      setPage(targetPage);
+    } catch (err) {
+      console.error('[MonsterEditor] Erro na busca paginada:', err);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [debouncedSearch, sourceTab]);
 
   // ─── Loading poll ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -52,15 +102,8 @@ const MonsterEditor: React.FC = () => {
  
         if (!is_loading && message !== 'Aguardando inicialização...') {
           if (intervalId) clearInterval(intervalId);
-          setLoadingStatus(t('loading.loadingMonsters'));
-          try {
-            const mobsRes = await axios.get(`${API_URL}/api/mobs/?skip=0&limit=50000`);
-            setMobs(mobsRes.data.mobs);
-            setIsLoading(false);
-          } catch (err) {
-            console.error('Erro ao baixar monstros:', err);
-            setLoadingStatus(t('monster_editor.status.error_final_array'));
-          }
+          setIsLoading(true);
+          await fetchMobsPage(1, true);
         }
       } catch (err) {
         console.error('Erro no polling de status de monstros:', err);
@@ -71,28 +114,13 @@ const MonsterEditor: React.FC = () => {
     checkStatusAndFetch();
     intervalId = setInterval(checkStatusAndFetch, 1000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [fetchMobsPage]);
 
-  // ─── Derived lists ─────────────────────────────────────────────────────────
-  const rathenaMobs = useMemo(
-    () => [...mobs.filter(m => m._source !== 'custom')].sort((a, b) => a.Id - b.Id),
-    [mobs]
-  );
-  const customMobs = useMemo(
-    () => [...mobs.filter(m => m._source === 'custom')].sort((a, b) => a.Id - b.Id),
-    [mobs]
-  );
-  const activeMobs = sourceTab === 'rathena' ? rathenaMobs : customMobs;
-
-  const filteredMobs = useMemo(() => {
-    if (!searchText) return activeMobs;
-    const lower = searchText.toLowerCase();
-    return activeMobs.filter(m =>
-      String(m.Id).includes(lower) ||
-      (m.Name && m.Name.toLowerCase().includes(lower)) ||
-      (m.AegisName && m.AegisName.toLowerCase().includes(lower))
-    );
-  }, [activeMobs, searchText]);
+  const handleEndReached = useCallback(() => {
+    if (hasMore && !isLoadingMore && !isLoading) {
+      fetchMobsPage(page + 1, false);
+    }
+  }, [hasMore, isLoadingMore, isLoading, page, fetchMobsPage]);
 
   const selectedMob = useMemo(
     () => (selectedMobId === null ? null : mobs.find(m => m.Id === selectedMobId) || null),
@@ -241,11 +269,6 @@ const MonsterEditor: React.FC = () => {
             >
               <Database size={12} />
               rAthena
-              <span className={`ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded ${
-                sourceTab === 'rathena' ? 'bg-white/15 text-white' : 'bg-dark-700 text-gray-500'
-              }`}>
-                {rathenaMobs.length.toLocaleString()}
-              </span>
             </button>
             <button
               onClick={() => { setSourceTab('custom'); setSelectedMobId(null); }}
@@ -257,11 +280,6 @@ const MonsterEditor: React.FC = () => {
             >
               <Sparkles size={12} />
               Custom
-              <span className={`ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded ${
-                sourceTab === 'custom' ? 'bg-white/15 text-white' : 'bg-dark-700 text-gray-500'
-              }`}>
-                {customMobs.length.toLocaleString()}
-              </span>
             </button>
           </div>
 
@@ -280,12 +298,12 @@ const MonsterEditor: React.FC = () => {
 
         {/* Count bar */}
         <div className="px-4 py-1.5 text-[10px] text-gray-600 border-b border-white/[0.04]">
-          {t('monster_editor.results', { count: filteredMobs.length.toLocaleString() })} / {t('monster_editor.total', { count: activeMobs.length.toLocaleString() })}
+          {t('pagination.showing', { loaded: mobs.length.toLocaleString(), total: totalCount.toLocaleString() })}
         </div>
 
         {/* Virtual list */}
         <div className="flex-1 overflow-hidden">
-          {filteredMobs.length === 0 && !isLoading ? (
+          {mobs.length === 0 && !isLoading ? (
             <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-600">
               <ShieldAlert size={32} className="opacity-20" />
               <span className="text-xs">{t('monster_editor.no_monsters_found')}</span>
@@ -293,8 +311,16 @@ const MonsterEditor: React.FC = () => {
           ) : (
             <Virtuoso
               style={{ height: '100%' }}
-              totalCount={filteredMobs.length}
-              itemContent={index => <MobListItem mob={filteredMobs[index]} />}
+              data={mobs}
+              endReached={handleEndReached}
+              components={{
+                Footer: () => isLoadingMore ? (
+                  <div className="p-3 text-center text-xs text-violet-400 font-mono animate-pulse">
+                    {t('pagination.loading_more')}
+                  </div>
+                ) : null
+              }}
+              itemContent={(index, mob) => <MobListItem mob={mob} />}
             />
           )}
         </div>
