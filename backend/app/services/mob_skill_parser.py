@@ -131,6 +131,9 @@ class MobSkillDatabase:
             if 'Erro' not in self.loading_status:
                 self.loading_status = 'Carregamento Finalizado.'
 
+    def load_db(self, filepath: str):
+        self._load(filepath)
+
     def _load(self, filepath: str):
         filepath = filepath.replace('\\', '/')
         if not os.path.exists(filepath):

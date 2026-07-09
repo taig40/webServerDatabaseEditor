@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { API_URL } from '../config/env';
+import { getSSEUrl } from '../config/env';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { Database, Sparkles } from 'lucide-react';
 
@@ -7,12 +7,16 @@ interface GlobalLoadingOverlayProps {
   file?: string;
   progress?: number;
   forceShow?: boolean;
+  statusMsg?: string;
+  isError?: boolean;
 }
 
 export const GlobalLoadingOverlay: React.FC<GlobalLoadingOverlayProps> = ({
   file: propFile,
   progress: propProgress,
   forceShow = false,
+  statusMsg: propStatusMsg,
+  isError = false,
 }) => {
   const t = useLanguageStore(state => state.t);
   const [internalLoading, setInternalLoading] = useState(false);
@@ -25,7 +29,10 @@ export const GlobalLoadingOverlay: React.FC<GlobalLoadingOverlayProps> = ({
 
     let es: EventSource | null = null;
     const connectSSE = () => {
-      es = new EventSource(`${API_URL}/api/system/load-progress`);
+      es = new EventSource(getSSEUrl('/api/system/load-progress'));
+      es.onopen = () => {
+        setStatusMsg(t('global_loading.readingFiles'));
+      };
       es.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -44,16 +51,22 @@ export const GlobalLoadingOverlay: React.FC<GlobalLoadingOverlayProps> = ({
           console.error('[GlobalLoadingOverlay] Erro ao processar evento SSE:', e);
         }
       };
+      es.onerror = (err) => {
+        console.error('[GlobalLoadingOverlay] Erro SSE:', err);
+        setStatusMsg(t('global_loading.connectionFailed'));
+        if (es) es.close();
+      };
     };
 
     connectSSE();
     return () => {
       if (es) es.close();
     };
-  }, [forceShow]);
+  }, [forceShow, t]);
 
   const displayProgress = propProgress !== undefined ? propProgress : internalProgress;
   const displayFile = propFile !== undefined ? propFile : internalDatabase;
+  const displayStatus = propStatusMsg !== undefined ? propStatusMsg : statusMsg;
   const show = forceShow || internalLoading;
 
   if (!show && displayProgress >= 100.0) {
@@ -72,7 +85,7 @@ export const GlobalLoadingOverlay: React.FC<GlobalLoadingOverlayProps> = ({
 
         {/* Icon */}
         <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600/30 to-indigo-600/20 border border-violet-500/30 flex items-center justify-center mb-6 shadow-inner">
-          <Database className="w-8 h-8 text-violet-400 animate-pulse" />
+          <Database className={`w-8 h-8 ${isError ? 'text-amber-400' : 'text-violet-400 animate-pulse'}`} />
           <Sparkles className="w-4 h-4 text-emerald-400 absolute -top-1 -right-1 animate-bounce" />
         </div>
 
@@ -86,28 +99,28 @@ export const GlobalLoadingOverlay: React.FC<GlobalLoadingOverlayProps> = ({
 
         {/* Current Database & Percentage Info */}
         <div className="w-full flex items-center justify-between text-xs font-mono mb-2">
-          <span className="text-violet-300 truncate max-w-[65%]">
+          <span className={`${isError ? 'text-amber-400 font-semibold' : 'text-violet-300'} truncate max-w-[65%]`}>
             {displayFile
               ? t('loading.file', { file: displayFile })
-              : (statusMsg || t('loading.connecting'))}
+              : (displayStatus || t('global_loading.connecting'))}
           </span>
           <span className="text-emerald-400 font-bold">
-            {t('global_loading.progress', { percent: displayProgress.toFixed(1) })}
+            {t('global_loading.progress', { value: displayProgress.toFixed(1) })}
           </span>
         </div>
 
         {/* Smooth Progress Bar */}
         <div className="w-full h-2.5 bg-dark-900 rounded-full overflow-hidden border border-white/10 p-0.5 shadow-inner">
           <div
-            className="h-full bg-gradient-to-r from-violet-600 via-indigo-500 to-emerald-400 rounded-full transition-all duration-300 ease-out shadow-sm"
+            className={`h-full ${isError ? 'bg-amber-500' : 'bg-gradient-to-r from-violet-600 via-indigo-500 to-emerald-400'} rounded-full transition-all duration-300 ease-out shadow-sm`}
             style={{ width: `${Math.min(100, Math.max(2, displayProgress))}%` }}
           />
         </div>
 
         {/* Secondary Status info */}
-        {statusMsg && (
-          <p className="text-[11px] text-gray-500 font-mono mt-3 text-center truncate w-full">
-            {statusMsg}
+        {displayStatus && (
+          <p className={`text-[11px] font-mono mt-3 text-center truncate w-full ${isError ? 'text-amber-400 font-semibold' : 'text-gray-500'}`}>
+            {displayStatus}
           </p>
         )}
       </div>

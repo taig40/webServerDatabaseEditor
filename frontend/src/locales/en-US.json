@@ -21,7 +21,9 @@
     "readingMonstersFile": "Reading monster file: {{filename}}...",
     "entriesRead": "{{count}} entries read",
     "file": "Loading file: {{file}}",
-    "progress": "{{percent}}% completed"
+    "progress": "{{value}}% completed",
+    "readingFiles": "Reading files...",
+    "connectionFailed": "Connection failed! Please verify if the Backend server is running."
   },
   "settings": {
     "title": "Application Settings",
@@ -300,23 +302,50 @@
       "modes_subtitle": "Stack individual behavior flag overrides on top of the base AI.",
       "subtitle": "Click on the buttons to toggle the behavior flags of the monster.",
       "types": {
-        "01": "01: Passive",
-        "02": "02: Passive, Looter",
-        "03": "03: Passive, Assist",
-        "04": "04: Passive, Looter, Assist",
-        "05": "05: Aggressive",
-        "06": "06: Aggressive, Looter",
-        "07": "07: Aggressive, Assist",
-        "08": "08: Aggressive, Looter, Assist",
-        "09": "09: Passive, Cast Sensor Idle",
-        "10": "10: Passive, Looter, Cast Sensor Idle",
-        "11": "11: Passive, Assist, Cast Sensor Idle",
-        "12": "12: Passive, Looter, Assist, Cast Sensor Idle",
-        "13": "13: Aggressive, Cast Sensor Idle",
-        "17": "17: Aggressive, Change Target Melee / Chase",
-        "19": "19: Passive, Cast Sensor Chase",
-        "21": "21: Aggressive, Cast Sensor Idle/Chase, Change Target",
-        "25": "25: Passive, Can Move, Can Attack"
+        "01": "Passive",
+        "02": "Passive, Looter",
+        "03": "Passive, Assist and Change-Target Melee",
+        "04": "Angry, Change-Target Melee/Chase",
+        "05": "Aggressive, Change-Target Chase",
+        "06": "Passive, Immobile, Can't Attack [Plants]",
+        "07": "Passive, Looter, Assist, Change-Target Melee",
+        "08": "Aggressive, Change-Target Melee/Chase, Target Weak Enemies",
+        "09": "Aggressive, Change-Target Melee/Chase, Cast Sensor Idle [Guardian]",
+        "10": "Aggressive, Immobile",
+        "11": "Aggressive, Immobile [Guardian]",
+        "12": "Aggressive, Change-Target Chase [Guardian]",
+        "13": "Aggressive, Change-Target Melee/Chase, Assist",
+        "17": "Passive, Cast Sensor Idle",
+        "19": "Aggressive, Change-Target Melee/Chase, Cast Sensor Idle",
+        "20": "Aggressive, Change-Target Melee/Chase, Cast Sensor Idle/Chase",
+        "21": "Aggressive, Change-Target Melee/Chase, Cast Sensor Idle/Chase, Chase-Change Target",
+        "24": "Passive, Does not walk randomly [Slave]",
+        "25": "Passive, Can't Attack [Pet]",
+        "26": "Aggressive, Change-Target Melee/Chase, Cast Sensor Idle/Chase, Chase-Change Target, Random Target",
+        "27": "Aggressive, Immobile, Random Target"
+      },
+      "aegisTypes": {
+        "01": "Passive",
+        "02": "Passive, Looter",
+        "03": "Passive, Assist and Change-Target Melee",
+        "04": "Angry, Change-Target Melee/Chase",
+        "05": "Aggressive, Change-Target Chase",
+        "06": "Passive, Immobile, Can't Attack [Plants]",
+        "07": "Passive, Looter, Assist, Change-Target Melee",
+        "08": "Aggressive, Change-Target Melee/Chase, Target Weak Enemies",
+        "09": "Aggressive, Change-Target Melee/Chase, Cast Sensor Idle [Guardian]",
+        "10": "Aggressive, Immobile",
+        "11": "Aggressive, Immobile [Guardian]",
+        "12": "Aggressive, Change-Target Chase [Guardian]",
+        "13": "Aggressive, Change-Target Melee/Chase, Assist",
+        "17": "Passive, Cast Sensor Idle",
+        "19": "Aggressive, Change-Target Melee/Chase, Cast Sensor Idle",
+        "20": "Aggressive, Change-Target Melee/Chase, Cast Sensor Idle/Chase",
+        "21": "Aggressive, Change-Target Melee/Chase, Cast Sensor Idle/Chase, Chase-Change Target",
+        "24": "Passive, Does not walk randomly [Slave]",
+        "25": "Passive, Can't Attack [Pet]",
+        "26": "Aggressive, Change-Target Melee/Chase, Cast Sensor Idle/Chase, Chase-Change Target, Random Target",
+        "27": "Aggressive, Immobile, Random Target"
       }
     },
     "skills": {
@@ -1066,13 +1095,26 @@
     "title": "Loading rAthena Databases",
     "subtitle": "Please wait while YAML files are parsed and cached into memory...",
     "database": "Reading database: {{db}}",
-    "progress": "{{percent}}% completed",
+    "progress": "{{value}}% completed",
     "completed": "Loading completed successfully!",
-    "connecting": "Connecting to server..."
+    "connecting": "Connecting to server...",
+    "readingFiles": "Reading files...",
+    "connectionFailed": "Connection failed! Please verify if the Backend server is running."
   },
   "pagination": {
     "loading_more": "Loading more items...",
     "showing": "Showing {{loaded}} of {{total}} records"
+  },
+  "divinepride": {
+    "settings_title": "DivinePride Integration",
+    "settings_subtitle": "Configure your API key for automatic data import from divine-pride.net",
+    "api_key_label": "DivinePride API Key",
+    "api_key_placeholder": "Enter your DivinePride API Key...",
+    "import_button": "Import from DivinePride",
+    "importing": "Importing...",
+    "missing_key_alert": "DivinePride API Key not configured. Please set it in System Settings.",
+    "import_success": "Successfully imported from DivinePride! Review and save your changes.",
+    "import_error": "Failed to import from DivinePride: {{message}}"
   }
 }
 

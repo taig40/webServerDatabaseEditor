@@ -6,10 +6,15 @@ from typing import Optional
 
 router = APIRouter()
 
+TRANSPARENT_1X1_PNG = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82'
+
 @lru_cache(maxsize=5000)
 def get_cached_item_icon(item_id: int) -> Optional[bytes]:
     if not iteminfo_db.loaded:
-        return None
+        try:
+            iteminfo_db.load()
+        except Exception:
+            return None
     entry = iteminfo_db.item_map.get(item_id)
     if not entry:
         return None
@@ -29,4 +34,4 @@ async def get_item_image(item_id: int):
     if png_bytes:
         return Response(content=png_bytes, media_type="image/png")
     
-    raise HTTPException(status_code=404, detail="Image not found")
+    return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")

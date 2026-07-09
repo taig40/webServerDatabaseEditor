@@ -7,6 +7,11 @@ router = APIRouter()
 
 
 def _require_loaded():
+    if not iteminfo_db.loaded:
+        try:
+            iteminfo_db.load()
+        except Exception:
+            pass
     if iteminfo_db.encoding_error:
         raise HTTPException(
             status_code=400,

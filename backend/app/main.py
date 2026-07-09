@@ -42,7 +42,7 @@ if db_base_path:
 # ─── Import Application Modules (Dependent on Env Variables) ────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images, constants, progression, editor, system
+from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images, constants, progression, editor, system, divinepride
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
 from app.services.grf_reader import grf_reader, MAX_GRF_SLOTS
@@ -111,11 +111,18 @@ app = FastAPI(
 )
 
 # CORS configuration for the React frontend
+default_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 cors_origins_str = os.environ.get("CORS_ORIGINS", "")
 if cors_origins_str:
-    origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+    custom_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+    origins = list(set(default_origins + custom_origins))
 else:
-    origins = ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"]
+    origins = default_origins
 
 app.add_middleware(
     CORSMiddleware,
@@ -130,98 +137,7 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Inicializa os dados em background na subida do servidor
-    db_path = os.environ.get("ITEM_DB_PATH", "")
-    grf_path = os.environ.get("GRF_PATH", "")
-    iteminfo_path = os.environ.get("ITEMINFO_PATH", "")
-    
-    yaml_db.load_db_async(db_path)
-    print(f"[*] Disparado o processo de parse assíncrono do YAML a partir de '{db_path}'.")
-
-    from app.services.npc_parser import npc_db
-    import asyncio
-    asyncio.create_task(npc_db.load_async())
-    
-    mob_db_path = os.environ.get("MOB_DB_PATH", "")
-    if not mob_db_path and db_path:
-        mob_db_path = db_path.replace("item_db.yml", "mob_db.yml")
-    if mob_db_path:
-        mob_db.load_db_async(mob_db_path)
-        print(f"[*] Disparado o processo de parse assíncrono de monstros a partir de '{mob_db_path}'.")
-    
-    if grf_path or any(os.environ.get(f"GRF_{i}", "").strip() for i in range(MAX_GRF_SLOTS)):
-        override_path = os.environ.get("GRF_OVERRIDE_PATH", "")
-
-        # Build GRF list from GRF_0 ... GRF_9
-        grf_list = []
-        for i in range(MAX_GRF_SLOTS):
-            slot_path = os.environ.get(f"GRF_{i}", "").strip()
-            if slot_path:
-                grf_list.append({"priority": i, "path": slot_path})
-
-        # Migration: honour legacy GRF_PATH if no GRF_N slots are set
-        if not grf_list and grf_path:
-            grf_list.append({"priority": 0, "path": grf_path})
-
-        grf_reader.load_multi(grf_list, override_path=override_path)
-        
-    if iteminfo_path:
-        iteminfo_db.load_background(iteminfo_path)
-        
-    skill_db_path = os.environ.get("SKILL_DB_PATH", "")
-    if skill_db_path:
-        skill_db.load_db_async(skill_db_path)
-        print(f"[*] Disparado o processo de parse assíncrono de skills a partir de '{skill_db_path}'.")
-
-    mob_skill_db_path = os.environ.get("MOB_SKILL_DB_PATH", "")
-    if mob_skill_db_path:
-        mob_skill_db.load_db_async(mob_skill_db_path)
-        print(f"[*] Disparado o processo de parse assíncrono de mob skills a partir de '{mob_skill_db_path}'.")
-
-    combo_db_path = os.environ.get("COMBO_DB_PATH", "")
-    if combo_db_path:
-        combo_db.load_db_async(combo_db_path)
-        print(f"[*] Disparado o processo de parse assíncrono de combos a partir de '{combo_db_path}'.")
-
-    quest_db_path = os.environ.get("QUEST_DB_PATH", "")
-    if quest_db_path:
-        quest_db.load_db_async(quest_db_path)
-        print(f"[*] Disparado o processo de parse assíncrono de quests a partir de '{quest_db_path}'.")
-
-    pet_db_path = os.environ.get("PET_DB_PATH", "")
-    if pet_db_path:
-        pet_db.load_db_async(pet_db_path)
-        print(f"[*] Disparado o processo de parse assíncrono de mascotes a partir de '{pet_db_path}'.")
-
-    achievement_db_path = os.environ.get("ACHIEVEMENT_DB_PATH", "")
-    if achievement_db_path:
-        achievement_db.load_db_async(achievement_db_path)
-        print(f"[*] Disparado o processo de parse assíncrono de conquistas a partir de '{achievement_db_path}'.")
-
-    const_db_path = os.environ.get("CONST_DB_PATH", "")
-    if const_db_path:
-        const_db.load_db_async(const_db_path)
-        print(f"[*] Disparado o processo de parse assíncrono de constantes a partir de '{const_db_path}'.")
-        
-    from app.services.randomopt_parser import randomopt_db
-    randomopt_db.initialize()
-    print("[*] Random Options database inicializado.")
-
-    from app.services.sizefix_parser import sizefix_db
-    sizefix_db.initialize()
-    print("[*] Size Fix database inicializado.")
-
-    from app.services.progression_parser import (
-        job_stats_db, job_basepoints_db, job_exp_db, skill_tree_db, job_aspd_db, job_outfits_db
-    )
-    job_stats_db.load()
-    job_basepoints_db.load()
-    job_exp_db.load()
-    skill_tree_db.load()
-    job_aspd_db.load()
-    job_outfits_db.load()
-    print("[*] Databases de progressão (Job Stats, Basepoints, Job Exp, Skill Tree, ASPD, Outfits) carregados.")
-        
+    print("[*] Servidor FastAPI iniciado instantaneamente. O cache será processado sob demanda via SSE.")
     yield
 
 # Atualiza a app para usar o lifespan correto (FastAPI moderno)
@@ -246,6 +162,7 @@ app.include_router(sizefix.router,      prefix="/api/server/sizefix",   tags=["s
 app.include_router(progression.router,  prefix="/api/progression",      tags=["progression"])
 app.include_router(editor.router,       prefix="/api/editor",           tags=["editor"])
 app.include_router(system.router,       prefix="/api/system",           tags=["system"])
+app.include_router(divinepride.router,  prefix="/api/divinepride",      tags=["divinepride"])
 
 @app.get("/")
 def read_root():

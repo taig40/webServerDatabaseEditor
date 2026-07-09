@@ -161,11 +161,12 @@ def _normalize_mob_entry(mob: dict) -> dict:
 @router.get("/")
 async def get_mobs(
     page: int = Query(1, ge=1, description="Página atual (1-based)"),
-    limit: int = Query(50, ge=1, le=5000, description="Número de monstros a retornar"),
+    limit: int = Query(50, ge=1, description="Número de monstros a retornar"),
     search: str = Query("", description="Termo de busca pelo ID, Nome ou AegisName"),
     source: str = Query("", description="Filtro de origem: rathena ou custom"),
     skip: Optional[int] = Query(None, description="Opcional retrocompatibilidade com skip")
 ):
+    limit = min(max(1, limit), 100)
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
         
