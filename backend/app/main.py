@@ -137,7 +137,25 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("[*] Servidor FastAPI iniciado instantaneamente. O cache será processado sob demanda via SSE.")
+    print("[*] Servidor FastAPI iniciando. Carregando GRFs e ItemInfo em background...")
+    import threading
+    def _startup_resources():
+        try:
+            grf_path = os.environ.get("GRF_PATH", "").strip()
+            override_path = os.environ.get("GRF_OVERRIDE_PATH", "").strip()
+            grf_list = []
+            for i in range(MAX_GRF_SLOTS):
+                slot_path = os.environ.get(f"GRF_{i}", "").strip()
+                if slot_path:
+                    grf_list.append({"priority": i, "path": slot_path})
+            if not grf_list and grf_path:
+                grf_list.append({"priority": 0, "path": grf_path})
+            if grf_list:
+                grf_reader.load_multi(grf_list, override_path=override_path)
+            iteminfo_db.load()
+        except Exception as e:
+            print(f"[!] Erro ao carregar recursos iniciais: {e}")
+    threading.Thread(target=_startup_resources, daemon=True).start()
     yield
 
 # Atualiza a app para usar o lifespan correto (FastAPI moderno)
