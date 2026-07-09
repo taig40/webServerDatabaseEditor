@@ -82,6 +82,19 @@ class ItemInfoParser:
 
     # ── Load ──────────────────────────────────────────────────────────────────
 
+    def load(self, iteminfo_path: Optional[str] = None):
+        """Synchronously load iteminfo.lua."""
+        path = iteminfo_path or self.iteminfo_path or getattr(cfg, "ITEMINFO_PATH", "") or os.environ.get("ITEMINFO_PATH", "")
+        if not path or not os.path.exists(path):
+            return
+        self.iteminfo_path = path
+        try:
+            self._parse(path)
+            self.loaded = True
+            print(f"[*] ItemInfo Loaded synchronously: {len(self.item_map)} entries mapped.")
+        except Exception as e:
+            print(f"[!] Failed to parse ItemInfo synchronously: {e}")
+
     def load_background(self, iteminfo_path: str):
         if not iteminfo_path or not os.path.exists(iteminfo_path):
             print(f"[!] ItemInfo file not found at {iteminfo_path}")
