@@ -2,34 +2,78 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config/env';
 import { useLanguageStore } from '../store/useLanguageStore';
-import { Search, Plus, Trash2, Save, Sparkles, Loader2 } from 'lucide-react';
+import { ReferencePicker } from '../components/ReferencePicker';
+import { Virtuoso } from 'react-virtuoso';
+import {
+  Search,
+  Plus,
+  Trash2,
+  Save,
+  Sparkles,
+  Loader2,
+  Layers,
+  Link2,
+  ShieldAlert,
+  Check,
+  Package,
+  Wand2,
+  AlertCircle
+} from 'lucide-react';
 
 interface OptionDefinition {
   Id: number;
   Option: string;
 }
 
-interface OptionLine {
+interface OptionItem {
   Option: string;
+  MinValue?: number;
+  MaxValue?: number;
+  Param?: number;
   Chance: number;
 }
 
-interface RandomOptionGroup {
+interface SlotItem {
+  Slot: number;
+  Options: OptionItem[];
+}
+
+interface TargetItemEntry {
+  Item: string;
+}
+
+interface LaphineData {
+  Item: string;
+  RequiredRandomOptions?: number;
+  ResultRefine?: number | null;
+  TargetItems: TargetItemEntry[];
+}
+
+interface UnifiedGroup {
   Id: number;
   Group: string;
-  Options: OptionLine[];
+  MaxRandom?: number;
+  Slots?: SlotItem[];
+  Random?: OptionItem[];
+  Options?: OptionItem[];
+  LaphineData?: LaphineData;
 }
 
 export const RandomOptionsEditor: React.FC = () => {
   const t = useLanguageStore(state => state.t);
-  
+
   const [options, setOptions] = useState<OptionDefinition[]>([]);
-  const [groups, setGroups] = useState<RandomOptionGroup[]>([]);
+  const [groups, setGroups] = useState<UnifiedGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'rules' | 'laphine'>('rules');
   const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // Modals for ReferencePicker
+  const [applicatorPickerOpen, setApplicatorPickerOpen] = useState(false);
+  const [targetPickerOpen, setTargetPickerOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -38,9 +82,25 @@ export const RandomOptionsEditor: React.FC = () => {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const res = await axios.get(`${API_URL}/api/server/randomopt`);
+      const res = await axios.get(`${API_URL}/api/random-options-groups`);
       setOptions(res.data.options || []);
-      setGroups(res.data.groups || []);
+      const loadedGroups: UnifiedGroup[] = res.data.groups || [];
+      const normalized = loadedGroups.map(g => ({
+        ...g,
+        MaxRandom: g.MaxRandom ?? 0,
+        Slots: g.Slots || [],
+        Random: g.Random || [],
+        LaphineData: g.LaphineData || {
+          Item: '',
+          RequiredRandomOptions: 0,
+          ResultRefine: null,
+          TargetItems: []
+        }
+      }));
+      setGroups(normalized);
+      if (normalized.length > 0 && selectedGroupId === null) {
+        setSelectedGroupId(normalized[0].Id);
+      }
       setIsLoading(false);
     } catch (err) {
       console.error('Error fetching random options:', err);
@@ -62,282 +122,928 @@ export const RandomOptionsEditor: React.FC = () => {
     return groups.find(g => g.Id === selectedGroupId) || null;
   }, [groups, selectedGroupId]);
 
-  const handleUpdateGroupField = (field: keyof RandomOptionGroup, value: any) => {
-    if (selectedGroupId === null) return;
-    setGroups(prev =>
-      prev.map(g => (g.Id === selectedGroupId ? { ...g, [field]: value } : g))
+  const updateSelectedGroup = (updater: (prev: UnifiedGroup) => UnifiedGroup) => {
+    if (!selectedGroupId) return;
+    setGroups(prevList =>
+      prevList.map(g => (g.Id === selectedGroupId ? updater(g) : g))
     );
   };
 
-  const handleAddLine = () => {
-    if (!selectedGroup) return;
-    const defaultOpt = options[0]?.Option || '';
-    const updated = [...selectedGroup.Options, { Option: defaultOpt, Chance: 1000 }];
-    handleUpdateGroupField('Options', updated);
-  };
-
-  const handleRemoveLine = (idx: number) => {
-    if (!selectedGroup) return;
-    const updated = selectedGroup.Options.filter((_, i) => i !== idx);
-    handleUpdateGroupField('Options', updated);
-  };
-
-  const handleUpdateLineField = (idx: number, field: keyof OptionLine, value: any) => {
-    if (!selectedGroup) return;
-    const updated = selectedGroup.Options.map((line, i) =>
-      i === idx ? { ...line, [field]: value } : line
-    );
-    handleUpdateGroupField('Options', updated);
-  };
-
-  const handleCreateGroup = () => {
-    const nextId = groups.length > 0 ? Math.max(...groups.map(g => g.Id)) + 1 : 1;
-    const newGroup: RandomOptionGroup = {
+  const handleAddNewGroup = () => {
+    const nextId =
+      groups.length > 0 ? Math.max(...groups.map(g => g.Id)) + 1 : 1;
+    const newG: UnifiedGroup = {
       Id: nextId,
-      Group: `Group_${nextId}`,
-      Options: []
+      Group: `NEW_GROUP_${nextId}`,
+      MaxRandom: 0,
+      Slots: [
+        {
+          Slot: 1,
+          Options: []
+        }
+      ],
+      Random: [],
+      Options: [],
+      LaphineData: {
+        Item: '',
+        RequiredRandomOptions: 0,
+        ResultRefine: null,
+        TargetItems: []
+      }
     };
-    setGroups(prev => [...prev, newGroup]);
+    setGroups(prev => [newG, ...prev]);
     setSelectedGroupId(nextId);
+    setActiveTab('rules');
   };
 
-  const handleSave = async () => {
+  const handleDeleteGroup = (id: number) => {
+    setGroups(prev => prev.filter(g => g.Id !== id));
+    if (selectedGroupId === id) {
+      const remaining = groups.filter(g => g.Id !== id);
+      setSelectedGroupId(remaining.length > 0 ? remaining[0].Id : null);
+    }
+  };
+
+  const handleSaveAll = async () => {
     try {
       setIsSaving(true);
-      setSaveSuccess(false);
-      await axios.put(`${API_URL}/api/server/randomopt`, {
-        groups: groups
+      setSaveMessage(null);
+      await axios.put(`${API_URL}/api/random-options-groups`, {
+        groups
       });
-      setIsSaving(false);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      setSaveMessage({
+        text: (t('random_options_manager.save_success' as any) as string) || 'Saved successfully!',
+        type: 'success'
+      });
+      setTimeout(() => setSaveMessage(null), 4000);
     } catch (err) {
       console.error('Error saving groups:', err);
+      setSaveMessage({
+        text: (t('random_options_manager.save_error' as any) as string) || 'Error saving.',
+        type: 'error'
+      });
+    } finally {
       setIsSaving(false);
     }
   };
 
+  // Slots actions
+  const addSlot = () => {
+    updateSelectedGroup(g => {
+      const slots = [...(g.Slots || [])];
+      slots.push({
+        Slot: slots.length + 1,
+        Options: []
+      });
+      return { ...g, Slots: slots };
+    });
+  };
+
+  const removeSlot = (slotIdx: number) => {
+    updateSelectedGroup(g => {
+      const slots = (g.Slots || [])
+        .filter((_, idx) => idx !== slotIdx)
+        .map((s, i) => ({ ...s, Slot: i + 1 }));
+      return { ...g, Slots: slots };
+    });
+  };
+
+  const addOptionToSlot = (slotIdx: number) => {
+    updateSelectedGroup(g => {
+      const slots = [...(g.Slots || [])];
+      const targetSlot = slots[slotIdx];
+      if (targetSlot) {
+        targetSlot.Options = [
+          ...targetSlot.Options,
+          {
+            Option: options[0]?.Option || 'VAR_MAXHPAMOUNT',
+            MinValue: 1,
+            MaxValue: 5,
+            Param: 0,
+            Chance: 1000
+          }
+        ];
+      }
+      return { ...g, Slots: slots };
+    });
+  };
+
+  const updateOptionInSlot = (
+    slotIdx: number,
+    optIdx: number,
+    field: keyof OptionItem,
+    val: any
+  ) => {
+    updateSelectedGroup(g => {
+      const slots = [...(g.Slots || [])];
+      const slot = slots[slotIdx];
+      if (slot && slot.Options[optIdx]) {
+        slot.Options[optIdx] = {
+          ...slot.Options[optIdx],
+          [field]: val
+        };
+      }
+      return { ...g, Slots: slots };
+    });
+  };
+
+  const removeOptionFromSlot = (slotIdx: number, optIdx: number) => {
+    updateSelectedGroup(g => {
+      const slots = [...(g.Slots || [])];
+      const slot = slots[slotIdx];
+      if (slot) {
+        slot.Options = slot.Options.filter((_, i) => i !== optIdx);
+      }
+      return { ...g, Slots: slots };
+    });
+  };
+
+  // Random Pool actions
+  const addRandomPoolOption = () => {
+    updateSelectedGroup(g => {
+      const rnd = [...(g.Random || [])];
+      rnd.push({
+        Option: options[0]?.Option || 'VAR_MAXHPAMOUNT',
+        MinValue: 1,
+        MaxValue: 5,
+        Param: 0,
+        Chance: 1000
+      });
+      return { ...g, Random: rnd };
+    });
+  };
+
+  const updateRandomPoolOption = (optIdx: number, field: keyof OptionItem, val: any) => {
+    updateSelectedGroup(g => {
+      const rnd = [...(g.Random || [])];
+      if (rnd[optIdx]) {
+        rnd[optIdx] = {
+          ...rnd[optIdx],
+          [field]: val
+        };
+      }
+      return { ...g, Random: rnd };
+    });
+  };
+
+  const removeRandomPoolOption = (optIdx: number) => {
+    updateSelectedGroup(g => {
+      const rnd = (g.Random || []).filter((_, i) => i !== optIdx);
+      return { ...g, Random: rnd };
+    });
+  };
+
+  // Laphine actions
+  const setLaphineField = (field: keyof LaphineData, val: any) => {
+    updateSelectedGroup(g => {
+      const laphine = {
+        ...(g.LaphineData || {
+          Item: '',
+          RequiredRandomOptions: 0,
+          ResultRefine: null,
+          TargetItems: []
+        }),
+        [field]: val
+      };
+      return { ...g, LaphineData: laphine };
+    });
+  };
+
+  const handleSelectApplicator = (id: number | string, name: string) => {
+    setLaphineField('Item', String(name));
+    setApplicatorPickerOpen(false);
+  };
+
+  const handleSelectTargetItem = (id: number | string, name: string) => {
+    updateSelectedGroup(g => {
+      const laphine = {
+        ...(g.LaphineData || {
+          Item: '',
+          RequiredRandomOptions: 0,
+          ResultRefine: null,
+          TargetItems: []
+        })
+      };
+      const targets = [...(laphine.TargetItems || [])];
+      if (!targets.some(t => t.Item === String(name))) {
+        targets.push({ Item: String(name) });
+      }
+      laphine.TargetItems = targets;
+      return { ...g, LaphineData: laphine };
+    });
+    setTargetPickerOpen(false);
+  };
+
+  const removeTargetItem = (index: number) => {
+    updateSelectedGroup(g => {
+      const laphine = { ...(g.LaphineData || { Item: '', TargetItems: [] }) };
+      laphine.TargetItems = (laphine.TargetItems || []).filter((_, i) => i !== index);
+      return { ...g, LaphineData: laphine };
+    });
+  };
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full gap-3 text-gray-500 bg-[#0f0f14]">
-        <Loader2 size={20} className="animate-spin text-cyan-400" />
-        <span className="text-sm font-medium">{t('common.loading') || 'Carregando...'}</span>
+      <div className="flex flex-col items-center justify-center h-96 gap-4 text-gray-400">
+        <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
+        <span>{(t('common.loading' as any) as string) || 'Loading...'}</span>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full bg-[#0f0f14] text-gray-200 overflow-hidden font-sans">
-      
-      {/* ── Left Sidebar: Group List ────────────────────────────────────── */}
-      <div className="w-80 flex-shrink-0 border-r border-white/5 bg-[#12121a] flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b border-white/5 bg-gradient-to-r from-violet-950/20 to-transparent">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Sparkles size={16} className="text-cyan-400" />
-              {t('components.random_options_editor.title') || 'Opções Aleatórias'}
-            </h2>
-            <button
-              onClick={handleCreateGroup}
-              title={t('components.random_options_editor.new_group') || 'Novo Grupo'}
-              className="p-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-all shadow-md shadow-cyan-950/40"
-            >
-              <Plus size={15} />
-            </button>
+    <div className="flex flex-col h-[calc(100vh-6rem)] gap-4 p-4 text-gray-100">
+      {/* Top Banner */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-gradient-to-r from-gray-900 via-indigo-950/40 to-gray-900 p-4 rounded-xl border border-indigo-500/20 shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
+            <Sparkles className="w-6 h-6" />
           </div>
-          <div className="relative">
-            <input
-              type="text"
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              placeholder={t('components.random_options_editor.search_placeholder') || 'Buscar grupos...'}
-              className="w-full bg-[#09090f] border border-white/5 rounded-xl pl-9 pr-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-cyan-500/60 transition-colors"
-            />
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+          <div>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
+              {(t('random_options_manager.title' as any) as string) || 'Unified Random Options Manager'}
+            </h1>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {(t('random_options_manager.subtitle' as any) as string) ||
+                'Edit group rules (item_randomopt_group.yml) and item application (laphine_upgrade.yml) in a single relational interface.'}
+            </p>
           </div>
         </div>
 
-        {/* List */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {filteredGroups.map(g => {
-            const isSelected = g.Id === selectedGroupId;
-            return (
-              <button
-                key={g.Id}
-                onClick={() => setSelectedGroupId(g.Id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs transition-all ${
-                  isSelected
-                    ? 'bg-gradient-to-r from-cyan-600/30 to-indigo-600/10 text-white border border-cyan-500/30 font-medium'
-                    : 'text-gray-400 hover:bg-[#181824] hover:text-gray-200 border border-transparent'
-                }`}
-              >
-                <div className="flex flex-col min-w-0">
-                  <span className="font-mono text-[10px] text-cyan-400">ID: {g.Id}</span>
-                  <span className="font-semibold truncate">{g.Group}</span>
-                </div>
-                <span className="text-[10px] bg-dark-900 px-2 py-0.5 rounded-md border border-white/5 text-gray-500">
-                  {g.Options.length}
-                </span>
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-3 mt-4 md:mt-0">
+          {saveMessage && (
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                saveMessage.type === 'success'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+              }`}
+            >
+              {saveMessage.type === 'success' ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <AlertCircle className="w-4 h-4" />
+              )}
+              <span>{saveMessage.text}</span>
+            </div>
+          )}
+
+          <button
+            onClick={handleAddNewGroup}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4 text-indigo-400" />
+            <span>{(t('random_options_manager.new_group' as any) as string) || 'New Group'}</span>
+          </button>
+
+          <button
+            onClick={handleSaveAll}
+            disabled={isSaving}
+            className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold shadow-lg shadow-indigo-600/30 transition-all"
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            <span>{(t('common.save' as any) as string) || 'Save'}</span>
+          </button>
         </div>
       </div>
 
-      {/* ── Right Content Panel: Detail & Forms ──────────────────────────── */}
-      <div className="flex-1 overflow-y-auto flex flex-col bg-[#0f0f14]">
-        
-        {selectedGroup ? (
-          <div className="p-8 max-w-4xl w-full mx-auto space-y-6">
-            
-            {/* Header / Top Card */}
-            <div className="bg-[#13131f] rounded-2xl border border-white/5 p-6 shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
-              <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest">
-                    {t('components.random_options_editor.group_id') || 'ID do Grupo'}: {selectedGroup.Id}
-                  </span>
-                  <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                    {selectedGroup.Group}
-                  </h1>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs shadow-lg shadow-cyan-900/30 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    {isSaving ? (
-                      <Loader2 size={13} className="animate-spin" />
-                    ) : (
-                      <Save size={13} />
-                    )}
-                    {t('components.random_options_editor.save_btn') || 'Salvar Alterações'}
-                  </button>
-                  {saveSuccess && (
-                    <span className="text-xs text-green-400 font-medium animate-pulse">
-                      {t('components.random_options_editor.saved_toast') || '✓ Salvo!'}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Group Name Editing */}
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">
-                    {t('components.random_options_editor.group_name') || 'Constante do Grupo'}
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedGroup.Group}
-                    onChange={e => handleUpdateGroupField('Group', e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-2 text-xs text-gray-200 focus:outline-none focus:border-cyan-500/60 transition-colors font-mono"
-                  />
-                </div>
-              </div>
+      {/* Main Workspace */}
+      <div className="flex flex-1 gap-4 overflow-hidden">
+        {/* Left Sidebar - Group List */}
+        <div className="w-80 flex flex-col bg-gray-900/80 border border-gray-800 rounded-xl overflow-hidden shadow-md">
+          {/* Search */}
+          <div className="p-3 border-b border-gray-800">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+              <input
+                type="text"
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                placeholder={
+                  (t('random_options_manager.search_placeholder' as any) as string) ||
+                  'Search group by ID or name...'
+                }
+                className="w-full bg-gray-950 border border-gray-800 rounded-lg pl-9 pr-3 py-1.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              />
             </div>
+          </div>
 
-            {/* Options Lines Card */}
-            <div className="bg-[#13131f] rounded-2xl border border-white/5 p-6 shadow-xl">
-              <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
-                <h3 className="text-sm font-semibold text-white">
-                  {t('components.random_options_editor.options_list') || 'Lista de Bônus / Opções'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={handleAddLine}
-                  className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg bg-cyan-950/40 border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-900/40 text-cyan-300 transition-all font-medium cursor-pointer"
+          {/* List */}
+          <div className="flex-1 overflow-y-auto divide-y divide-gray-800/50">
+            {filteredGroups.map(g => {
+              const isSelected = g.Id === selectedGroupId;
+              const hasLaphine =
+                g.LaphineData?.Item ||
+                (g.LaphineData?.TargetItems && g.LaphineData.TargetItems.length > 0);
+              return (
+                <div
+                  key={g.Id}
+                  onClick={() => setSelectedGroupId(g.Id)}
+                  className={`flex items-center justify-between p-3 cursor-pointer transition-colors ${
+                    isSelected
+                      ? 'bg-indigo-600/20 border-l-4 border-indigo-500 text-white'
+                      : 'hover:bg-gray-800/60 text-gray-300'
+                  }`}
                 >
-                  <Plus size={12} />
-                  {t('components.random_options_editor.add_option') || 'Adicionar Bônus'}
-                </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 text-xs font-mono">
+                        #{g.Id}
+                      </span>
+                      <span className="font-semibold text-sm truncate">
+                        {g.Group}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      {hasLaphine ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 text-purple-300 px-1.5 py-0.5 rounded border border-purple-500/20">
+                          <Link2 className="w-3 h-3" />
+                          <span>Laphine Linked</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-500">
+                          Rules Only
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleDeleteGroup(g.Id);
+                    }}
+                    className="p-1.5 text-gray-500 hover:text-rose-400 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+            {filteredGroups.length === 0 && (
+              <div className="p-6 text-center text-xs text-gray-500">
+                No groups found.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Editor Area */}
+        <div className="flex-1 flex flex-col bg-gray-900/80 border border-gray-800 rounded-xl overflow-hidden shadow-md">
+          {selectedGroup ? (
+            <>
+              {/* Group Header Info */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-950/40">
+                <div className="flex items-center gap-4 flex-1">
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-gray-500">
+                      {(t('random_options_manager.group_id' as any) as string) || 'Group ID'}
+                    </label>
+                    <input
+                      type="number"
+                      value={selectedGroup.Id}
+                      onChange={e =>
+                        updateSelectedGroup(g => ({
+                          ...g,
+                          Id: parseInt(e.target.value) || g.Id
+                        }))
+                      }
+                      className="block w-24 bg-gray-950 border border-gray-700 rounded px-2 py-1 text-sm font-mono text-indigo-300"
+                    />
+                  </div>
+
+                  <div className="flex-1 max-w-md">
+                    <label className="text-[10px] uppercase font-bold text-gray-500">
+                      {(t('random_options_manager.group_name' as any) as string) ||
+                        'Group Name (Foreign Key)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedGroup.Group}
+                      onChange={e =>
+                        updateSelectedGroup(g => ({
+                          ...g,
+                          Group: e.target.value
+                        }))
+                      }
+                      className="block w-full bg-gray-950 border border-gray-700 rounded px-3 py-1 text-sm font-semibold text-white focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-gray-500">
+                      {(t('random_options_manager.max_random' as any) as string) ||
+                        'Max Random Options'}
+                    </label>
+                    <input
+                      type="number"
+                      value={selectedGroup.MaxRandom || 0}
+                      onChange={e =>
+                        updateSelectedGroup(g => ({
+                          ...g,
+                          MaxRandom: parseInt(e.target.value) || 0
+                        }))
+                      }
+                      className="block w-24 bg-gray-950 border border-gray-700 rounded px-2 py-1 text-sm text-center text-purple-300"
+                    />
+                  </div>
+                </div>
+
+                {/* Tabs Switch */}
+                <div className="flex bg-gray-950 p-1 rounded-lg border border-gray-800">
+                  <button
+                    onClick={() => setActiveTab('rules')}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                      activeTab === 'rules'
+                        ? 'bg-indigo-600 text-white shadow'
+                        : 'text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>
+                      {(t('random_options_manager.tab_rules' as any) as string) ||
+                        'Group Rules'}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab('laphine')}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                      activeTab === 'laphine'
+                        ? 'bg-indigo-600 text-white shadow'
+                        : 'text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                    <span>
+                      {(t('random_options_manager.tab_laphine' as any) as string) ||
+                        'Application & Targets (Laphine)'}
+                    </span>
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-3">
-                {selectedGroup.Options.length === 0 ? (
-                  <div className="text-center py-8 text-gray-600 text-xs">
-                    {t('components.random_options_editor.no_options') || 'Nenhum bônus adicionado a este grupo ainda.'}
+              {/* Tab Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {activeTab === 'rules' ? (
+                  <div className="space-y-6">
+                    {/* Guaranteed Slots */}
+                    <div className="bg-gray-950/60 border border-gray-800 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Layers className="w-5 h-5 text-indigo-400" />
+                          <h3 className="text-sm font-bold text-gray-200">
+                            {(t('random_options_manager.slots_section' as any) as string) ||
+                              'Guaranteed Slots'}
+                          </h3>
+                        </div>
+                        <button
+                          onClick={addSlot}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-semibold transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>
+                            {(t('random_options_manager.add_slot' as any) as string) ||
+                              'Add Slot'}
+                          </span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {(selectedGroup.Slots || []).map((slot, sIdx) => (
+                          <div
+                            key={sIdx}
+                            className="bg-gray-900 border border-gray-800 rounded-lg p-3"
+                          >
+                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-800">
+                              <span className="text-xs font-bold text-indigo-400">
+                                Slot #{slot.Slot}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => addOptionToSlot(sIdx)}
+                                  className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-xs rounded text-gray-300 flex items-center gap-1"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  <span>
+                                    {(t('random_options_manager.add_option' as any) as string) ||
+                                      'Add Option'}
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={() => removeSlot(sIdx)}
+                                  className="p-1 text-gray-500 hover:text-rose-400"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              {slot.Options.map((opt, oIdx) => (
+                                <div
+                                  key={oIdx}
+                                  className="grid grid-cols-12 gap-2 items-center bg-gray-950 p-2 rounded border border-gray-800/80"
+                                >
+                                  <div className="col-span-5">
+                                    <select
+                                      value={opt.Option}
+                                      onChange={e =>
+                                        updateOptionInSlot(
+                                          sIdx,
+                                          oIdx,
+                                          'Option',
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-indigo-500"
+                                    >
+                                      {options.map(o => (
+                                        <option key={o.Id} value={o.Option}>
+                                          {o.Option}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  <div className="col-span-2">
+                                    <input
+                                      type="number"
+                                      placeholder="Min"
+                                      value={opt.MinValue ?? 1}
+                                      onChange={e =>
+                                        updateOptionInSlot(
+                                          sIdx,
+                                          oIdx,
+                                          'MinValue',
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-center"
+                                    />
+                                  </div>
+
+                                  <div className="col-span-2">
+                                    <input
+                                      type="number"
+                                      placeholder="Max"
+                                      value={opt.MaxValue ?? 5}
+                                      onChange={e =>
+                                        updateOptionInSlot(
+                                          sIdx,
+                                          oIdx,
+                                          'MaxValue',
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-center"
+                                    />
+                                  </div>
+
+                                  <div className="col-span-2">
+                                    <input
+                                      type="number"
+                                      placeholder="Chance"
+                                      value={opt.Chance ?? 1000}
+                                      onChange={e =>
+                                        updateOptionInSlot(
+                                          sIdx,
+                                          oIdx,
+                                          'Chance',
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-center text-emerald-400"
+                                    />
+                                  </div>
+
+                                  <div className="col-span-1 flex justify-center">
+                                    <button
+                                      onClick={() =>
+                                        removeOptionFromSlot(sIdx, oIdx)
+                                      }
+                                      className="text-gray-500 hover:text-rose-400"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                              {slot.Options.length === 0 && (
+                                <div className="text-center py-2 text-xs text-gray-600">
+                                  No options defined in this slot.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {(selectedGroup.Slots || []).length === 0 && (
+                          <div className="text-center py-4 text-xs text-gray-500">
+                            No guaranteed slots configured.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Random Pool */}
+                    <div className="bg-gray-950/60 border border-gray-800 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Wand2 className="w-5 h-5 text-purple-400" />
+                          <h3 className="text-sm font-bold text-gray-200">
+                            {(t('random_options_manager.random_section' as any) as string) ||
+                              'Random Pool (Random)'}
+                          </h3>
+                        </div>
+                        <button
+                          onClick={addRandomPoolOption}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-lg text-xs font-semibold transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>
+                            {(t('random_options_manager.add_option' as any) as string) ||
+                              'Add Option'}
+                          </span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {(selectedGroup.Random || []).map((opt, rIdx) => (
+                          <div
+                            key={rIdx}
+                            className="grid grid-cols-12 gap-2 items-center bg-gray-900 p-2 rounded border border-gray-800"
+                          >
+                            <div className="col-span-5">
+                              <select
+                                value={opt.Option}
+                                onChange={e =>
+                                  updateRandomPoolOption(
+                                    rIdx,
+                                    'Option',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-200"
+                              >
+                                {options.map(o => (
+                                  <option key={o.Id} value={o.Option}>
+                                    {o.Option}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="col-span-2">
+                              <input
+                                type="number"
+                                placeholder="Min"
+                                value={opt.MinValue ?? 1}
+                                onChange={e =>
+                                  updateRandomPoolOption(
+                                    rIdx,
+                                    'MinValue',
+                                    parseInt(e.target.value) || 0
+                                  )
+                                }
+                                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-center"
+                              />
+                            </div>
+
+                            <div className="col-span-2">
+                              <input
+                                type="number"
+                                placeholder="Max"
+                                value={opt.MaxValue ?? 5}
+                                onChange={e =>
+                                  updateRandomPoolOption(
+                                    rIdx,
+                                    'MaxValue',
+                                    parseInt(e.target.value) || 0
+                                  )
+                                }
+                                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-center"
+                              />
+                            </div>
+
+                            <div className="col-span-2">
+                              <input
+                                type="number"
+                                placeholder="Chance"
+                                value={opt.Chance ?? 1000}
+                                onChange={e =>
+                                  updateRandomPoolOption(
+                                    rIdx,
+                                    'Chance',
+                                    parseInt(e.target.value) || 0
+                                  )
+                                }
+                                className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-center text-emerald-400"
+                              />
+                            </div>
+
+                            <div className="col-span-1 flex justify-center">
+                              <button
+                                onClick={() => removeRandomPoolOption(rIdx)}
+                                className="text-gray-500 hover:text-rose-400"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        {(selectedGroup.Random || []).length === 0 && (
+                          <div className="text-center py-4 text-xs text-gray-500">
+                            No random pool options configured.
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="text-gray-500 font-bold border-b border-white/5">
-                          <th className="pb-2 w-2/3">{t('components.random_options_editor.option_header') || 'Opção'}</th>
-                          <th className="pb-2 w-1/4">{t('components.random_options_editor.chance_header') || 'Chance'}</th>
-                          <th className="pb-2 text-right w-12"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedGroup.Options.map((line, idx) => {
-                          const percentage = ((line.Chance || 0) / 100).toFixed(2);
-                          return (
-                            <tr key={idx} className="border-b border-white/5 last:border-0 hover:bg-white/[0.01] transition-colors">
-                              <td className="py-2.5 pr-4">
-                                <select
-                                  value={line.Option}
-                                  onChange={e => handleUpdateLineField(idx, 'Option', e.target.value)}
-                                  className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-cyan-500/60 transition-colors font-mono cursor-pointer"
-                                >
-                                  {options.map(opt => (
-                                    <option key={opt.Id} value={opt.Option}>
-                                      {opt.Option}
-                                    </option>
-                                  ))}
-                                </select>
-                              </td>
-                              <td className="py-2.5 pr-4">
+                  <div className="space-y-6">
+                    {/* Applicator Consumable Item */}
+                    <div className="bg-gray-950/60 border border-gray-800 rounded-xl p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h3 className="text-sm font-bold text-gray-200 flex items-center gap-2">
+                            <Package className="w-4 h-4 text-indigo-400" />
+                            <span>
+                              {(t('random_options_manager.applicator_section' as any) as string) ||
+                                'Applicator Consumable Item'}
+                            </span>
+                          </h3>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {(t('random_options_manager.applicator_desc' as any) as string) ||
+                              'Which consumable item triggers this option group when used.'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm font-medium text-indigo-300">
+                          {selectedGroup.LaphineData?.Item || 'None configured'}
+                        </div>
+                        <button
+                          onClick={() => setApplicatorPickerOpen(true)}
+                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-colors"
+                        >
+                          {(t('random_options_manager.select_applicator' as any) as string) ||
+                            'Select Applicator Item...'}
+                        </button>
+                        {selectedGroup.LaphineData?.Item && (
+                          <button
+                            onClick={() => setLaphineField('Item', '')}
+                            className="p-2 text-gray-500 hover:text-rose-400"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-400 block mb-1">
+                            {(t('random_options_manager.req_opts' as any) as string) ||
+                              'Required Random Options'}
+                          </label>
+                          <input
+                            type="number"
+                            value={
+                              selectedGroup.LaphineData?.RequiredRandomOptions || 0
+                            }
+                            onChange={e =>
+                              setLaphineField(
+                                'RequiredRandomOptions',
+                                parseInt(e.target.value) || 0
+                              )
+                            }
+                            className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-gray-400 block mb-1">
+                            {(t('random_options_manager.result_refine' as any) as string) ||
+                              'Result Refine'}
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="Optional refine..."
+                            value={selectedGroup.LaphineData?.ResultRefine ?? ''}
+                            onChange={e =>
+                              setLaphineField(
+                                'ResultRefine',
+                                e.target.value ? parseInt(e.target.value) : null
+                              )
+                            }
+                            className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Target Items List with react-virtuoso */}
+                    <div className="bg-gray-950/60 border border-gray-800 rounded-xl p-5 flex flex-col h-96">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h3 className="text-sm font-bold text-gray-200 flex items-center gap-2">
+                            <ShieldAlert className="w-4 h-4 text-purple-400" />
+                            <span>
+                              {(t(
+                                'random_options_manager.target_items_section' as any
+                              ) as string) || 'Target Items (Compatible Equipment)'}
+                            </span>
+                          </h3>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {(t('random_options_manager.target_items_desc' as any) as string) ||
+                              'Equipment that can receive this option group via Laphine Upgrade.'}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => setTargetPickerOpen(true)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-lg text-xs font-semibold transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>
+                            {(t('random_options_manager.add_target' as any) as string) ||
+                              'Add Target Item'}
+                          </span>
+                        </button>
+                      </div>
+
+                      <div className="flex-1 border border-gray-800 rounded-lg overflow-hidden bg-gray-900/40">
+                        {selectedGroup.LaphineData?.TargetItems &&
+                        selectedGroup.LaphineData.TargetItems.length > 0 ? (
+                          <Virtuoso
+                            style={{ height: '100%', width: '100%' }}
+                            data={selectedGroup.LaphineData.TargetItems}
+                            itemContent={(index, target) => (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800/60 hover:bg-gray-800/50"
+                              >
                                 <div className="flex items-center gap-2">
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    max={10000}
-                                    value={line.Chance}
-                                    onChange={e => handleUpdateLineField(idx, 'Chance', parseInt(e.target.value) || 0)}
-                                    className="w-24 bg-[#0a0a0f] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-cyan-500/60 transition-colors font-mono"
-                                  />
-                                  <span className="text-[10px] font-semibold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
-                                    {percentage}%
+                                  <span className="text-xs font-mono text-gray-500">
+                                    #{index + 1}
+                                  </span>
+                                  <span className="text-sm font-medium text-gray-200">
+                                    {target.Item}
                                   </span>
                                 </div>
-                              </td>
-                              <td className="py-2.5 text-right">
                                 <button
-                                  type="button"
-                                  onClick={() => handleRemoveLine(idx)}
-                                  className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all cursor-pointer"
+                                  onClick={() => removeTargetItem(index)}
+                                  className="text-gray-500 hover:text-rose-400 p-1 transition-colors"
+                                  title={
+                                    (t('random_options_manager.remove' as any) as string) ||
+                                    'Remove'
+                                  }
                                 >
-                                  <Trash2 size={14} />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                              </div>
+                            )}
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-full text-xs text-gray-500">
+                            No target items linked. Use "Add Target Item" above.
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
+              Select or create a Random Options Group on the left.
             </div>
-
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-gray-600 gap-3 p-8">
-            <Sparkles size={48} className="text-gray-800" />
-            <h3 className="text-sm font-semibold text-gray-400">
-              {t('components.random_options_editor.select_group') || 'Selecione um Grupo de Opções'}
-            </h3>
-            <p className="text-xs text-gray-600 text-center max-w-xs">
-              {t('components.random_options_editor.select_group_desc') || 'Escolha um grupo na lista da esquerda ou clique no botão + para criar um novo.'}
-            </p>
-          </div>
-        )}
-
+          )}
+        </div>
       </div>
+
+      {/* ReferencePicker Modal for Applicator Item */}
+      <ReferencePicker
+        isOpen={applicatorPickerOpen}
+        onClose={() => setApplicatorPickerOpen(false)}
+        onSelect={handleSelectApplicator}
+        type="item"
+        title={(t('random_options_manager.select_applicator' as any) as string) || 'Select Applicator Item'}
+      />
+
+      {/* ReferencePicker Modal for Target Equipment Items */}
+      <ReferencePicker
+        isOpen={targetPickerOpen}
+        onClose={() => setTargetPickerOpen(false)}
+        onSelect={handleSelectTargetItem}
+        type="item"
+        title={(t('random_options_manager.select_target' as any) as string) || 'Select Target Item'}
+      />
     </div>
   );
 };
