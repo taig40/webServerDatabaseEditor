@@ -4,13 +4,13 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Any, Optional
 from app.services.combo_parser import combo_db
-from app.models.combo import ItemComboDBModel
+from app.models.combo import ItemComboDBModel, ItemComboDBModelUpdate
 
 router = APIRouter()
 
 
 class ComboUpdate(BaseModel):
-    data: ItemComboDBModel
+    data: ItemComboDBModelUpdate
 
 
 class ComboCreate(BaseModel):

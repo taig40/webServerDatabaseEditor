@@ -1,4 +1,4 @@
-﻿from pydantic import Field
+from pydantic import Field
 from typing import Optional, List, Union
 from app.models.item import rAthenaBaseModel
 
@@ -11,8 +11,16 @@ class ComboEntry(rAthenaBaseModel):
 
 class ItemComboDBModel(rAthenaBaseModel):
     """
-    Representa o bloco principal de um item dentro do item_combos.yml.
+    Representa o bloco principal de um item dentro do item_combos.yml (Create).
     """
     Combos: List[ComboEntry]
+    Clear: Optional[bool] = None
+    Script: Optional[str] = None
+
+class ItemComboDBModelUpdate(rAthenaBaseModel):
+    """
+    Representa o bloco de atualização, onde todos os campos são opcionais (PUT/PATCH).
+    """
+    Combos: Optional[List[ComboEntry]] = None
     Clear: Optional[bool] = None
     Script: Optional[str] = None
