@@ -1,55 +1,11 @@
 from fastapi import APIRouter, Query, HTTPException
-from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from app.services.mob_parser import mob_db
 from app.services.mob_skill_parser import mob_skill_db
 from app.services.sprite_parser import get_mob_animation_data, get_sprite_name_for_mob
+from app.models.mob import MobDBModel
 
 router = APIRouter()
-
-# Schema for updating a Mob
-class MobUpdate(BaseModel):
-    AegisName: Optional[str] = None
-    Name: Optional[str] = None
-    JapaneseName: Optional[str] = None
-    Level: Optional[int] = None
-    Hp: Optional[int] = None
-    Sp: Optional[int] = None
-    BaseExp: Optional[int] = None
-    JobExp: Optional[int] = None
-    MvpExp: Optional[int] = None
-    Attack: Optional[int] = None
-    Attack2: Optional[int] = None
-    Defense: Optional[int] = None
-    MagicDefense: Optional[int] = None
-    Resistance: Optional[int] = None
-    MagicResistance: Optional[int] = None
-    Str: Optional[int] = None
-    Agi: Optional[int] = None
-    Vit: Optional[int] = None
-    Int: Optional[int] = None
-    Dex: Optional[int] = None
-    Luk: Optional[int] = None
-    AttackRange: Optional[int] = None
-    SkillRange: Optional[int] = None
-    ChaseRange: Optional[int] = None
-    Size: Optional[str] = None
-    Race: Optional[str] = None
-    Element: Optional[str] = None
-    ElementLevel: Optional[int] = None
-    WalkSpeed: Optional[int] = None
-    AttackDelay: Optional[int] = None
-    AttackMotion: Optional[int] = None
-    DamageMotion: Optional[int] = None
-    DamageTaken: Optional[int] = None
-    GroupId: Optional[int] = None
-    Title: Optional[str] = None
-    Ai: Optional[str] = None
-    Class: Optional[str] = None
-    Modes: Optional[Dict[str, Any]] = None
-    MobSkills: Optional[List[Dict[str, Any]]] = None
-    Drops: Optional[List[Dict[str, Any]]] = None
-    MvpDrops: Optional[List[Dict[str, Any]]] = None
 
 @router.get("/status")
 async def get_status():
@@ -207,26 +163,39 @@ async def get_mob(mob_id: int):
 @router.put("/{mob_id}")
 async def update_mob(
     mob_id: int,
-    mob_data: MobUpdate,
+    mob_data: MobDBModel,
     save_mode: str = Query("import", description="'import' para db/import/ ou 'overwrite' para sobrescrever o arquivo original")
 ):
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
-        
-    updated_dict = mob_data.model_dump(exclude_unset=True)
-    
-    if "Id" in updated_dict:
-        del updated_dict["Id"]
 
+    # exclude_none=True → campos não preenchidos não são escritos no YAML
+    # extra='ignore' no modelo → chaves desconhecidas do front-end são descartadas
+    updated_dict = mob_data.model_dump(exclude_none=True)
+
+    # A chave primária não deve sobrescrever o índice existente
+    updated_dict.pop("Id", None)
+
+    # MobSkills é gerenciado por mob_skill_db (arquivo separado)
     mob_skills = updated_dict.pop("MobSkills", None)
+
     if "Ai" in updated_dict and updated_dict["Ai"] is not None:
         ai_str = str(updated_dict["Ai"]).strip()
         if ai_str.isdigit() and len(ai_str) == 1:
             ai_str = "0" + ai_str
         updated_dict["Ai"] = ai_str
+
     if "Modes" in updated_dict and isinstance(updated_dict["Modes"], dict):
         updated_dict["Modes"] = encode_mob_modes(updated_dict["Modes"])
-        
+
+    # Drops e MvpDrops: serializar sub-modelos de volta a dicts simples
+    for field in ("Drops", "MvpDrops"):
+        if field in updated_dict and updated_dict[field] is not None:
+            updated_dict[field] = [
+                {k: v for k, v in d.items() if v is not None}
+                for d in updated_dict[field]
+            ]
+
     updated_mob = mob_db.update_mob(mob_id, updated_dict, save_mode=save_mode)
     if not updated_mob:
         raise HTTPException(status_code=404, detail="ERROR_MOB_NOT_FOUND")
@@ -234,30 +203,49 @@ async def update_mob(
     if mob_skills is not None and isinstance(mob_skills, list):
         dummy_name = updated_mob.get("AegisName") or updated_mob.get("Name") or str(mob_id)
         mob_skill_db.sync_mob_skills(mob_id, str(dummy_name), mob_skills)
-        
+
     return _normalize_mob_entry(updated_mob)
 
 @router.post("/")
-async def create_mob(mob_data: dict):
+async def create_mob(mob_data: MobDBModel):
+    """
+    Cria um novo monstro customizado em db/import/mob_db.yml.
+    Usa exclude_none=True para omitir campos não preenchidos e
+    extra='ignore' no modelo para descartar chaves desconhecidas.
+    """
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
-        
-    mob_id = mob_data.get("Id")
+
+    mob_id = mob_data.Id
     if not mob_id:
         raise HTTPException(status_code=400, detail="ERROR_ID_REQUIRED")
-        
+
     if mob_id in mob_db.mob_index:
         raise HTTPException(status_code=409, detail="ERROR_DUPLICATE_ID")
-        
-    if "Ai" in mob_data and mob_data["Ai"] is not None:
-        ai_str = str(mob_data["Ai"]).strip()
+
+    # Serializa descartando nulos → YAML limpo, sem chaves inválidas
+    clean_data = mob_data.model_dump(exclude_none=True)
+    clean_data.pop("MobSkills", None)
+
+    if "Ai" in clean_data and clean_data["Ai"] is not None:
+        ai_str = str(clean_data["Ai"]).strip()
         if ai_str.isdigit() and len(ai_str) == 1:
             ai_str = "0" + ai_str
-        mob_data["Ai"] = ai_str
-    if "Modes" in mob_data and isinstance(mob_data["Modes"], dict):
-        mob_data["Modes"] = encode_mob_modes(mob_data["Modes"])
+        clean_data["Ai"] = ai_str
+
+    if "Modes" in clean_data and isinstance(clean_data["Modes"], dict):
+        clean_data["Modes"] = encode_mob_modes(clean_data["Modes"])
+
+    # Drops e MvpDrops: garantir dicts limpos
+    for field in ("Drops", "MvpDrops"):
+        if field in clean_data and clean_data[field] is not None:
+            clean_data[field] = [
+                {k: v for k, v in d.items() if v is not None}
+                for d in clean_data[field]
+            ]
+
     try:
-        new_mob = mob_db.add_custom_mob(mob_data)
+        new_mob = mob_db.add_custom_mob(clean_data)
         return _normalize_mob_entry(new_mob)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
