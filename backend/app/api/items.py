@@ -16,6 +16,28 @@ async def get_status():
         "items_loaded": yaml_db.items_loaded
     }
 
+@router.get("/references")
+async def get_item_references():
+    """
+    Retorna uma lista leve de todos os itens (Id, AegisName, Name, is_custom)
+    para o ReferencePicker / Smart Autocomplete do Front-end.
+    """
+    if yaml_db.is_loading:
+        raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando na memória RAM.")
+    items = yaml_db.get_items()
+    result = []
+    for item in items:
+        item_id = item.get("Id")
+        if item_id is None:
+            continue
+        result.append({
+            "Id": item_id,
+            "AegisName": item.get("AegisName", f"ITEM_{item_id}"),
+            "Name": item.get("Name", item.get("AegisName", f"ITEM_{item_id}")),
+            "is_custom": (item.get("_source") == "custom")
+        })
+    return {"items": result}
+
 @router.get("/{item_id}/sold_by")
 async def get_item_sold_by(item_id: int):
     """

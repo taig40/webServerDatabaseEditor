@@ -116,6 +116,28 @@ def _normalize_mob_entry(mob: dict) -> dict:
     result["is_custom"] = (mob.get("_source") == "custom")
     return result
 
+@router.get("/references")
+async def get_mob_references():
+    """
+    Retorna uma lista leve de todos os monstros (Id, AegisName, Name, is_custom)
+    para o ReferencePicker / Smart Autocomplete do Front-end.
+    """
+    if mob_db.is_loading:
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
+    mobs = mob_db.get_mobs()
+    result = []
+    for mob in mobs:
+        mob_id = mob.get("Id")
+        if mob_id is None:
+            continue
+        result.append({
+            "Id": mob_id,
+            "AegisName": mob.get("AegisName", f"MOB_{mob_id}"),
+            "Name": mob.get("Name", mob.get("AegisName", f"MOB_{mob_id}")),
+            "is_custom": (mob.get("_source") == "custom")
+        })
+    return {"mobs": result}
+
 @router.get("/")
 async def get_mobs(
     page: int = Query(1, ge=1, description="Página atual (1-based)"),

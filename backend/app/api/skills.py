@@ -22,6 +22,25 @@ async def get_skill_status():
         "skills_loaded": skill_db.entries_loaded,
     }
 
+@router.get("/references")
+async def get_skill_references():
+    """
+    Retorna uma lista leve de todas as habilidades para o ReferencePicker / Smart Autocomplete do Front-end.
+    """
+    if skill_db.is_loading:
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
+    skills = skill_db.get_skills()
+    result = []
+    for skill in skills:
+        skill_id = skill.get("Id")
+        if skill_id is None:
+            continue
+        result.append({
+            "Id": skill_id,
+            "Name": skill.get("Name", skill.get("Description", f"SKILL_{skill_id}")),
+            "is_custom": False
+        })
+    return {"skills": result}
 
 @router.get("/")
 async def get_skills(
