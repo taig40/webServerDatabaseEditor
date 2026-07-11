@@ -143,15 +143,22 @@ class _SingleGRF:
             return None
 
         comp_size, comp_size_aligned, uncomp_size, flags, offset = self.files[filename]
-        with open(self.path, 'rb') as f:
-            f.seek(offset + 46)
-            data = f.read(comp_size_aligned)
-            if flags == 1:  # Standard zlib-compressed file
-                try:
-                    return zlib.decompress(data)
-                except Exception:
-                    return data
-            return data
+        try:
+            with open(self.path, 'rb') as f:
+                f.seek(offset + 46)
+                data = f.read(comp_size_aligned)
+                if flags == 1:  # Standard zlib-compressed file
+                    try:
+                        return zlib.decompress(data)
+                    except Exception:
+                        return data
+                return data
+        except PermissionError:
+            print(f"[!] Erro de Permissão: '{self.path}' está bloqueado por outro processo (ex: Client rodando).")
+            return None
+        except Exception as e:
+            print(f"[!] Erro ao extrair do GRF {self.path}: {e}")
+            return None
 
 
 # ─── Public GRFReader (supports up to MAX_GRF_SLOTS GRFs with priority) ───────
