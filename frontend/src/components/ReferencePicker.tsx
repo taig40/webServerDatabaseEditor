@@ -29,10 +29,10 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
     setLoading(true);
     const endpoint =
       type === 'item'
-        ? `${API_URL}/api/items/?limit=50000&t=${Date.now()}`
+        ? `${API_URL}/api/items/references?t=${Date.now()}`
         : type === 'mob'
-        ? `${API_URL}/api/mobs/?limit=50000&t=${Date.now()}`
-        : `${API_URL}/api/skills/?limit=50000&t=${Date.now()}`;
+        ? `${API_URL}/api/mobs/references?t=${Date.now()}`
+        : `${API_URL}/api/skills/references?t=${Date.now()}`;
 
     fetch(endpoint, { cache: 'no-store' })
       .then((res) => res.json())
