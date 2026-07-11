@@ -406,7 +406,11 @@
     "variants": {
       "title": "Variantes de Combinações de Itens",
       "variant_header": "Variante #{index} (mínimo 2 itens)",
-      "add_item": "Adicionar Item ao Combo"
+      "add_item": "Adicionar Item ao Combo",
+      "add_variant": "Adicionar Variante",
+      "select_placeholder": "Selecione no mínimo 2 itens...",
+      "no_options": "Item não encontrado",
+      "min_items_error": "⚠ Um combo requer no mínimo 2 itens."
     },
     "script": {
       "label": "Bônus do Combo (Script)"
@@ -414,6 +418,14 @@
     "no_selection": {
       "title": "Nenhum Combo Selecionado",
       "subtitle": "Selecione uma combinação de itens na lista ao lado para editar."
+    },
+    "validation": {
+      "min_groups": "O combo deve ter ao menos 1 variante.",
+      "min_items": "Todas as variantes devem ter pelo menos 2 itens (Regra rAthena)."
+    },
+    "live_preview": {
+      "title": "Live Preview (YAML)",
+      "error": "Erro ao renderizar YAML."
     }
   },
   "client_item_editor": {
@@ -1198,4 +1210,3 @@
     "remove": "Remover"
   }
 }
-

@@ -169,12 +169,12 @@ export const ComboEditor: React.FC = () => {
     // Front-end Validation min_length=2
     const groups = selectedCombo._item_groups || [];
     if (groups.length === 0) {
-      alert("O combo deve ter ao menos 1 variante.");
+      alert(t('combo_editor.validation.min_groups'));
       return;
     }
     const hasInvalidGroup = groups.some((grp: string[]) => grp.length < 2);
     if (hasInvalidGroup) {
-      alert("Todas as variantes devem ter pelo menos 2 itens (Regra rAthena).");
+      alert(t('combo_editor.validation.min_items'));
       return;
     }
     
@@ -229,7 +229,7 @@ export const ComboEditor: React.FC = () => {
     try {
       return yaml.stringify(previewObj);
     } catch (e) {
-      return "Erro ao renderizar YAML.";
+      return t('combo_editor.live_preview.error');
     }
   }, [selectedCombo]);
 
@@ -366,7 +366,7 @@ export const ComboEditor: React.FC = () => {
                   <div className="flex justify-between items-center mb-4">
                      <h3 className="text-sm font-semibold text-gray-300">{t('combo_editor.variants.title')}</h3>
                      <button onClick={handleAddVariant} className="flex items-center gap-1.5 text-xs bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-400 px-2.5 py-1 rounded transition-colors">
-                        <Plus size={14} /> Adicionar Variante
+                        <Plus size={14} /> {t('combo_editor.variants.add_variant')}
                      </button>
                   </div>
                   <div className="space-y-4 mb-6">
@@ -387,11 +387,11 @@ export const ComboEditor: React.FC = () => {
                               value={selectedOpts}
                               onChange={(newVal) => handleUpdateVariant(varIdx, newVal.map(v => v.value))}
                               styles={selectStyles}
-                              placeholder="Selecione no mínimo 2 itens..."
+                              placeholder={t('combo_editor.variants.select_placeholder')}
                               className="text-sm"
-                              noOptionsMessage={() => "Item não encontrado"}
+                              noOptionsMessage={() => t('combo_editor.variants.no_options')}
                             />
-                            {hasError && <p className="text-xs text-red-400 mt-2 flex items-center gap-1">⚠ Um combo requer no mínimo 2 itens.</p>}
+                            {hasError && <p className="text-xs text-red-400 mt-2 flex items-center gap-1">{t('combo_editor.variants.min_items_error')}</p>}
                          </div>
                        )
                     })}
@@ -409,7 +409,7 @@ export const ComboEditor: React.FC = () => {
                <div className="w-[450px] flex-shrink-0 bg-[#0a0a0f] flex flex-col">
                  <div className="px-4 py-3 border-b border-dark-800 bg-[#0d0d14] flex items-center gap-2">
                    <Code2 size={16} className="text-emerald-500" />
-                   <span className="text-sm font-semibold text-gray-300">Live Preview (YAML)</span>
+                   <span className="text-sm font-semibold text-gray-300">{t('combo_editor.live_preview.title')}</span>
                  </div>
                  <div className="flex-1 p-4 overflow-y-auto">
                    <pre className="text-sm font-mono text-gray-300 leading-relaxed whitespace-pre-wrap">

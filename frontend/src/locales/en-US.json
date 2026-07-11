@@ -406,7 +406,11 @@
     "variants": {
       "title": "Item Combination Variants",
       "variant_header": "Variant #{index} (minimum 2 items)",
-      "add_item": "Add Item to Combo"
+      "add_item": "Add Item to Combo",
+      "add_variant": "Add Variant",
+      "select_placeholder": "Select at least 2 items...",
+      "no_options": "Item not found",
+      "min_items_error": "⚠ A combo requires at least 2 items."
     },
     "script": {
       "label": "Combo Bonus (Script)"
@@ -414,6 +418,14 @@
     "no_selection": {
       "title": "No Combo Selected",
       "subtitle": "Select an item combination from the list on the side to edit."
+    },
+    "validation": {
+      "min_groups": "The combo must have at least 1 variant.",
+      "min_items": "All variants must have at least 2 items (rAthena Rule)."
+    },
+    "live_preview": {
+      "title": "Live Preview (YAML)",
+      "error": "Error rendering YAML."
     }
   },
   "client_item_editor": {
@@ -1198,4 +1210,3 @@
     "remove": "Remove"
   }
 }
-
