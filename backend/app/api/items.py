@@ -104,7 +104,7 @@ async def get_items(
         "items": merged_items
     }
 
-from app.models.item import ItemUpdate
+from app.models.item import ItemDBModel
 from fastapi import HTTPException
 from typing import List, Dict
 
@@ -153,45 +153,52 @@ async def get_item_dropped_by(item_id: int):
 
 @router.put("/{item_id}")
 async def update_item(
-    item_id: int, 
-    item_data: ItemUpdate,
+    item_id: int,
+    item_data: ItemDBModel,
     save_mode: str = Query("import", description="Modo de salvamento: 'import' para cópia em db/import/ ou 'overwrite' para sobrescrever")
 ):
     """
-    Updates an item in the YAML database and saves to disk.
-    Preserves all comments and original formatting.
+    Atualiza um item no banco YAML e salva no disco.
+    Utiliza exclude_none=True para omitir campos nulos, evitando chaves
+    inválidas que possam causar crash no map-server do rAthena.
+    Preserva comentários e formatação original via ruamel.yaml.
     """
-    # Exclude unset fields so we only update what the frontend actually sent
-    updated_dict = item_data.model_dump(exclude_unset=True)
-    
-    # Avoid modifying the primary key ID if passed accidentally
-    if "Id" in updated_dict:
-        del updated_dict["Id"]
-        
+    # exclude_none=True → chaves não preenchidas não são escritas no YAML
+    # extra='ignore' no modelo → campos desconhecidos do front-end são descartados
+    updated_dict = item_data.model_dump(exclude_none=True)
+
+    # A chave primária não deve sobrescrever o índice existente
+    updated_dict.pop("Id", None)
+
     updated_item = yaml_db.update_item(item_id, updated_dict, save_mode=save_mode)
-    
+
     if not updated_item:
         raise HTTPException(status_code=404, detail=f"Item with Id {item_id} not found")
-        
+
     return updated_item
 
 @router.post("/")
-async def create_item(item_data: dict):
+async def create_item(item_data: ItemDBModel):
     """
-    Creates a new custom item and saves it to db/import/item_db.yml.
+    Cria um novo item customizado e salva em db/import/item_db.yml.
+    Usa exclude_none=True para omitir campos não preenchidos e
+    extra='ignore' no modelo para descartar chaves desconhecidas.
     """
     if yaml_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando.")
-        
-    item_id = item_data.get("Id")
+
+    item_id = item_data.Id
     if not item_id:
         raise HTTPException(status_code=400, detail="Id is required")
-        
+
     if item_id in yaml_db.item_index:
         raise HTTPException(status_code=409, detail=f"Um item com o ID {item_id} já existe.")
-        
+
+    # Serializa descartando nulos → YAML limpo, sem chaves inválidas
+    clean_data = item_data.model_dump(exclude_none=True)
+
     try:
-        new_item = yaml_db.add_custom_item(item_data)
+        new_item = yaml_db.add_custom_item(clean_data)
         return new_item
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
