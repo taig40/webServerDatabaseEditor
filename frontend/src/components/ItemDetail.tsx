@@ -8,6 +8,55 @@ import NpcShopModal from './NpcShopModal';
 import { ItemIcon } from './ItemIcon';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { DivinePrideImportButton } from './DivinePrideImportButton';
+import Select from 'react-select';
+
+const LOCATION_OPTIONS = [
+  'Head_Top', 'Head_Mid', 'Head_Low', 'Armor', 'Right_Hand', 'Left_Hand', 'Garment', 
+  'Shoes', 'Right_Accessory', 'Left_Accessory', 'Costume_Head_Top', 'Costume_Head_Mid', 
+  'Costume_Head_Low', 'Costume_Garment', 'Ammo', 'Shadow_Armor', 'Shadow_Weapon', 
+  'Shadow_Shield', 'Shadow_Shoes', 'Shadow_Right_Accessory', 'Shadow_Left_Accessory', 
+  'Both_Hand', 'Both_Accessory'
+].map(l => ({ value: l, label: l }));
+
+const JOB_OPTIONS = [
+  'All', 'Acolyte', 'Alchemist', 'Archer', 'Assassin', 'BardDancer', 'Blacksmith', 
+  'Crusader', 'Gunslinger', 'Hunter', 'KagerouOboro', 'Knight', 'Mage', 'Merchant', 
+  'Monk', 'Ninja', 'Novice', 'Priest', 'Rebellion', 'Rogue', 'Sage', 'SoulLinker', 
+  'StarGladiator', 'Summoner', 'SuperNovice', 'Swordman', 'Taekwon', 'Thief', 'Wizard'
+].map(j => ({ value: j, label: j }));
+
+const customSelectStyles = {
+  control: (base: any) => ({
+    ...base,
+    backgroundColor: '#111827',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    color: '#e5e7eb',
+    minHeight: '38px',
+    boxShadow: 'none',
+    '&:hover': { borderColor: 'rgba(255, 255, 255, 0.2)' }
+  }),
+  menu: (base: any) => ({
+    ...base,
+    backgroundColor: '#1f2937',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+  }),
+  option: (base: any, state: any) => ({
+    ...base,
+    backgroundColor: state.isFocused ? '#374151' : 'transparent',
+    color: '#e5e7eb',
+    cursor: 'pointer',
+    '&:active': { backgroundColor: '#4b5563' }
+  }),
+  singleValue: (base: any) => ({ ...base, color: '#e5e7eb' }),
+  multiValue: (base: any) => ({ ...base, backgroundColor: '#374151', borderRadius: '4px' }),
+  multiValueLabel: (base: any) => ({ ...base, color: '#e5e7eb' }),
+  multiValueRemove: (base: any) => ({
+    ...base,
+    color: '#9ca3af',
+    '&:hover': { backgroundColor: '#ef4444', color: 'white' }
+  }),
+  input: (base: any) => ({ ...base, color: '#e5e7eb' }),
+};
 
 interface ItemDetailProps {
   item: any;
@@ -103,6 +152,46 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
     }
   };
 
+  const getJobsValue = () => {
+    if (!localItem.Jobs) return [];
+    if (localItem.Jobs.All) return [{ value: 'All', label: 'All' }];
+    return Object.entries(localItem.Jobs)
+      .filter(([_, v]) => v === true)
+      .map(([k, _]) => ({ value: k, label: k }));
+  };
+
+  const handleJobsChange = (selected: any) => {
+    if (!selected || selected.length === 0) {
+      handleFieldChange('Jobs', null);
+      return;
+    }
+    const hasAll = selected.find((o: any) => o.value === 'All');
+    if (hasAll) {
+      handleFieldChange('Jobs', { All: true });
+      return;
+    }
+    const jobsMap: any = {};
+    selected.forEach((o: any) => { jobsMap[o.value] = true; });
+    handleFieldChange('Jobs', jobsMap);
+  };
+
+  const getLocationsValue = () => {
+    if (!localItem.Locations) return [];
+    return Object.entries(localItem.Locations)
+      .filter(([_, v]) => v === true)
+      .map(([k, _]) => ({ value: k, label: k }));
+  };
+
+  const handleLocationsChange = (selected: any) => {
+    if (!selected || selected.length === 0) {
+      handleFieldChange('Locations', null);
+      return;
+    }
+    const locMap: any = {};
+    selected.forEach((o: any) => { locMap[o.value] = true; });
+    handleFieldChange('Locations', locMap);
+  };
+
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-dark-900 text-gray-200">
       
@@ -172,21 +261,30 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Type</label>
-              <input 
-                type="text" 
+              <select 
                 value={localItem.Type || ''}
                 onChange={e => handleFieldChange('Type', e.target.value)}
-                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
-              />
+                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:border-violet-500 focus:outline-none transition-colors"
+              >
+                <option value="">(None)</option>
+                {['Healing', 'Usable', 'Etc', 'Armor', 'Weapon', 'Card', 'PetEgg', 'PetArmor', 'Ammo', 'DelayConsume', 'ShadowGear', 'Cash'].map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Subtype</label>
-              <input 
-                type="text" 
+              <select 
                 value={localItem.SubType || ''}
                 onChange={e => handleFieldChange('SubType', e.target.value)}
-                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
-              />
+                disabled={!['Weapon', 'Ammo', 'Card'].includes(localItem.Type)}
+                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:border-violet-500 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">(None)</option>
+                {localItem.Type === 'Weapon' && ['Fist', 'Dagger', '1hSword', '2hSword', '1hSpear', '2hSpear', '1hAxe', '2hAxe', 'Mace', '2hMace', 'Staff', 'Bow', 'Knuckle', 'Musical', 'Whip', 'Book', 'Katar', 'Revolver', 'Rifle', 'Gatling', 'Shotgun', 'Grenade', 'Huuma', '2hStaff'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                {localItem.Type === 'Ammo' && ['Arrow', 'Dagger', 'Bullet', 'Shell', 'Grenade', 'Shuriken', 'Kunai', 'Cannonball', 'ThrowWeapon'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                {localItem.Type === 'Card' && ['Normal', 'Enchant'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Buy</label>
@@ -280,15 +378,6 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
               />
             </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Equip Level Min</label>
-              <input 
-                type="number" 
-                value={localItem.EquipLevelMin ?? ''}
-                onChange={e => handleFieldChange('EquipLevelMin', e.target.value, true)}
-                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
-              />
-            </div>
           </div>
         </div>
 
@@ -332,34 +421,43 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
             </div>
             <div>
                <label className="block text-xs text-gray-500 mb-1">Classes (Upper)</label>
-               <div className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-300 truncate cursor-help" title={
-                 !localItem.Classes ? 'All' :
-                 localItem.Classes.All ? 'All' :
-                 Object.entries(localItem.Classes).filter(([_, v]) => v === true).map(([k, _]) => k).join(', ') || 'None'
-               }>
-                  {!localItem.Classes ? 'All' :
-                   localItem.Classes.All ? 'All' :
-                   Object.entries(localItem.Classes).filter(([_, v]) => v === true).map(([k, _]) => k).join(', ') || 'None'}
-               </div>
+               <select
+                  value={(!localItem.Classes || localItem.Classes.All) ? 'All' : Object.entries(localItem.Classes).find(([_, v]) => v === true)?.[0] || 'All'}
+                  onChange={e => {
+                    const val = e.target.value;
+                    handleFieldChange('Classes', val === 'All' ? { All: true } : { [val]: true });
+                  }}
+                  className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:border-emerald-500/50 focus:outline-none transition-colors"
+               >
+                 {['All', 'Normal', 'Upper', 'Baby', 'Third', 'Third_Upper', 'Third_Baby', 'Fourth', 'All_Upper', 'All_Baby', 'All_Third'].map(opt => (
+                   <option key={opt} value={opt}>{opt}</option>
+                 ))}
+               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
              <div>
                 <label className="block text-xs text-gray-500 mb-1">Applicable Jobs</label>
-                <div className="w-full min-h-[38px] bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 break-words">
-                   {!localItem.Jobs ? 'All' :
-                    localItem.Jobs.All ? 'All' :
-                    Object.entries(localItem.Jobs).filter(([_, v]) => v === true).map(([k, _]) => k).join(', ') || 'None'}
-                </div>
-                <p className="text-[10px] text-gray-600 mt-1">Modern rAthena specifies jobs nominally (e.g. Crusader: true).</p>
+                <Select
+                  isMulti
+                  options={JOB_OPTIONS}
+                  value={getJobsValue()}
+                  onChange={handleJobsChange}
+                  styles={customSelectStyles}
+                  placeholder="Select jobs..."
+                />
              </div>
              <div>
                 <label className="block text-xs text-gray-500 mb-1">Locations (Equip Placement)</label>
-                <div className="w-full min-h-[38px] bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 break-words">
-                   {!localItem.Locations ? 'None' :
-                    Object.entries(localItem.Locations).filter(([_, v]) => v === true).map(([k, _]) => k).join(', ') || 'None'}
-                </div>
+                <Select
+                  isMulti
+                  options={LOCATION_OPTIONS}
+                  value={getLocationsValue()}
+                  onChange={handleLocationsChange}
+                  styles={customSelectStyles}
+                  placeholder="Select locations..."
+                />
              </div>
           </div>
         </div>
