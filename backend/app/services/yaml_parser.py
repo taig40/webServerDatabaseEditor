@@ -28,6 +28,9 @@ class YamlDatabase:
         # Cache em memória para buscas instantâneas
         self.cached_items_list = None
         
+        # Índice invertido Id → AegisName (O(1) lookup para o Divine Pride Adapter)
+        self.id_to_aegisname: dict = {}
+        
         # Estados para a Thread de Carregamento Assíncrono
         self.is_loading = False
         self.loading_status = "Aguardando inicialização..."
@@ -161,6 +164,22 @@ class YamlDatabase:
                     all_items.append(annotated)
         all_items.sort(key=lambda x: x.get('Id', 0))
         self.cached_items_list = all_items
+        # Reconstrói o índice invertido Id → AegisName junto com o cache
+        self.id_to_aegisname = {
+            item.get('Id'): item.get('AegisName')
+            for item in all_items
+            if item.get('Id') is not None and item.get('AegisName')
+        }
+
+    def get_aegisname_by_id(self, item_id: int) -> 'Optional[str]':
+        """
+        Lookup O(1) de AegisName pelo ID numérico do item.
+        Retorna None se o item não existir no banco local.
+        Usado pelo DivinePrideAdapter para traduzir drops sem requisições HTTP adicionais.
+        """
+        if self.cached_items_list is None:
+            self.rebuild_cache()
+        return self.id_to_aegisname.get(item_id)
 
     def get_items(self):
         """Retorna a lista em cache com TODOS os itens de TODOS os arquivos."""
