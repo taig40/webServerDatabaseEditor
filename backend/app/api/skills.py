@@ -28,7 +28,7 @@ async def get_skills(
     skip: int = Query(0),
     limit: int = Query(50),
 ):
-    limit = min(max(1, limit), 100000)
+    limit = min(max(1, limit), 100)
     if skill_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     skills = skill_db.get_skills()

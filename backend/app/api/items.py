@@ -64,7 +64,7 @@ async def get_items(
     """
     Returns a paginated list of items from the in-memory YAML database.
     """
-    limit = min(max(1, limit), 100000)
+    limit = min(max(1, limit), 100)
     if yaml_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando na memória RAM.")
 
