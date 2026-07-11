@@ -124,7 +124,7 @@ async def get_mobs(
     source: str = Query("", description="Filtro de origem: rathena ou custom"),
     skip: Optional[int] = Query(None, description="Opcional retrocompatibilidade com skip")
 ):
-    limit = min(max(1, limit), 100000)
+    limit = min(max(1, limit), 100)
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
         
