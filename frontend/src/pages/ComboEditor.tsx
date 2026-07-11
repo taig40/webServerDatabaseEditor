@@ -2,11 +2,54 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { Virtuoso } from 'react-virtuoso';
 import { API_URL } from '../config/env';
-import { Search, Layers, Plus, Database, Sparkles, Save, Trash2, Package } from 'lucide-react';
+import { Search, Layers, Plus, Database, Sparkles, Save, Trash2, Code2 } from 'lucide-react';
 import { ScriptEditor } from '../components/ScriptEditor';
-import { RepeatableGroup } from '../components/RepeatableGroup';
-import { ReferencePicker } from '../components/ReferencePicker';
 import { useLanguageStore } from '../store/useLanguageStore';
+import Select from 'react-select';
+import yaml from 'yaml';
+
+const selectStyles = {
+  control: (base: any, state: any) => ({
+    ...base,
+    background: '#12121a',
+    borderColor: state.isFocused ? '#06b6d4' : '#374151',
+    boxShadow: 'none',
+    color: '#e5e7eb',
+    '&:hover': { borderColor: '#4b5563' }
+  }),
+  menu: (base: any) => ({
+    ...base,
+    background: '#1a1a24',
+    border: '1px solid #374151',
+    zIndex: 50
+  }),
+  option: (base: any, state: any) => ({
+    ...base,
+    backgroundColor: state.isFocused ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+    color: state.isFocused ? '#67e8f9' : '#9ca3af',
+    cursor: 'pointer',
+    '&:active': { backgroundColor: 'rgba(6, 182, 212, 0.3)' }
+  }),
+  multiValue: (base: any) => ({
+    ...base,
+    backgroundColor: 'rgba(6, 182, 212, 0.15)',
+    border: '1px solid rgba(6, 182, 212, 0.3)',
+    borderRadius: '4px'
+  }),
+  multiValueLabel: (base: any) => ({
+    ...base,
+    color: '#67e8f9',
+    fontSize: '0.75rem',
+    fontWeight: '500'
+  }),
+  multiValueRemove: (base: any) => ({
+    ...base,
+    color: '#22d3ee',
+    cursor: 'pointer',
+    ':hover': { backgroundColor: 'rgba(6, 182, 212, 0.3)', color: '#fff' }
+  }),
+  input: (base: any) => ({ ...base, color: '#e5e7eb' })
+};
 
 type SourceTab = 'rathena' | 'custom';
 
@@ -19,9 +62,8 @@ export const ComboEditor: React.FC = () => {
   const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
   const [selectedIndex, setSelectedIndex] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [activeVariantIdx, setActiveVariantIdx] = useState<number | null>(null);
   const [itemMap, setItemMap] = useState<Record<string, string>>({});
+  const [itemOptions, setItemOptions] = useState<{value: string, label: string}[]>([]);
 
   useEffect(() => {
     fetchCombos();
@@ -33,12 +75,19 @@ export const ComboEditor: React.FC = () => {
       const res = await axios.get(`${API_URL}/api/items/?limit=50000`);
       const items = res.data.items || [];
       const map: Record<string, string> = {};
+      const opts: {value: string, label: string}[] = [];
       items.forEach((item: any) => {
         if (item.AegisName) {
-          map[item.AegisName.toLowerCase()] = item.Name || item.Name_English || item.AegisName;
+          const name = item.Name || item.Name_English || item.AegisName;
+          map[item.AegisName.toLowerCase()] = name;
+          opts.push({
+            value: item.AegisName,
+            label: `${name} (${item.AegisName})`
+          });
         }
       });
       setItemMap(map);
+      setItemOptions(opts);
     } catch (err) {
       console.error("Erro ao carregar mapa de itens:", err);
     }
@@ -94,7 +143,7 @@ export const ComboEditor: React.FC = () => {
   const handleAddVariant = () => {
     if (!selectedCombo) return;
     const currentGroups = selectedCombo._item_groups || [];
-    const updated = [...currentGroups, ['Item_Exemplo_1', 'Item_Exemplo_2']];
+    const updated = [...currentGroups, []];
     setCombos(prev => prev.map(c => c._index === selectedCombo._index ? { ...c, _item_groups: updated } : c));
   };
 
@@ -105,23 +154,10 @@ export const ComboEditor: React.FC = () => {
     setCombos(prev => prev.map(c => c._index === selectedCombo._index ? { ...c, _item_groups: updated } : c));
   };
 
-  const handleRemoveItemFromVariant = (varIdx: number, itemIdx: number) => {
+  const handleUpdateVariant = (varIdx: number, newGroup: string[]) => {
     if (!selectedCombo) return;
     const currentGroups = (selectedCombo._item_groups || []).map((grp: string[], i: number) => {
-      if (i === varIdx) {
-        return grp.filter((_, j) => j !== itemIdx);
-      }
-      return grp;
-    });
-    setCombos(prev => prev.map(c => c._index === selectedCombo._index ? { ...c, _item_groups: currentGroups } : c));
-  };
-
-  const handleAddItemToVariant = (varIdx: number, itemName: string) => {
-    if (!selectedCombo) return;
-    const currentGroups = (selectedCombo._item_groups || []).map((grp: string[], i: number) => {
-      if (i === varIdx) {
-        return [...grp, itemName];
-      }
+      if (i === varIdx) return newGroup;
       return grp;
     });
     setCombos(prev => prev.map(c => c._index === selectedCombo._index ? { ...c, _item_groups: currentGroups } : c));
@@ -129,19 +165,27 @@ export const ComboEditor: React.FC = () => {
 
   const handleSaveCombo = async () => {
     if (!selectedCombo) return;
+    
+    // Front-end Validation min_length=2
+    const groups = selectedCombo._item_groups || [];
+    if (groups.length === 0) {
+      alert("O combo deve ter ao menos 1 variante.");
+      return;
+    }
+    const hasInvalidGroup = groups.some((grp: string[]) => grp.length < 2);
+    if (hasInvalidGroup) {
+      alert("Todas as variantes devem ter pelo menos 2 itens (Regra rAthena).");
+      return;
+    }
+    
     setIsSaving(true);
     try {
-      // Build raw Combos structure expected by YAML
-      const formattedCombos = (selectedCombo._item_groups || []).map((grp: string[]) => ({
-        Combo: grp
-      }));
+      const formattedCombos = groups.map((grp: string[]) => ({ Combo: grp }));
       const payload = {
         Combos: formattedCombos,
         Script: selectedCombo.Script
       };
-      const res = await axios.put(`${API_URL}/api/combos/${selectedCombo._index}`, {
-        data: payload
-      });
+      await axios.put(`${API_URL}/api/combos/${selectedCombo._index}`, { data: payload });
       alert(t('combo_editor.save_success'));
       setCombos(prev => prev.map(c => c._index === selectedCombo._index ? { ...c, _source: 'custom' } : c));
       setSourceTab('custom');
@@ -171,6 +215,23 @@ export const ComboEditor: React.FC = () => {
       alert(t('combo_editor.create_error'));
     }
   };
+
+  // Live Preview Generator
+  const livePreviewYaml = useMemo(() => {
+    if (!selectedCombo) return "";
+    const formattedCombos = (selectedCombo._item_groups || []).map((grp: string[]) => ({
+      Combo: grp
+    }));
+    const previewObj = {
+      Combos: formattedCombos,
+      Script: selectedCombo.Script
+    };
+    try {
+      return yaml.stringify(previewObj);
+    } catch (e) {
+      return "Erro ao renderizar YAML.";
+    }
+  }, [selectedCombo]);
 
   return (
     <div className="flex h-full w-full bg-[#0d0d12] text-gray-200 overflow-hidden select-none font-sans">
@@ -272,11 +333,11 @@ export const ComboEditor: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Detail View */}
-      <div className="flex-1 bg-dark-950 flex flex-col overflow-y-auto p-6">
+      {/* Main Detail View - Split Layout */}
+      <div className="flex-1 bg-dark-950 flex flex-col h-full overflow-hidden">
         {selectedCombo ? (
-          <div className="max-w-4xl space-y-6">
-            <div className="flex justify-between items-center pb-4 border-b border-dark-800">
+          <div className="flex flex-col h-full">
+            <div className="flex justify-between items-center p-6 pb-4 border-b border-dark-800 bg-dark-950 flex-shrink-0">
               <div>
                 <h1 className="text-xl font-bold text-white flex items-center gap-2">
                   <span>{t('combo_editor.detail.title')}</span>
@@ -298,56 +359,65 @@ export const ComboEditor: React.FC = () => {
                 <span>{t('combo_editor.detail.save_button')}</span>
               </button>
             </div>
-
-            {/* Variants Editor */}
-            <RepeatableGroup
-              title={t('combo_editor.variants.title')}
-              items={selectedCombo._item_groups || []}
-              onAdd={handleAddVariant}
-              onRemove={handleRemoveVariant}
-              renderItem={(variant: string[], varIdx: number) => (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-cyan-400">{t('combo_editor.variants.variant_header', { index: varIdx + 1 })}</span>
-                    <button
-                      type="button"
-                      onClick={() => { setActiveVariantIdx(varIdx); setPickerOpen(true); }}
-                      className="text-xs bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 px-2.5 py-1 rounded flex items-center gap-1 transition-colors"
-                    >
-                      <Plus size={14} /> {t('combo_editor.variants.add_item')}
-                    </button>
+            
+            <div className="flex flex-1 overflow-hidden">
+               {/* Left Pane - Form */}
+               <div className="flex-1 flex flex-col overflow-y-auto p-6 border-r border-dark-800 custom-scrollbar">
+                  <div className="flex justify-between items-center mb-4">
+                     <h3 className="text-sm font-semibold text-gray-300">{t('combo_editor.variants.title')}</h3>
+                     <button onClick={handleAddVariant} className="flex items-center gap-1.5 text-xs bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-400 px-2.5 py-1 rounded transition-colors">
+                        <Plus size={14} /> Adicionar Variante
+                     </button>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {variant.map((itemName: string, itemIdx: number) => (
-                      <div key={itemIdx} className="flex items-center gap-1.5 bg-dark-900 border border-dark-700 px-2.5 py-1 rounded-lg">
-                        <Package size={14} className="text-cyan-400" />
-                        <span className="text-xs text-gray-200">
-                          {getItemDisplayName(itemName)}
-                          {getItemDisplayName(itemName) !== itemName && (
-                            <span className="text-[10px] font-mono text-gray-500 ml-1.5">({itemName})</span>
-                          )}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItemFromVariant(varIdx, itemIdx)}
-                          className="text-gray-500 hover:text-red-400 ml-1"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="space-y-4 mb-6">
+                    {(selectedCombo._item_groups || []).map((grp: string[], varIdx: number) => {
+                       const selectedOpts = grp.map(g => itemOptions.find(o => o.value.toLowerCase() === g.toLowerCase()) || { value: g, label: g });
+                       const hasError = grp.length > 0 && grp.length < 2;
+                       return (
+                         <div key={varIdx} className={`p-4 rounded-xl border ${hasError ? 'border-red-500/30 bg-red-500/5' : 'border-dark-700 bg-dark-900/40'}`}>
+                            <div className="flex justify-between items-center mb-3">
+                              <span className="text-xs font-bold text-cyan-400">{t('combo_editor.variants.variant_header', { index: varIdx + 1 })}</span>
+                              <button onClick={() => handleRemoveVariant(varIdx)} className="text-gray-500 hover:text-red-400">
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                            <Select
+                              isMulti
+                              options={itemOptions}
+                              value={selectedOpts}
+                              onChange={(newVal) => handleUpdateVariant(varIdx, newVal.map(v => v.value))}
+                              styles={selectStyles}
+                              placeholder="Selecione no mínimo 2 itens..."
+                              className="text-sm"
+                              noOptionsMessage={() => "Item não encontrado"}
+                            />
+                            {hasError && <p className="text-xs text-red-400 mt-2 flex items-center gap-1">⚠ Um combo requer no mínimo 2 itens.</p>}
+                         </div>
+                       )
+                    })}
                   </div>
-                </div>
-              )}
-            />
-
-            {/* Script Editor */}
-            <ScriptEditor
-              label={t('combo_editor.script.label')}
-              value={selectedCombo.Script || ''}
-              onChange={handleUpdateScript}
-              height="260px"
-            />
+                  
+                  <ScriptEditor
+                    label={t('combo_editor.script.label')}
+                    value={selectedCombo.Script || ''}
+                    onChange={handleUpdateScript}
+                    height="260px"
+                  />
+               </div>
+               
+               {/* Right Pane - Live Preview */}
+               <div className="w-[450px] flex-shrink-0 bg-[#0a0a0f] flex flex-col">
+                 <div className="px-4 py-3 border-b border-dark-800 bg-[#0d0d14] flex items-center gap-2">
+                   <Code2 size={16} className="text-emerald-500" />
+                   <span className="text-sm font-semibold text-gray-300">Live Preview (YAML)</span>
+                 </div>
+                 <div className="flex-1 p-4 overflow-y-auto">
+                   <pre className="text-sm font-mono text-gray-300 leading-relaxed whitespace-pre-wrap">
+                     {livePreviewYaml}
+                   </pre>
+                 </div>
+               </div>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -357,17 +427,6 @@ export const ComboEditor: React.FC = () => {
           </div>
         )}
       </div>
-
-      <ReferencePicker
-        isOpen={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        type="item"
-        onSelect={(id, name) => {
-          if (activeVariantIdx !== null) {
-            handleAddItemToVariant(activeVariantIdx, name);
-          }
-        }}
-      />
     </div>
   );
 };

@@ -24,6 +24,7 @@
     "react-select": "^5.10.2",
     "react-virtuoso": "^4.18.10",
     "recharts": "^3.9.2",
+    "yaml": "^2.9.0",
     "zustand": "^4.4.7"
   },
   "devDependencies": {
