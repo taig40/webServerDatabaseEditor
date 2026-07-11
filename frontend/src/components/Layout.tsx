@@ -23,6 +23,7 @@ import {
   Shield,
   TrendingUp,
   Network,
+  Map,
 } from 'lucide-react';
 
 // ─── Module definitions ─────────────────────────────────────────────────────
@@ -41,7 +42,8 @@ export type ModuleId =
   | 'size_fix'
   | 'job_database'
   | 'exp_tables'
-  | 'skill_tree';
+  | 'skill_tree'
+  | 'map_engine';
 
 interface Module {
   id: ModuleId;
@@ -65,6 +67,7 @@ const MODULES: Module[] = [
   { id: 'item_combos',         label: 'Combos de Itens',      sublabel: 'item_combos.yml',      icon: Layers,       group: 'server', available: true  },
   { id: 'pets',                label: 'Mascotes',             sublabel: 'pet_db.yml',           icon: Star,         group: 'server', available: true  },
   { id: 'random_options',      label: 'Opções Aleatórias',    sublabel: 'item_randomopt_group.yml', icon: Sparkles,  group: 'server', available: true  },
+  { id: 'map_engine',          label: 'Map Engine',           sublabel: 'map_drops.yml',            icon: Map,       group: 'server', available: true  },
   { id: 'size_fix',            label: 'Penalidades de Tamanho', sublabel: 'size_fix.yml',        icon: Scale,     group: 'server', available: true  },
   // ── Client DB ──
   { id: 'client_items',        label: 'Itens (Cliente)',      sublabel: 'iteminfo.lua',         icon: BookOpen,     group: 'client', available: true  },
