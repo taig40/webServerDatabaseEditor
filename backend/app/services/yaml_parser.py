@@ -108,11 +108,14 @@ class YamlDatabase:
                 with open(filepath, 'r', encoding='utf-8') as f:
                     self._yaml_strict.load(f)
             except Exception as dup_err:
-                # Extrai apenas a mensagem sem o traceback completo
-                dup_msg = str(dup_err).splitlines()[0] if str(dup_err) else str(dup_err)
+                # ruamel.yaml embute linha, coluna e valores na representação textual.
+                # Formata cada linha da mensagem com indentação para fácil leitura.
+                raw_lines = str(dup_err).strip().splitlines()
+                detail    = "\n  ".join(raw_lines)
                 print(
-                    f"[WARN] Chave duplicada detectada em '{filename}': {dup_msg}\n"
-                    f"       O arquivo sera carregado assim mesmo (ultimo valor prevalece)."
+                    f"\n[WARN] Integridade YAML — chave duplicada em '{filename}':\n"
+                    f"  {detail}\n"
+                    f"  >> O arquivo sera carregado assim mesmo (ultimo valor prevalece).\n"
                 )
 
             # ── Load real com parser permissivo ──
