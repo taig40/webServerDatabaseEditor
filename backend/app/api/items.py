@@ -64,7 +64,7 @@ async def get_items(
     """
     Returns a paginated list of items from the in-memory YAML database.
     """
-    limit = min(max(1, limit), 100)
+    limit = min(max(1, limit), 100000)
     if yaml_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando na memória RAM.")
 
@@ -90,6 +90,7 @@ async def get_items(
             if entry:
                 it["identifiedDisplayName"] = entry.get("identifiedDisplayName")
                 it["identifiedResourceName"] = entry.get("identifiedResourceName")
+        it["is_custom"] = (it.get("_source") == "custom")
         merged_items.append(it)
 
     effective_skip = skip if skip is not None else (page - 1) * limit

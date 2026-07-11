@@ -19,6 +19,7 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
   type,
   title,
 }) => {
+  const t = useLanguageStore(state => state.t);
   const [query, setQuery] = useState('');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -28,12 +29,12 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
     setLoading(true);
     const endpoint =
       type === 'item'
-        ? `${API_URL}/api/items/?limit=50000`
+        ? `${API_URL}/api/items/?limit=50000&t=${Date.now()}`
         : type === 'mob'
-        ? `${API_URL}/api/mobs/?limit=50000`
-        : `${API_URL}/api/skills/?limit=50000`;
+        ? `${API_URL}/api/mobs/?limit=50000&t=${Date.now()}`
+        : `${API_URL}/api/skills/?limit=50000&t=${Date.now()}`;
 
-    fetch(endpoint)
+    fetch(endpoint, { cache: 'no-store' })
       .then((res) => res.json())
       .then((res) => {
         const list = res.items || res.mobs || res.skills || [];
@@ -52,8 +53,6 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
     const nameStr = String(item.Name || item.Name_English || item.AegisName || item.Title || '').toLowerCase();
     return idStr.includes(q) || nameStr.includes(q);
   }).slice(0, 300);
-
-  const t = useLanguageStore(state => state.t);
 
   const getTypeLabel = () => {
     if (type === 'item') return t('components.reference_picker.types.item');
@@ -129,6 +128,11 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({
                       #{itemId}
                     </span>
                     <span className="text-sm font-medium text-gray-200 group-hover:text-white">
+                      {item.is_custom && (
+                        <span className="text-emerald-400 font-bold mr-2 text-xs">
+                          {t('components.reference_picker.custom_tag')}
+                        </span>
+                      )}
                       {itemName}
                     </span>
                   </div>
