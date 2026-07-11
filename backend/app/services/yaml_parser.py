@@ -5,11 +5,16 @@ from app.services.load_progress import progress_tracker
 
 class YamlDatabase:
     def __init__(self):
-        # Configuração do ruamel.yaml para preservar formatação e comentários originais
+        # Parser principal: preserva formatacao, aceita chaves duplicadas (ultimo valor vence)
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
         self.yaml.allow_duplicate_keys = True
         self.yaml.indent(mapping=2, sequence=4, offset=2)
+
+        # Parser auxiliar de validacao: estrito, usado apenas para detectar chaves duplicadas
+        self._yaml_strict = YAML()
+        self._yaml_strict.preserve_quotes = True
+        self._yaml_strict.allow_duplicate_keys = False
         
         # Mapeamento de: caminho_absoluto -> objeto_yaml_parseado
         self.db_cache = {}
@@ -98,6 +103,19 @@ class YamlDatabase:
         progress_tracker.update(current_db=filename, status=self.loading_status, progress=min(45.0, progress_tracker.progress + 5.0))
 
         try:
+            # ── Pré-scan de integridade: detecta chaves duplicadas sem abortar o load ──
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    self._yaml_strict.load(f)
+            except Exception as dup_err:
+                # Extrai apenas a mensagem sem o traceback completo
+                dup_msg = str(dup_err).splitlines()[0] if str(dup_err) else str(dup_err)
+                print(
+                    f"[WARN] Chave duplicada detectada em '{filename}': {dup_msg}\n"
+                    f"       O arquivo sera carregado assim mesmo (ultimo valor prevalece)."
+                )
+
+            # ── Load real com parser permissivo ──
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = self.yaml.load(f)
                 
