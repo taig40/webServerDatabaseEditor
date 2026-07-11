@@ -157,6 +157,92 @@ class MobDBModel(rAthenaBaseModel):
     Drops:    Optional[List[MobDrop]]    = None
 
 
-# ─── Alias de retrocompatibilidade ────────────────────────────────────────────
-# Mantido para não quebrar código que já importava MobUpdate
+
+# ─── Modelo de Atualização Parcial (PUT) ─────────────────────────────────────
+
+class MobDBModelUpdate(rAthenaBaseModel):
+    """
+    Variante de MobDBModel para rotas PUT (update parcial).
+
+    Todos os campos são opcionais: o front-end envia apenas os campos
+    que foram alterados. Herda extra='ignore' da classe base, descartando
+    silenciosamente chaves sintéticas do React (ex: _source, MobSkills).
+    """
+    # ── Antes obrigatórios, agora opcionais no update ──
+    Id:         Optional[int] = None
+    SpriteName: Optional[str] = None
+    AegisName:  Optional[str] = None
+    Name:       Optional[str] = None
+
+    # ── Identidade ──
+    JapaneseName: Optional[str] = None
+
+    # ── Atributos base ──
+    Level:   Optional[int] = None
+    Hp:      Optional[int] = None
+    Sp:      Optional[int] = None
+    BaseExp: Optional[int] = None
+    JobExp:  Optional[int] = None
+    MvpExp:  Optional[int] = None
+
+    # ── Combate ──
+    Attack:          Optional[int] = None
+    Attack2:         Optional[int] = None
+    Defense:         Optional[int] = None
+    MagicDefense:    Optional[int] = None
+    Resistance:      Optional[int] = None
+    MagicResistance: Optional[int] = None
+
+    # ── Atributos (STATS) ──
+    Str: Optional[int] = None
+    Agi: Optional[int] = None
+    Vit: Optional[int] = None
+    Int: Optional[int] = None
+    Dex: Optional[int] = None
+    Luk: Optional[int] = None
+
+    # ── Alcance ──
+    AttackRange: Optional[int] = None
+    SkillRange:  Optional[int] = None
+    ChaseRange:  Optional[int] = None
+
+    # ── Classificação ──
+    Size:       Optional[Literal['Small', 'Medium', 'Large']] = None
+    Race:       Optional[Literal[
+        'Formless', 'Undead', 'Brute', 'Plant', 'Insect',
+        'Fish', 'Demon', 'Demihuman', 'Angel', 'Dragon'
+    ]] = None
+    RaceGroups: Optional[MobRaceGroups] = None
+
+    # ── Elemento ──
+    Element:      Optional[Literal[
+        'Neutral', 'Water', 'Earth', 'Fire', 'Wind',
+        'Poison', 'Holy', 'Dark', 'Ghost', 'Undead'
+    ]] = None
+    ElementLevel: Optional[int] = None
+
+    # ── Movimentação & Timing ──
+    WalkSpeed:          Optional[int] = None
+    AttackDelay:        Optional[int] = None
+    AttackMotion:       Optional[int] = None
+    ClientAttackMotion: Optional[int] = None
+    DamageMotion:       Optional[int] = None
+    DamageTaken:        Optional[int] = None
+
+    # ── Agrupamento & IA ──
+    GroupId: Optional[int] = None
+    Title:   Optional[str] = None
+    Ai:      Optional[str] = None
+    Class:   Optional[str] = None
+
+    # ── Modos de comportamento ──
+    Modes: Optional[Dict[str, bool]] = None
+
+    # ── Drops ──
+    MvpDrops: Optional[List[MobMvpDrop]] = None
+    Drops:    Optional[List[MobDrop]]    = None
+
+
+# ─── Aliases de retrocompatibilidade ──────────────────────────────────────────
+# Mantidos para não quebrar código que já importava esses nomes
 MobUpdate = MobDBModel

@@ -127,10 +127,10 @@ export const SpawnEditor: React.FC = () => {
 
     try {
       await axios.post(`${API_URL}/api/scripts/custom-spawns`, payload);
-      setInjectResult({ success: true, msg: t('inject_success') || 'Spawn injetado com sucesso!' });
+      setInjectResult({ success: true, msg: t('inject_success') });
       setTimeout(() => setInjectResult(null), 3000);
     } catch (err: any) {
-      setInjectResult({ success: false, msg: err.response?.data?.detail || t('inject_error') || 'Erro ao injetar.' });
+      setInjectResult({ success: false, msg: err.response?.data?.detail || t('inject_error') });
     }
     setIsInjecting(false);
   };
@@ -162,7 +162,7 @@ export const SpawnEditor: React.FC = () => {
           
           <div className="bg-[#12121a] border border-gray-800 rounded-lg p-5">
             <h2 className="text-lg font-semibold text-cyan-300 mb-4 border-b border-gray-800 pb-2">
-              1. Location
+              {t('spawn_location_section')}
             </h2>
             
             <div className="mb-4">
@@ -215,7 +215,7 @@ export const SpawnEditor: React.FC = () => {
 
           <div className="bg-[#12121a] border border-gray-800 rounded-lg p-5">
             <h2 className="text-lg font-semibold text-cyan-300 mb-4 border-b border-gray-800 pb-2">
-              2. Entity & Rules
+              {t('spawn_entity_section')}
             </h2>
             
             <div className="mb-4">
@@ -242,7 +242,7 @@ export const SpawnEditor: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 uppercase mb-1">{t('spawn_event') || "Event"}</label>
+                <label className="block text-xs font-medium text-gray-400 uppercase mb-1">{t('spawn_event')}</label>
                 <input 
                   type="text" className="w-full bg-[#0b0b12] border border-gray-700 rounded p-2 text-sm text-gray-300 focus:border-cyan-500 outline-none"
                   value={event} onChange={e => setEvent(e.target.value)} placeholder="EventLabel"
@@ -252,14 +252,14 @@ export const SpawnEditor: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 uppercase mb-1">{t('spawn_delay1') || "Delay 1"}</label>
+                <label className="block text-xs font-medium text-gray-400 uppercase mb-1">{t('spawn_delay1')}</label>
                 <input 
                   type="number" className="w-full bg-[#0b0b12] border border-gray-700 rounded p-2 text-sm text-gray-300 focus:border-cyan-500 outline-none"
                   value={delay1} onChange={e => setDelay1(parseInt(e.target.value) || 0)} min={0}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 uppercase mb-1">{t('spawn_delay2') || "Delay 2"}</label>
+                <label className="block text-xs font-medium text-gray-400 uppercase mb-1">{t('spawn_delay2')}</label>
                 <input 
                   type="number" className="w-full bg-[#0b0b12] border border-gray-700 rounded p-2 text-sm text-gray-300 focus:border-cyan-500 outline-none"
                   value={delay2} onChange={e => setDelay2(parseInt(e.target.value) || 0)} min={0}
@@ -276,13 +276,13 @@ export const SpawnEditor: React.FC = () => {
           <div className="bg-gray-900 border-b border-gray-800 p-3 flex justify-between items-center">
             <span className="text-sm font-semibold text-gray-400 uppercase flex items-center gap-2">
               <Code2 className="w-4 h-4" />
-              Live Preview (Raw Code)
+              {t('spawn_live_preview_title')}
             </span>
           </div>
           
           <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
             <p className="text-xs text-gray-500 mb-3">
-              This TAB-separated line will be appended to <code>npc/custom/ui_spawns.txt</code>.
+              {t('spawn_live_preview_desc')}
             </p>
             <div className="rounded overflow-hidden border border-gray-800">
               <SyntaxHighlighter

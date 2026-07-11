@@ -3,6 +3,7 @@ import re
 import threading
 from typing import Optional
 from app.core.config import cfg
+from app.repositories import lua_repository
 
 # ─── Default block template ────────────────────────────────────────────────────
 # Used when generating a brand-new entry that didn't previously exist in the Lua.
@@ -334,36 +335,11 @@ class ItemInfoParser:
 
     def _write_block(self, item_id: int, fields: dict):
         """
-        Reads the entire Lua file, replaces (or inserts) the block for item_id,
-        and writes the result back atomically via a temp file.
+        Delega ao lua_repository a escrita do bloco para item_id no arquivo Lua.
+        Mantido aqui por retrocompatibilidade — a lógica de I/O fica isolada
+        no repositório (SRP).
         """
-        # ALWAYS read/write as latin-1 (byte-transparent) to preserve raw EUC-KR bytes
-        with open(self.iteminfo_path, "r", encoding="latin-1") as f:
-            content = f.read()
-
-        new_block = _render_block(item_id, fields)
-        bounds = self._find_lua_block_bounds(content, item_id)
-
-        if bounds:
-            start_idx, end_idx = bounds
-            new_content = content[:start_idx] + new_block + content[end_idx:]
-        else:
-            # Item not in file: insert before the final closing brace/end of table
-            insert_point = content.rfind("\n}")
-            if insert_point == -1:
-                insert_point = len(content)
-            new_content = (
-                content[:insert_point]
-                + "\n"
-                + new_block
-                + content[insert_point:]
-            )
-
-        # Write atomically (temp → rename) with latin-1
-        tmp_path = self.iteminfo_path + ".tmp"
-        with open(tmp_path, "w", encoding="latin-1") as f:
-            f.write(new_content)
-        os.replace(tmp_path, self.iteminfo_path)
+        lua_repository.write_block(self.iteminfo_path, item_id, fields)
 
 
 # ─── Singleton ─────────────────────────────────────────────────────────────────

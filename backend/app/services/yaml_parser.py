@@ -1,4 +1,5 @@
 from ruamel.yaml import YAML
+from ruamel.yaml.scalarstring import LiteralScalarString
 import os
 import threading
 from app.services.load_progress import progress_tracker
@@ -237,6 +238,29 @@ class YamlDatabase:
                 return item
         return None
 
+    def _wrap_scripts_for_dump(self, obj):
+        """
+        Percorre recursivamente o objeto YAML e converte qualquer string de
+        script multilinhas em LiteralScalarString, forçando o ruamel.yaml a
+        serializar com o estilo de bloco (pipe |) em vez de uma linha só.
+
+        Chamado temporariamente antes do dump e revertido em seguida (os objetos
+        LiteralScalarString são subclasses de str, por isso não afetam a memória).
+        """
+        SCRIPT_KEYS = {'Script', 'EquipScript', 'UnEquipScript', 'OnEquipScript', 'OnUnequipScript'}
+        if isinstance(obj, dict):
+            for key in list(obj.keys()):
+                val = obj[key]
+                if key in SCRIPT_KEYS and isinstance(val, str) and val.strip():
+                    # Garante que termina com \n (exigido pelo block scalar do YAML)
+                    normalized = val if val.endswith('\n') else val + '\n'
+                    obj[key] = LiteralScalarString(normalized)
+                else:
+                    self._wrap_scripts_for_dump(val)
+        elif isinstance(obj, list):
+            for item in obj:
+                self._wrap_scripts_for_dump(item)
+
     def save_file(self, filepath: str):
         if filepath not in self.db_cache:
             return False
@@ -259,6 +283,8 @@ class YamlDatabase:
                     
         data = self.db_cache[filepath]
         strip_metadata(data)
+        # Converte scripts para LiteralScalarString antes do dump → pipe | no YAML
+        self._wrap_scripts_for_dump(data)
         
         try:
             with open(filepath, 'w', encoding='utf-8') as f:
