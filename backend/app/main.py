@@ -176,6 +176,7 @@ app.include_router(settings_api.router, prefix="/api/settings",    tags=["settin
 app.include_router(achievements.router,  prefix="/api/achievements", tags=["achievements"])
 app.include_router(constants.router,     prefix="/api/constants",    tags=["constants"])
 app.include_router(randomopt.router,    prefix="/api/server/randomopt", tags=["randomopt"])
+app.include_router(randomopt.router,    prefix="/api/random-options-groups", tags=["random-options-groups"])
 app.include_router(sizefix.router,      prefix="/api/server/sizefix",   tags=["sizefix"])
 app.include_router(progression.router,  prefix="/api/progression",      tags=["progression"])
 app.include_router(editor.router,       prefix="/api/editor",           tags=["editor"])
