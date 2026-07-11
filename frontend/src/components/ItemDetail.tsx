@@ -40,6 +40,7 @@ const customSelectStyles = {
     backgroundColor: '#1f2937',
     border: '1px solid rgba(255, 255, 255, 0.1)',
   }),
+  menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
   option: (base: any, state: any) => ({
     ...base,
     backgroundColor: state.isFocused ? '#374151' : 'transparent',
@@ -446,6 +447,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                   onChange={handleJobsChange}
                   styles={customSelectStyles}
                   placeholder="Select jobs..."
+                  menuPortalTarget={document.body}
                 />
              </div>
              <div>
@@ -457,6 +459,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                   onChange={handleLocationsChange}
                   styles={customSelectStyles}
                   placeholder="Select locations..."
+                  menuPortalTarget={document.body}
                 />
              </div>
           </div>

@@ -23,6 +23,7 @@ const selectStyles = {
     border: '1px solid #374151',
     zIndex: 50
   }),
+  menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
   option: (base: any, state: any) => ({
     ...base,
     backgroundColor: state.isFocused ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
@@ -390,6 +391,7 @@ export const ComboEditor: React.FC = () => {
                               placeholder={t('combo_editor.variants.select_placeholder')}
                               className="text-sm"
                               noOptionsMessage={() => t('combo_editor.variants.no_options')}
+                              menuPortalTarget={document.body}
                             />
                             {hasError && <p className="text-xs text-red-400 mt-2 flex items-center gap-1">{t('combo_editor.variants.min_items_error')}</p>}
                          </div>
