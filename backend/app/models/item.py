@@ -222,6 +222,7 @@ class ItemUpdateModel(rAthenaBaseModel):
     Gender:        Optional[Literal['Female', 'Male', 'Both']] = None
     Locations:     Optional[ItemLocations] = None
     WeaponLevel:   Optional[int] = None
+    ArmorLevel:    Optional[int] = None
     EquipLevelMin: Optional[int] = None
     EquipLevelMax: Optional[int] = None
     Refineable:    Optional[bool] = None
