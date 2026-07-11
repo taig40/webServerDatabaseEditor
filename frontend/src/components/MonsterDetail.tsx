@@ -1172,6 +1172,13 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
         )}
 
       </div>
+
+      <DivinePrideImporterPanel
+        isOpen={showDPPanel}
+        onClose={() => setShowDPPanel(false)}
+        resourceType="monster"
+        onImportSuccess={handleDPImportSuccess}
+      />
     </div>
   );
 };

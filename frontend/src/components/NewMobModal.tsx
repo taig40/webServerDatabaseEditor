@@ -44,11 +44,24 @@ const NewMobModal: React.FC<NewMobModalProps> = ({ onClose, onMobCreated }) => {
     if (!formData.AegisName || !formData.Name) { setError(t('components.modals.new_mob.error_required')); setLoading(false); return; }
 
     try {
-      const response = await axios.post(`${API_URL}/api/mobs/`, formData);
+      const payload = {
+        ...formData,
+        SpriteName: formData.AegisName
+      };
+      const response = await axios.post(`${API_URL}/api/mobs/`, payload);
       onMobCreated(response.data);
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.detail || t('components.modals.new_mob.error_create'));
+      let errorMessage = t('components.modals.new_mob.error_create');
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (Array.isArray(detail)) {
+          errorMessage = detail.map((e: any) => `${e.loc?.join('.') || 'Campo'}: ${e.msg}`).join(' | ');
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

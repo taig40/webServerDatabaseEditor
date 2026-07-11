@@ -112,6 +112,8 @@ def _normalize_mob_entry(mob: dict) -> dict:
         result["MobSkills"] = mob_skill_db.get_by_mob(mob_id)
     else:
         result["MobSkills"] = []
+    
+    result["is_custom"] = (mob.get("_source") == "custom")
     return result
 
 @router.get("/")
@@ -122,7 +124,7 @@ async def get_mobs(
     source: str = Query("", description="Filtro de origem: rathena ou custom"),
     skip: Optional[int] = Query(None, description="Opcional retrocompatibilidade com skip")
 ):
-    limit = min(max(1, limit), 100)
+    limit = min(max(1, limit), 100000)
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
         

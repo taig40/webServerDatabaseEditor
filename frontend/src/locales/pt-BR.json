@@ -867,6 +867,7 @@
     "reference_picker": {
       "select": "Selecionar {type}",
       "search_placeholder": "Buscar por ID ou Nome...",
+      "custom_tag": "[Custom]",
       "loading": "Carregando catálogo...",
       "no_results": "Nenhum resultado encontrado para \"{query}\".",
       "select_btn": "Selecionar",
