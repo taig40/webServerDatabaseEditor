@@ -7,7 +7,7 @@ import { initRathenaItemScript, validateItemScript } from '../monaco/rathenaItem
 import NpcShopModal from './NpcShopModal';
 import { ItemIcon } from './ItemIcon';
 import { useLanguageStore } from '../store/useLanguageStore';
-import { DivinePrideImportButton } from './DivinePrideImportButton';
+import { DivinePrideImporterPanel } from './DivinePrideImporterPanel';
 import Select from 'react-select';
 
 const LOCATION_OPTIONS = [
@@ -73,6 +73,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
   const [localItem, setLocalItem] = useState(item);
   const [selectedShop, setSelectedShop] = useState<any | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showDPPanel, setShowDPPanel] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [dpMessage, setDpMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -207,11 +208,15 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
             <div className="flex items-center gap-3 text-sm font-mono text-gray-400 flex-wrap">
               <span className="flex items-center gap-1.5 bg-dark-800 px-2 py-0.5 rounded border border-white/10">
                 <span>ID: <span className="text-violet-400">{localItem.Id}</span></span>
-                <DivinePrideImportButton
-                  resourceType="item"
-                  resourceId={localItem.Id}
-                  onImportSuccess={handleDPImportSuccess}
-                />
+                <button
+                  type="button"
+                  onClick={() => setShowDPPanel(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all shadow-sm"
+                  title={t('divinepride.import_button')}
+                >
+                  <DownloadCloud size={13} />
+                  <span>{t('divinepride.import_button')}</span>
+                </button>
               </span>
               <span className="flex items-center gap-1 bg-dark-800 px-2 py-0.5 rounded border border-white/10">
                 AegisName: 
@@ -668,6 +673,13 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
             onClose={() => setSelectedShop(null)} 
          />
       )}
+
+      <DivinePrideImporterPanel
+        isOpen={showDPPanel}
+        onClose={() => setShowDPPanel(false)}
+        resourceType="item"
+        onImportSuccess={handleDPImportSuccess}
+      />
 
       {showSaveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
