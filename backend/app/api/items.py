@@ -104,7 +104,7 @@ async def get_items(
         "items": merged_items
     }
 
-from app.models.item import ItemDBModel
+from app.models.item import ItemDBModel, ItemUpdateModel
 from fastapi import HTTPException
 from typing import List, Dict
 
@@ -154,7 +154,7 @@ async def get_item_dropped_by(item_id: int):
 @router.put("/{item_id}")
 async def update_item(
     item_id: int,
-    item_data: ItemDBModel,
+    item_data: ItemUpdateModel,
     save_mode: str = Query("import", description="Modo de salvamento: 'import' para cópia em db/import/ ou 'overwrite' para sobrescrever")
 ):
     """

@@ -187,3 +187,49 @@ class ItemDBModel(rAthenaBaseModel):
 # ─── Alias de retrocompatibilidade ────────────────────────────────────────────
 # Mantido para não quebrar rotas que já importam ItemUpdate
 ItemUpdate = ItemDBModel
+
+
+# ─── Modelo de Atualização Parcial (PUT) ─────────────────────────────────────
+
+class ItemUpdateModel(rAthenaBaseModel):
+    """
+    Variante de ItemDBModel para rotas PUT (update parcial).
+
+    Todos os campos são opcionais: o front-end envia apenas os campos
+    que foram alterados. Herda extra='ignore' da classe base.
+    """
+    # ── Antes obrigatórios, agora opcionais no update ──
+    Id:        Optional[int] = None
+    AegisName: Optional[str] = None
+    Name:      Optional[str] = None
+
+    # ── Mesmos campos opcionais do ItemDBModel ──
+    Type:          Optional[str] = None
+    SubType:       Optional[str] = None
+    Buy:           Optional[int] = None
+    Sell:          Optional[int] = None
+    Weight:        Optional[int] = None
+    Attack:        Optional[int] = None
+    MagicAttack:   Optional[int] = None
+    Defense:       Optional[int] = None
+    Range:         Optional[int] = None
+    Slots:         Optional[int] = None
+    Jobs:          Optional[ItemJobs]      = None
+    Classes:       Optional[ItemClasses]   = None
+    Gender:        Optional[Literal['Female', 'Male', 'Both']] = None
+    Locations:     Optional[ItemLocations] = None
+    WeaponLevel:   Optional[int] = None
+    EquipLevelMin: Optional[int] = None
+    EquipLevelMax: Optional[int] = None
+    Refineable:    Optional[bool] = None
+    Gradable:      Optional[bool] = None
+    View:          Optional[int] = None
+    AliasName:     Optional[str] = None
+    Flags:         Optional[ItemFlags]  = None
+    Delay:         Optional[ItemDelay]  = None
+    Stack:         Optional[ItemStack]  = None
+    NoUse:         Optional[ItemNoUse]  = None
+    Trade:         Optional[ItemTrade]  = None
+    Script:        Optional[str] = None
+    EquipScript:   Optional[str] = None
+    UnEquipScript: Optional[str] = None
