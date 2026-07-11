@@ -8,7 +8,7 @@ import {
 import { API_URL } from '../config/env';
 import MonsterAnimator from './MonsterAnimator';
 import { useLanguageStore } from '../store/useLanguageStore';
-import { DivinePrideImportButton } from './DivinePrideImportButton';
+import { DivinePrideImporterPanel } from './DivinePrideImporterPanel';
 
 // ─── Element & Race definitions ───────────────────────────────────────────────
 
@@ -128,6 +128,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
   const [local, setLocal] = useState<any>(mob);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showDPPanel, setShowDPPanel] = useState(false);
   const [spriteKey, setSpriteKey] = useState(0);
   const [skills, setSkills] = useState<any[]>([]);
   const [skillsLoading, setSkillsLoading] = useState(false);
@@ -500,11 +501,15 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
             <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-gray-400">
               <span className="bg-dark-800 px-2 py-0.5 rounded border border-white/10 flex items-center gap-2">
                 <span>ID: <span className="text-violet-400">{mob.Id}</span></span>
-                <DivinePrideImportButton
-                  resourceType="monster"
-                  resourceId={mob.Id}
-                  onImportSuccess={handleDPImportSuccess}
-                />
+                <button
+                  type="button"
+                  onClick={() => setShowDPPanel(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all shadow-sm"
+                  title={t('divinepride.import_button')}
+                >
+                  <DownloadCloud size={13} />
+                  <span>{t('divinepride.import_button')}</span>
+                </button>
               </span>
               <span className="bg-dark-800 px-2 py-0.5 rounded border border-white/10 flex items-center gap-1">
                 Aegis: 
