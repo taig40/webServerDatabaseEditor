@@ -1,4 +1,5 @@
 from ruamel.yaml import YAML
+from ruamel.yaml.scalarstring import LiteralScalarString
 import os
 import threading
 from app.services.load_progress import progress_tracker
@@ -161,6 +162,24 @@ class MobDatabase:
         paginated = filtered[start:end]
         return paginated, total_count
 
+    def _wrap_scripts_for_dump(self, obj):
+        """
+        Converte strings de script multilinhas para LiteralScalarString,
+        forçando o ruamel.yaml a usar o estilo de bloco (pipe |) no YAML.
+        """
+        SCRIPT_KEYS = {'Script', 'OnKillScript', 'CaptureScript'}
+        if isinstance(obj, dict):
+            for key in list(obj.keys()):
+                val = obj[key]
+                if key in SCRIPT_KEYS and isinstance(val, str) and val.strip():
+                    normalized = val if val.endswith('\n') else val + '\n'
+                    obj[key] = LiteralScalarString(normalized)
+                else:
+                    self._wrap_scripts_for_dump(val)
+        elif isinstance(obj, list):
+            for item in obj:
+                self._wrap_scripts_for_dump(item)
+
     def save_file(self, filepath: str):
         if filepath not in self.db_cache:
             return False
@@ -182,6 +201,8 @@ class MobDatabase:
                     
         data = self.db_cache[filepath]
         strip_metadata(data)
+        # Converte scripts para LiteralScalarString antes do dump → pipe | no YAML
+        self._wrap_scripts_for_dump(data)
         
         try:
             with open(filepath, 'w', encoding='utf-8') as f:

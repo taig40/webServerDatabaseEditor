@@ -1209,6 +1209,10 @@
     "spawns_viewer_title": "Current ui_spawns.txt Content",
     "spawns_viewer_empty": "File is empty. Add your first spawn!",
     "file_path_label": "File:",
+    "spawn_live_preview_title": "Live Preview (Raw Code)",
+    "spawn_live_preview_desc": "This TAB-separated line will be appended to npc/custom/ui_spawns.txt.",
+    "spawn_location_section": "1. Location",
+    "spawn_entity_section": "2. Entity & Rules",
     "remove": "Remove"
   }
 }

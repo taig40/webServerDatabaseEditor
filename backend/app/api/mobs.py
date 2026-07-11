@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any
 from app.services.mob_parser import mob_db
 from app.services.mob_skill_parser import mob_skill_db
 from app.services.sprite_parser import get_mob_animation_data, get_sprite_name_for_mob
-from app.models.mob import MobDBModel
+from app.models.mob import MobDBModel, MobDBModelUpdate
 
 router = APIRouter()
 
@@ -163,15 +163,16 @@ async def get_mob(mob_id: int):
 @router.put("/{mob_id}")
 async def update_mob(
     mob_id: int,
-    mob_data: MobDBModel,
+    mob_data: MobDBModelUpdate,
     save_mode: str = Query("import", description="'import' para db/import/ ou 'overwrite' para sobrescrever o arquivo original")
 ):
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
 
-    # exclude_none=True → campos não preenchidos não são escritos no YAML
-    # extra='ignore' no modelo → chaves desconhecidas do front-end são descartadas
-    updated_dict = mob_data.model_dump(exclude_none=True)
+    # exclude_none=True  → campos não preenchidos não são escritos no YAML
+    # exclude_defaults=True → defaults do rAthena não poluem o arquivo
+    # extra='ignore' no modelo → chaves sintéticas do React (_source, MobSkills) são descartadas
+    updated_dict = mob_data.model_dump(exclude_none=True, exclude_defaults=True)
 
     # A chave primária não deve sobrescrever o índice existente
     updated_dict.pop("Id", None)
