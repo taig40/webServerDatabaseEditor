@@ -14,7 +14,7 @@ Regras críticas obedecidas:
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from ruamel.yaml.scalarstring import LiteralScalarString
 
 
@@ -161,9 +161,39 @@ class DivinePrideAdapter:
 
     Cada método `adapt_*` retorna um dict pronto para ser passado diretamente
     a `ItemDBModel(**result)` ou `MobDBModelUpdate(**result)`.
+
+    Dependência injetada: `item_db_service` expe o método
+    `get_aegisname_by_id(item_id: int) -> Optional[str]` sem fazer
+    nenhuma requisição HTTP — busca apenas em memória local.
     """
 
-    # ── Item ─────────────────────────────────────────────────────────────────
+    def __init__(self, item_db_service=None):
+        """
+        Args:
+            item_db_service: Qualquer objeto que implemente
+                             `get_aegisname_by_id(int) -> Optional[str]`.
+                             Se None, os drops serão mantidos como inteiros (fallback seguro).
+        """
+        self._item_db = item_db_service
+
+    # ── Helpers Internos ─────────────────────────────────────────────────────
+
+    def _resolve_item_ref(self, item_id: int) -> Union[str, int]:
+        """
+        Traduz um itemId numérico do Divine Pride para o AegisName local.
+
+        Regra de Fallback (conforme CONVENTIONS.md, Union[str, int]):
+          - Item encontrado no banco local → retorna AegisName (str)
+          - Item não encontrado (item novo/desconhecido) → retorna item_id (int)
+
+        Busca exclusivamente no cache em memória. Zero requisições HTTP adicionais.
+        """
+        if self._item_db is None:
+            return item_id
+        aegis = self._item_db.get_aegisname_by_id(item_id)
+        return aegis if aegis is not None else item_id
+
+    # ── Item ─────────────────────────────────────────────────────────────────────────────────────
 
     def adapt_item(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -291,7 +321,8 @@ class DivinePrideAdapter:
             item_id = _safe_int(drop.get("itemId") or drop.get("id") or drop.get("Item"), 0)
             rate    = _safe_int(drop.get("chance") or drop.get("rate") or drop.get("Rate"), 0)
             if item_id > 0:
-                drops.append({"Item": item_id, "Rate": rate})
+                # Traduz itemId → AegisName (fallback para int se não encontrado)
+                drops.append({"Item": self._resolve_item_ref(item_id), "Rate": rate})
 
         # MVP Drops
         mvp_exp  = _safe_int(raw.get("mvpExperience") or stats.get("mvpExperience"), 0)
@@ -302,7 +333,8 @@ class DivinePrideAdapter:
             item_id = _safe_int(drop.get("itemId") or drop.get("id") or drop.get("Item"), 0)
             rate    = _safe_int(drop.get("chance") or drop.get("rate") or drop.get("Rate"), 0)
             if item_id > 0:
-                mvp_drops.append({"Item": item_id, "Rate": rate})
+                # Traduz itemId → AegisName (fallback para int se não encontrado)
+                mvp_drops.append({"Item": self._resolve_item_ref(item_id), "Rate": rate})
 
         # MobSkills — apenas chaves snake_case do nosso editor interno (sem duplicação)
         mob_skills: List[Dict[str, Any]] = []
@@ -475,5 +507,11 @@ class DivinePrideAdapter:
         }
 
 
-# ─── Singleton global ─────────────────────────────────────────────────────────
-dp_adapter = DivinePrideAdapter()
+# ─── Singleton global ──────────────────────────────────────────────────────────────────────────────
+# O singleton é instanciado com injeção de dependência do yaml_db.
+# Importação tardia (lazy) para evitar import circular entre serviços.
+def _make_adapter() -> DivinePrideAdapter:
+    from app.services.yaml_parser import yaml_db
+    return DivinePrideAdapter(item_db_service=yaml_db)
+
+dp_adapter = _make_adapter()
