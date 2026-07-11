@@ -10,7 +10,7 @@ para omitir campos não preenchidos e manter o output limpo.
 """
 
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, Literal
+from typing import Optional, Literal, Union
 
 
 # ─── Base ─────────────────────────────────────────────────────────────────────
@@ -33,7 +33,9 @@ class ItemFlags(rAthenaBaseModel):
     BindOnEquip:   Optional[bool] = None
     DropAnnounce:  Optional[bool] = None
     NoConsume:     Optional[bool] = None
-    DropEffect:    Optional[bool] = None
+    # DropEffect aceita bool OU string com o nome do efeito visual
+    # Exemplos no rAthena: true, false, 'CLIENT', 'DYING', etc.
+    DropEffect: Optional[Union[bool, str]] = None
 
 
 class ItemDelay(rAthenaBaseModel):
