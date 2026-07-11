@@ -506,8 +506,18 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                   onImportSuccess={handleDPImportSuccess}
                 />
               </span>
-              <span className="bg-dark-800 px-2 py-0.5 rounded border border-white/10 truncate max-w-[200px]">
-                Aegis: <span className="text-blue-400">{local.AegisName}</span>
+              <span className="bg-dark-800 px-2 py-0.5 rounded border border-white/10 flex items-center gap-1">
+                Aegis: 
+                <input
+                  type="text"
+                  value={local.AegisName || local.SpriteName || ''}
+                  onChange={e => {
+                    set('AegisName', e.target.value);
+                    set('SpriteName', e.target.value);
+                  }}
+                  className="bg-transparent text-blue-400 font-mono focus:outline-none focus:border-b focus:border-blue-500/50 w-32"
+                  placeholder="AegisName"
+                />
               </span>
               <span className={`px-2 py-0.5 rounded border border-white/10 font-semibold ${ELEMENT_BG[element]} ${ELEMENT_COLORS[element]}`}>
                 Lv{elementLevel} {element}

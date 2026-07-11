@@ -213,7 +213,16 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                   onImportSuccess={handleDPImportSuccess}
                 />
               </span>
-              <span className="flex items-center gap-1 bg-dark-800 px-2 py-0.5 rounded border border-white/10">AegisName: <span className="text-blue-400">{localItem.AegisName}</span></span>
+              <span className="flex items-center gap-1 bg-dark-800 px-2 py-0.5 rounded border border-white/10">
+                AegisName: 
+                <input
+                  type="text"
+                  value={localItem.AegisName || ''}
+                  onChange={e => handleFieldChange('AegisName', e.target.value)}
+                  className="bg-transparent text-blue-400 font-mono focus:outline-none focus:border-b focus:border-blue-500/50 w-40"
+                  placeholder="AegisName"
+                />
+              </span>
             </div>
             {dpMessage && (
               <div className={`mt-2 px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
@@ -370,14 +379,49 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
               />
             </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Weapon Level</label>
-              <input 
-                type="number" 
-                value={localItem.WeaponLevel ?? ''}
-                onChange={e => handleFieldChange('WeaponLevel', e.target.value, true)}
-                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
-              />
+            {localItem.Type === 'Weapon' && (
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Weapon Level</label>
+                <input 
+                  type="number" 
+                  value={localItem.WeaponLevel ?? ''}
+                  onChange={e => handleFieldChange('WeaponLevel', e.target.value, true)}
+                  className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
+                />
+              </div>
+            )}
+            {localItem.Type === 'Armor' && (
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Armor Level</label>
+                <select 
+                  value={localItem.ArmorLevel ?? 1}
+                  onChange={e => handleFieldChange('ArmorLevel', e.target.value, true)}
+                  className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:border-violet-500 focus:outline-none transition-colors"
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                </select>
+              </div>
+            )}
+            <div className="flex items-center gap-4 col-span-2 mt-2">
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-white transition-colors">
+                <input 
+                  type="checkbox"
+                  checked={localItem.Refineable || false}
+                  onChange={e => handleFieldChange('Refineable', e.target.checked)}
+                  className="w-4 h-4 rounded bg-dark-900 border-white/10 text-violet-500 focus:ring-violet-500/50 cursor-pointer"
+                />
+                Refineable
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-white transition-colors">
+                <input 
+                  type="checkbox"
+                  checked={localItem.Gradable || false}
+                  onChange={e => handleFieldChange('Gradable', e.target.checked)}
+                  className="w-4 h-4 rounded bg-dark-900 border-white/10 text-violet-500 focus:ring-violet-500/50 cursor-pointer"
+                />
+                Gradeable
+              </label>
             </div>
           </div>
         </div>
