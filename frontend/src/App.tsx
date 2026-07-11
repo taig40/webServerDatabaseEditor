@@ -21,6 +21,7 @@ import JobDatabaseEditor from './pages/JobDatabaseEditor';
 import ExperienceTablesEditor from './pages/ExperienceTablesEditor';
 import SkillTreeEditor from './pages/SkillTreeEditor';
 import MapEngine from './pages/MapEngine';
+import { SpawnEditor } from './pages/SpawnEditor';
 
 type ActiveView = ModuleId | 'settings';
 
@@ -113,6 +114,7 @@ function App() {
       case 'exp_tables':     return <ExperienceTablesEditor />;
       case 'skill_tree':     return <SkillTreeEditor />;
       case 'map_engine':     return <MapEngine />;
+      case 'custom_spawns':  return <SpawnEditor />;
       case 'settings':       return <SettingsPage />;
       default:               return (
         <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-600">
