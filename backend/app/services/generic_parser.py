@@ -156,20 +156,30 @@ class GenericYamlParser:
         # Temporarily strip metadata keys (starting with '_') from the cached data before dumping
         removed_keys = []
         
-        def strip_metadata(obj):
+        def process_data(obj):
             if isinstance(obj, dict):
                 to_remove = [k for k in obj.keys() if isinstance(k, str) and k.startswith('_')]
                 for k in to_remove:
                     removed_keys.append((obj, k, obj[k]))
                     del obj[k]
-                for v in obj.values():
-                    strip_metadata(v)
+                for k, v in obj.items():
+                    if isinstance(v, str) and ('\n' in v or '\r' in v):
+                        from ruamel.yaml.scalarstring import LiteralScalarString
+                        normalized = v.replace('\r\n', '\n').replace('\r', '\n')
+                        obj[k] = LiteralScalarString(normalized)
+                    else:
+                        process_data(v)
             elif isinstance(obj, list):
-                for item in obj:
-                    strip_metadata(item)
+                for i, item in enumerate(obj):
+                    if isinstance(item, str) and ('\n' in item or '\r' in item):
+                        from ruamel.yaml.scalarstring import LiteralScalarString
+                        normalized = item.replace('\r\n', '\n').replace('\r', '\n')
+                        obj[i] = LiteralScalarString(normalized)
+                    else:
+                        process_data(item)
                     
         data = self.db_cache[filepath]
-        strip_metadata(data)
+        process_data(data)
         
         try:
             with open(filepath, 'w', encoding='utf-8') as f:
