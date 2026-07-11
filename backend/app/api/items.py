@@ -164,8 +164,9 @@ async def update_item(
     Preserva comentários e formatação original via ruamel.yaml.
     """
     # exclude_none=True → chaves não preenchidas não são escritas no YAML
+    # exclude_defaults=True → chaves correspondentes ao padrão do rAthena são omitidas
     # extra='ignore' no modelo → campos desconhecidos do front-end são descartados
-    updated_dict = item_data.model_dump(exclude_none=True)
+    updated_dict = item_data.model_dump(exclude_none=True, exclude_defaults=True)
 
     # A chave primária não deve sobrescrever o índice existente
     updated_dict.pop("Id", None)
@@ -194,8 +195,8 @@ async def create_item(item_data: ItemDBModel):
     if item_id in yaml_db.item_index:
         raise HTTPException(status_code=409, detail=f"Um item com o ID {item_id} já existe.")
 
-    # Serializa descartando nulos → YAML limpo, sem chaves inválidas
-    clean_data = item_data.model_dump(exclude_none=True)
+    # Serializa descartando nulos e defaults → YAML limpo, sem chaves inválidas
+    clean_data = item_data.model_dump(exclude_none=True, exclude_defaults=True)
 
     try:
         new_item = yaml_db.add_custom_item(clean_data)

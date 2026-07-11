@@ -9,7 +9,7 @@ Na serialização para YAML, use sempre `model.model_dump(exclude_none=True)`
 para omitir campos não preenchidos e manter o output limpo.
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, Literal, Union
 
 
@@ -155,24 +155,25 @@ class ItemDBModel(rAthenaBaseModel):
     Name:      str
 
     # ── Opcionais ──
-    Type:          Optional[str] = None
+    Type:          str = "Etc"
     SubType:       Optional[str] = None
     Buy:           Optional[int] = None
     Sell:          Optional[int] = None
     Weight:        Optional[int] = None
     Attack:        Optional[int] = None
     MagicAttack:   Optional[int] = None
-    Defense:       Optional[int] = None
+    Defense:       int = 0
     Range:         Optional[int] = None
     Slots:         Optional[int] = None
-    Jobs:          Optional[ItemJobs]      = None
-    Classes:       Optional[ItemClasses]   = None
-    Gender:        Optional[Literal['Female', 'Male', 'Both']] = None
+    Jobs:          Optional[ItemJobs] = Field(default_factory=lambda: ItemJobs(All=True))
+    Classes:       Optional[ItemClasses] = Field(default_factory=lambda: ItemClasses(All=True))
+    Gender:        Literal['Female', 'Male', 'Both'] = "Both"
     Locations:     Optional[ItemLocations] = None
     WeaponLevel:   Optional[int] = None
+    ArmorLevel:    int = 1
     EquipLevelMin: Optional[int] = None
     EquipLevelMax: Optional[int] = None
-    Refineable:    Optional[bool] = None
+    Refineable:    bool = False
     Gradable:      Optional[bool] = None
     View:          Optional[int] = None
     AliasName:     Optional[str] = None
