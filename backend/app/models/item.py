@@ -156,7 +156,7 @@ class ItemDBModel(rAthenaBaseModel):
 
     # ── Opcionais ──
     Type:          str = "Etc"
-    SubType:       Optional[str] = None
+    SubType:       Optional[Union[str, int]] = None
     Buy:           Optional[int] = None
     Sell:          Optional[int] = None
     Weight:        Optional[int] = None
@@ -208,7 +208,7 @@ class ItemUpdateModel(rAthenaBaseModel):
 
     # ── Mesmos campos opcionais do ItemDBModel ──
     Type:          Optional[str] = None
-    SubType:       Optional[str] = None
+    SubType:       Optional[Union[str, int]] = None
     Buy:           Optional[int] = None
     Sell:          Optional[int] = None
     Weight:        Optional[int] = None
