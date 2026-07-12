@@ -70,7 +70,39 @@ async def get_client_items_list():
     return {"items": result}
 
 
+# ─── POST /api/client_items/ ──────────────────────────────────────────────────
+
+@router.post("/")
+async def create_client_item(payload: dict):
+    """
+    Cria um novo bloco [item_id] = { … } no iteminfo.lua.
+    Retorna 409 se o item_id já existir para evitar sobrescrita acidental.
+    """
+    _require_loaded()
+
+    item_id = payload.get("item_id")
+    if not item_id or not isinstance(item_id, int) or item_id <= 0:
+        raise HTTPException(status_code=422, detail="item_id deve ser um inteiro positivo.")
+
+    # Guard de duplicidade — evita sobrescrever entradas existentes via POST
+    if iteminfo_db.get_client_item(item_id) is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"O ID {item_id} já existe no iteminfo.lua. Use PUT para atualizar."
+        )
+
+    fields = {k: v for k, v in payload.items() if k != "item_id"}
+    try:
+        updated = iteminfo_db.update_client_item(item_id, fields)
+        get_cached_item_icon.cache_clear()
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {"item_id": item_id, "exists_in_lua": True, **updated}
+
+
 # ─── GET /api/client_items/audit-assets ───────────────────────────────────────
+
 
 @router.get("/audit-assets")
 async def audit_assets():

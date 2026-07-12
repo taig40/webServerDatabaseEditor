@@ -53,6 +53,8 @@ const EMPTY_FIELDS: ClientFields = {
 interface Props {
   item: any;                     // server item from yaml_db
   onSave: (itemId: number, fields: Record<string, any>) => Promise<boolean>;
+  isNew?: boolean;               // Draft Mode — roteando para POST
+  onCreate?: (itemId: number, fields: Record<string, any>) => Promise<boolean>;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -224,12 +226,14 @@ const decodeLatin1ToEucKr = (str: string): string => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
+const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCreate }) => {
   const t = useLanguageStore(state => state.t);
   const [fields, setFields]       = useState<ClientFields>(EMPTY_FIELDS);
   const [original, setOriginal]   = useState<ClientFields>(EMPTY_FIELDS);
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving]   = useState(false);
+  const [draftItemId, setDraftItemId] = useState<number>(0); // ID digitado em modo criação
+  const [createMsg, setCreateMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   // Bust the icon URL cache after an upload
   const [iconBust, setIconBust]   = useState(Date.now());
   const [assetsStatus, setAssetsStatus] = useState<AssetsStatus>(DEFAULT_ASSETS_STATUS);
@@ -277,8 +281,15 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
   }, [item.Id]);
 
   useEffect(() => {
+    // Em Draft Mode não há nada para buscar — formulário começa em branco
+    if (isNew) {
+      setFields(EMPTY_FIELDS);
+      setOriginal(EMPTY_FIELDS);
+      setCreateMsg(null);
+      return;
+    }
     fetchClientData();
-  }, [fetchClientData]);
+  }, [fetchClientData, isNew]);
 
   // ── Field helpers ─────────────────────────────────────────────────────────
   const set = <K extends keyof ClientFields>(key: K, val: ClientFields[K]) =>
@@ -286,7 +297,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
 
   const isModified = JSON.stringify(fields) !== JSON.stringify(original);
 
-  // ── Save ──────────────────────────────────────────────────────────────────
+  // ── Save (PUT — edição) ───────────────────────────────────────────────────
   const handleSave = async () => {
     setIsSaving(true);
     const payload: Record<string, any> = { ...fields };
@@ -299,51 +310,98 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
     setIsSaving(false);
   };
 
+  // ── Create (POST — Draft Mode) ────────────────────────────────────────────
+  const handleCreate = async () => {
+    if (!draftItemId || draftItemId <= 0) {
+      setCreateMsg({ text: t('client_item_editor.draft_item_id_label' as any) + ' é obrigatório.', type: 'error' });
+      return;
+    }
+    if (!onCreate) return;
+    setIsSaving(true);
+    setCreateMsg(null);
+    try {
+      const payload: Record<string, any> = { ...fields };
+      delete payload.exists_in_lua;
+      const ok = await onCreate(draftItemId, payload);
+      if (ok) {
+        setCreateMsg({ text: (t('client_item_editor.create_success' as any) || 'Item criado!').replace('#{id}', String(draftItemId)), type: 'success' });
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const iconSrc = `${API_URL}/api/images/item/${item.Id}?_bust=${iconBust}`;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-[#0f0f14] text-gray-200">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/5 bg-gradient-to-r from-cyan-600/10 to-transparent">
+      <div className={`flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/5 bg-gradient-to-r ${isNew ? 'from-violet-600/10' : 'from-cyan-600/10'} to-transparent`}>
         <div className="flex items-center gap-4">
-          {/* Icon preview */}
-          <div className="relative w-14 h-14 rounded-xl bg-[#1a1a28] border border-white/10 flex items-center justify-center shadow-lg p-2 group">
-            <img
-              src={iconSrc}
-              alt="icon"
-              className="max-h-full max-w-full drop-shadow-md"
-              onError={(e) => { 
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'></path><path d='M3.3 7l8.7 5 8.7-5'></path><path d='M12 22V12'></path></svg>`;
-              }}
-            />
-            <button
-              onClick={() => setIconBust(Date.now())}
-              title={t('client_item_detail.reload_icon')}
-              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 rounded-xl transition-opacity"
-            >
-              <RefreshCw size={16} className="text-cyan-400" />
-            </button>
-          </div>
+          {/* Icon preview — oculta em draft mode pois o ID ainda não existe */}
+          {!isNew && (
+            <div className="relative w-14 h-14 rounded-xl bg-[#1a1a28] border border-white/10 flex items-center justify-center shadow-lg p-2 group">
+              <img
+                src={iconSrc}
+                alt="icon"
+                className="max-h-full max-w-full drop-shadow-md"
+                onError={(e) => { 
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'></path><path d='M3.3 7l8.7 5 8.7-5'></path><path d='M12 22V12'></path></svg>`;
+                }}
+              />
+              <button
+                onClick={() => setIconBust(Date.now())}
+                title={t('client_item_detail.reload_icon')}
+                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/60 rounded-xl transition-opacity"
+              >
+                <RefreshCw size={16} className="text-cyan-400" />
+              </button>
+            </div>
+          )}
 
           <div>
-            <h2 className="text-xl font-bold text-white leading-tight">
-              {fields.identifiedDisplayName || item.Name || t('client_item_detail.no_client_name')}
-            </h2>
-            <div className="flex items-center gap-3 mt-1 text-xs font-mono text-gray-500">
-              <span className="bg-[#1a1a28] px-2 py-0.5 rounded border border-white/10">
-                ID: <span className="text-cyan-400">{item.Id}</span>
-              </span>
-              <span className="bg-[#1a1a28] px-2 py-0.5 rounded border border-white/10">
-                {item.AegisName}
-              </span>
-              {fields.exists_in_lua ? (
-                <span className="text-emerald-400 text-[10px]">{t('client_item_detail.status.in_lua')}</span>
-              ) : (
-                <span className="text-amber-500 text-[10px]">{t('client_item_detail.status.missing_in_lua')}</span>
-              )}
-            </div>
+            {isNew ? (
+              <>
+                <h2 className="text-lg font-bold text-violet-400 leading-tight">
+                  {t('client_item_editor.draft_mode_title' as any) || 'Criando Novo Item'}
+                </h2>
+                {/* Campo de ID em Draft Mode */}
+                <div className="flex items-center gap-2 mt-2">
+                  <label className="text-[10px] text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    {t('client_item_editor.draft_item_id_label' as any) || 'Item ID'}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={draftItemId || ''}
+                    onChange={(e) => setDraftItemId(parseInt(e.target.value) || 0)}
+                    placeholder={t('client_item_editor.draft_item_id_placeholder' as any) || 'Ex: 20001'}
+                    className="w-28 bg-[#0f0f14] border border-violet-500/30 rounded px-2 py-1 text-sm text-gray-200 font-mono focus:outline-none focus:border-violet-400 transition-colors"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-bold text-white leading-tight">
+                  {fields.identifiedDisplayName || item.Name || t('client_item_detail.no_client_name')}
+                </h2>
+                <div className="flex items-center gap-3 mt-1 text-xs font-mono text-gray-500">
+                  <span className="bg-[#1a1a28] px-2 py-0.5 rounded border border-white/10">
+                    ID: <span className="text-cyan-400">{item.Id}</span>
+                  </span>
+                  <span className="bg-[#1a1a28] px-2 py-0.5 rounded border border-white/10">
+                    {item.AegisName}
+                  </span>
+                  {fields.exists_in_lua ? (
+                    <span className="text-emerald-400 text-[10px]">{t('client_item_detail.status.in_lua')}</span>
+                  ) : (
+                    <span className="text-amber-500 text-[10px]">{t('client_item_detail.status.missing_in_lua')}</span>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -351,25 +409,51 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave }) => {
           {isFetching && (
             <span className="text-xs text-gray-600 font-mono animate-pulse">{t('common.loading')}…</span>
           )}
-          {isModified && !isFetching && (
+          {!isNew && isModified && !isFetching && (
             <span className="text-amber-400 text-xs font-mono bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20 animate-pulse">
               ● {t('client_item_detail.unsaved_changes')}
             </span>
           )}
-          <button
-            onClick={handleSave}
-            disabled={!isModified || isSaving || isFetching}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-lg ${
-              isModified && !isFetching
-                ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-900/40 cursor-pointer'
-                : 'bg-[#1a1a28] text-gray-600 border border-white/5 cursor-not-allowed'
-            }`}
-          >
-            <Save size={15} />
-            {isSaving ? t('common.saving') : t('common.save')}
-          </button>
+          {isNew ? (
+            <button
+              onClick={handleCreate}
+              disabled={isSaving || !draftItemId}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-lg ${
+                draftItemId > 0 && !isSaving
+                  ? 'bg-violet-600 hover:bg-violet-500 text-white shadow-violet-900/40 cursor-pointer'
+                  : 'bg-[#1a1a28] text-gray-600 border border-white/5 cursor-not-allowed'
+              }`}
+            >
+              <Save size={15} />
+              {isSaving ? t('common.saving') : (t('client_item_editor.create_btn' as any) || 'Criar no ItemInfo.lua')}
+            </button>
+          ) : (
+            <button
+              onClick={handleSave}
+              disabled={!isModified || isSaving || isFetching}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-lg ${
+                isModified && !isFetching
+                  ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-900/40 cursor-pointer'
+                  : 'bg-[#1a1a28] text-gray-600 border border-white/5 cursor-not-allowed'
+              }`}
+            >
+              <Save size={15} />
+              {isSaving ? t('common.saving') : t('common.save')}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* ── Draft Mode: Feedback Message ────────────────────────────────── */}
+      {isNew && createMsg && (
+        <div className={`mx-6 mt-4 p-3 rounded-xl text-sm flex items-center gap-2 ${
+          createMsg.type === 'error'
+            ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+            : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+        }`}>
+          <span>{createMsg.text}</span>
+        </div>
+      )}
 
       {/* ── Content Grid ─────────────────────────────────────────────────── */}
       <div className="p-6 grid grid-cols-1 xl:grid-cols-2 gap-5">

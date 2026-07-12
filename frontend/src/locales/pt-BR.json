@@ -444,7 +444,16 @@
     "tabs": {
       "basic": "Informações Básicas",
       "visual": "Configuração Visual"
-    }
+    },
+    "new_item_btn": "Novo Item",
+    "draft_mode_title": "Criando Novo Item",
+    "draft_item_id_label": "ID do Item (ItemInfo ID)",
+    "draft_item_id_placeholder": "Ex: 20001",
+    "visual_disabled_hint": "Salve o item primeiro para configurar o Visual Equipment.",
+    "create_btn": "Criar no ItemInfo.lua",
+    "create_success": "Item #{id} criado com sucesso!",
+    "create_error": "Erro ao criar o item no ItemInfo.lua.",
+    "create_duplicate_error": "Este ID já existe no ItemInfo.lua. Use a edição em vez disso."
   },
   "visual_equipment": {
     "title": "Configuração Visual de Equipamento",
