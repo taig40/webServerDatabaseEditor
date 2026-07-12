@@ -9,6 +9,7 @@ import { API_URL } from '../config/env';
 import MonsterAnimator from './MonsterAnimator';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { DivinePrideImporterPanel } from './DivinePrideImporterPanel';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 // ─── Element & Race definitions ───────────────────────────────────────────────
 
@@ -119,15 +120,18 @@ const getConditionBadgeClass = (cond: string) => {
 interface MonsterDetailProps {
   mob: any;
   onUpdate: (mobId: number, data: any, saveMode?: 'import' | 'overwrite') => Promise<boolean | void>;
+  onDelete?: (mobId: number) => Promise<boolean>;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
+const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }) => {
   const t = useLanguageStore(state => state.t);
   const [local, setLocal] = useState<any>(mob);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showDPPanel, setShowDPPanel] = useState(false);
   const [spriteKey, setSpriteKey] = useState(0);
   const [skills, setSkills] = useState<any[]>([]);
@@ -268,6 +272,17 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
       await onUpdate(mob.Id, payload, mode);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(mob.Id);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
     }
   };
 
@@ -554,6 +569,16 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
               ● {t('monster_detail.unsaved')}
             </span>
           )}
+          {onDelete && mob._source === 'custom' && (
+            <button
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 transition-all"
+              title={t('mob_editor_delete.btn_label' as any) || 'Excluir Monstro'}
+            >
+              <Trash2 size={14} />
+              {t('mob_editor_delete.btn_label' as any) || 'Excluir'}
+            </button>
+          )}
           <button
             onClick={handleSave}
             disabled={!isModified || isSaving}
@@ -568,6 +593,15 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
           </button>
         </div>
       </div>
+
+      {/* Delete Confirm Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        entityLabel={`Mob #${mob.Id} — ${mob.Name || mob.AegisName || String(mob.Id)}`}
+        isDeleting={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
 
       {/* ── Tabs ── */}
       <div className="flex border-b border-white/5 px-4 pt-2 gap-1 text-xs shrink-0">
