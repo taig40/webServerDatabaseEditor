@@ -39,12 +39,11 @@ export type ModuleId =
   | 'pets'
   | 'constants'
   | 'random_options'
-  | 'size_fix'
+  | 'size_fix_editor'
   | 'job_database'
   | 'exp_tables'
   | 'skill_tree'
-  | 'map_engine'
-  | 'custom_spawns';
+  | 'map_engine';
 
 interface Module {
   id: ModuleId;
@@ -57,30 +56,29 @@ interface Module {
 
 const MODULES: Module[] = [
   // ── Server DB ──
-  { id: 'items',               label: 'Itens',                sublabel: 'item_db.yml',         icon: Package,      group: 'server', available: true  },
-  { id: 'mobs',                label: 'Monstros',             sublabel: 'mob_db.yml',           icon: Skull,        group: 'server', available: true  },
-  { id: 'skills',              label: 'Habilidades',          sublabel: 'skill_db.yml',         icon: Zap,          group: 'server', available: true  },
-  { id: 'job_database',        label: 'Classes & Atributos',  sublabel: 'job_stats.yml',       icon: Shield,       group: 'server', available: true  },
-  { id: 'exp_tables',          label: 'Tabelas de Experiência', sublabel: 'job_exp.yml',       icon: TrendingUp,   group: 'server', available: true  },
-  { id: 'skill_tree',          label: 'Árvore de Habilidades', sublabel: 'skill_tree.yml',      icon: Network,      group: 'server', available: true  },
-  { id: 'server_quests',       label: 'Quests',               sublabel: 'quest_db.yml',         icon: Scroll,       group: 'server', available: true  },
-  { id: 'item_combos',         label: 'Combos de Itens',      sublabel: 'item_combos.yml',      icon: Layers,       group: 'server', available: true  },
-  { id: 'custom_spawns',       label: 'Custom Spawns',        sublabel: 'ui_spawns.txt',        icon: Map,          group: 'server', available: true  },
-  { id: 'server_achievements', label: 'Conquistas',           sublabel: 'achievement_db.yml',   icon: Trophy,       group: 'server', available: true  },
-  { id: 'pets',                label: 'Mascotes',             sublabel: 'pet_db.yml',           icon: Star,         group: 'server', available: true  },
-  { id: 'random_options',      label: 'Opções Aleatórias',    sublabel: 'item_randomopt_group.yml', icon: Sparkles,  group: 'server', available: true  },
-  { id: 'map_engine',          label: 'Map Engine',           sublabel: 'map_drops.yml',            icon: Map,       group: 'server', available: true  },
-  { id: 'size_fix',            label: 'Penalidades de Tamanho', sublabel: 'size_fix.yml',        icon: Scale,     group: 'server', available: true  },
+  { id: 'items', label: 'Itens', sublabel: 'item_db.yml', icon: Package, group: 'server', available: true },
+  { id: 'mobs', label: 'Monstros', sublabel: 'mob_db.yml', icon: Skull, group: 'server', available: true },
+  { id: 'skills', label: 'Habilidades', sublabel: 'skill_db.yml', icon: Zap, group: 'server', available: true },
+  { id: 'job_database', label: 'Classes & Atributos', sublabel: 'job_stats.yml', icon: Shield, group: 'server', available: true },
+  { id: 'exp_tables', label: 'Tabelas de Experiência', sublabel: 'job_exp.yml', icon: TrendingUp, group: 'server', available: true },
+  { id: 'skill_tree', label: 'Árvore de Habilidades', sublabel: 'skill_tree.yml', icon: Network, group: 'server', available: true },
+  { id: 'server_quests', label: 'Quests', sublabel: 'quest_db.yml', icon: Scroll, group: 'server', available: true },
+  { id: 'item_combos', label: 'Combos de Itens', sublabel: 'item_combos.yml', icon: Layers, group: 'server', available: true },
+  { id: 'server_achievements', label: 'Conquistas', sublabel: 'achievement_db.yml', icon: Trophy, group: 'server', available: true },
+  { id: 'pets', label: 'Mascotes', sublabel: 'pet_db.yml', icon: Star, group: 'server', available: true },
+  { id: 'random_options', label: 'Opções Aleatórias', sublabel: 'item_randomopt_group.yml', icon: Sparkles, group: 'server', available: true },
+  { id: 'map_engine', label: 'Map Engine', sublabel: 'map_drops.yml', icon: Map, group: 'server', available: true },
+  { id: 'size_fix_editor', label: 'Penalidades de tamanho', sublabel: 'size_fix.yml', icon: Scale, group: 'server', available: true },
   // ── Client DB ──
-  { id: 'client_items',        label: 'Itens (Cliente)',      sublabel: 'iteminfo.lua',         icon: BookOpen,     group: 'client', available: true  },
+  { id: 'client_items', label: 'Itens (Cliente)', sublabel: 'iteminfo.lua', icon: BookOpen, group: 'client', available: true },
   // ── Misc ──
-  { id: 'constants',           label: 'Constantes',          sublabel: 'const.yml',            icon: FlaskConical, group: 'misc',   available: true },
+  { id: 'constants', label: 'Constantes', sublabel: 'const.yml', icon: FlaskConical, group: 'misc', available: true },
 ];
 
 const GROUP_LABELS: Record<string, string> = {
   server: 'Servidor',
   client: 'Cliente',
-  misc:   'Outros',
+  misc: 'Outros',
 };
 
 // ─── Layout Props ────────────────────────────────────────────────────────────
@@ -180,8 +178,8 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
                           isActive
                             ? 'bg-gradient-to-r from-violet-600/30 to-indigo-600/10 text-white border border-violet-500/30'
                             : isDisabled
-                            ? 'text-gray-700 cursor-not-allowed'
-                            : 'text-gray-400 hover:bg-[#1a1a28] hover:text-gray-200',
+                              ? 'text-gray-700 cursor-not-allowed'
+                              : 'text-gray-400 hover:bg-[#1a1a28] hover:text-gray-200',
                         ].join(' ')}
                       >
                         {/* Icon */}
@@ -228,11 +226,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
         <div className="border-t border-[#1e1e2e] p-2">
           <button
             onClick={onSettingsClick}
-            className={`w-full flex items-center gap-3 px-2 py-2 rounded-lg transition-colors ${
-              activeView === 'settings'
+            className={`w-full flex items-center gap-3 px-2 py-2 rounded-lg transition-colors ${activeView === 'settings'
                 ? 'bg-gradient-to-r from-violet-600/30 to-indigo-600/10 text-white border border-violet-500/30'
                 : 'text-gray-600 hover:text-gray-400 hover:bg-[#1a1a28]'
-            }`}
+              }`}
           >
             <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center">
               <Settings size={15} className={activeView === 'settings' ? 'text-violet-400' : ''} />

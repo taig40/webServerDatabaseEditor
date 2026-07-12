@@ -21,7 +21,6 @@ import JobDatabaseEditor from './pages/JobDatabaseEditor';
 import ExperienceTablesEditor from './pages/ExperienceTablesEditor';
 import SkillTreeEditor from './pages/SkillTreeEditor';
 import MapEngine from './pages/MapEngine';
-import { SpawnEditor } from './pages/SpawnEditor';
 
 type ActiveView = ModuleId | 'settings';
 
@@ -99,24 +98,23 @@ function App() {
 
   const renderContent = () => {
     switch (activeView) {
-      case 'items':          return <ItemEditor />;
-      case 'mobs':           return <MonsterEditor />;
-      case 'skills':         return <SkillEditor />;
-      case 'item_combos':    return <ComboEditor />;
-      case 'server_quests':  return <QuestEditor />;
-      case 'pets':           return <PetEditor />;
-      case 'client_items':   return <ClientItemEditor />;
+      case 'items': return <ItemEditor />;
+      case 'mobs': return <MonsterEditor />;
+      case 'skills': return <SkillEditor />;
+      case 'item_combos': return <ComboEditor />;
+      case 'server_quests': return <QuestEditor />;
+      case 'pets': return <PetEditor />;
+      case 'client_items': return <ClientItemEditor />;
       case 'server_achievements': return <AchievementEditor />;
       case 'random_options': return <RandomOptionsEditor />;
-      case 'size_fix':       return <SizeFixMatrix />;
-      case 'constants':      return <ConstantsEditor />;
-      case 'job_database':   return <JobDatabaseEditor />;
-      case 'exp_tables':     return <ExperienceTablesEditor />;
-      case 'skill_tree':     return <SkillTreeEditor />;
-      case 'map_engine':     return <MapEngine />;
-      case 'custom_spawns':  return <SpawnEditor />;
-      case 'settings':       return <SettingsPage />;
-      default:               return (
+      case 'size_fix_editor': return <SizeFixMatrix />;
+      case 'constants': return <ConstantsEditor />;
+      case 'job_database': return <JobDatabaseEditor />;
+      case 'exp_tables': return <ExperienceTablesEditor />;
+      case 'skill_tree': return <SkillTreeEditor />;
+      case 'map_engine': return <MapEngine />;
+      case 'settings': return <SettingsPage />;
+      default: return (
         <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-600">
           <span className="text-5xl">🚧</span>
           <span className="text-lg font-medium">{t('app.under_development')}</span>
@@ -165,7 +163,7 @@ function App() {
                 </p>
               </div>
             </div>
-            
+
             <div className="flex flex-col gap-3 py-2">
               <div className="bg-dark-950 border border-white/5 p-3 rounded-xl text-sm text-gray-300 font-mono leading-relaxed break-words">
                 {encodingError.message}

@@ -63,11 +63,11 @@ type AlertMsg = { text: string; type: 'success' | 'error' } | null;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const buildSpawnSnippet = (form: SpawnForm, index: number): string => {
-  const label = `ME_Spawn_${index}`;
-  return [
-    `monster\t"${form.map}",${form.x},${form.y},${form.rx},${form.ry},"${form.monsterName}",${form.monsterId},${form.amount},${form.respawn},0,"${label}";`,
-  ].join('\n');
+const buildSpawnSnippet = (form: SpawnForm): string => {
+  // Formato exato exigido pelo rAthena (TAB como separador, sem aspas ou ponto e vírgula)
+  // {map},{x},{y},{rx},{ry}\tmonster\t{mob_display_name}\t{mob_id},{amount},{delay1},{delay2}
+  const delay2 = 0; // delay2 sempre 0 por padrão (sem variação)
+  return `${form.map},${form.x},${form.y},${form.rx},${form.ry}\tmonster\t${form.monsterAegis || 'Unknown'}\t${form.monsterId},${form.amount},${form.respawn},${delay2}`;
 };
 
 const nextIndex = (drops: DropEntry[]): number =>
@@ -173,7 +173,6 @@ export const MapEngine: React.FC = () => {
   const [spawnLines, setSpawnLines] = useState<string[]>([]);
   const [spawnFilePath, setSpawnFilePath] = useState('');
   const [isInjectingSpawn, setIsInjectingSpawn] = useState(false);
-  const [spawnCount, setSpawnCount] = useState(1);
 
   // ─── Load Map Drops ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -229,7 +228,7 @@ export const MapEngine: React.FC = () => {
     return maps.find(m => m.Map === selectedMap) || null;
   }, [maps, selectedMap]);
 
-  const liveSnippet = useMemo(() => buildSpawnSnippet(spawnForm, spawnCount), [spawnForm, spawnCount]);
+  const liveSnippet = useMemo(() => buildSpawnSnippet(spawnForm), [spawnForm]);
 
   // ─── Map Drops Mutations ─────────────────────────────────────────────────────
 
@@ -392,16 +391,25 @@ export const MapEngine: React.FC = () => {
   // ─── Inject Spawn ────────────────────────────────────────────────────────────
 
   const handleInjectSpawn = async () => {
+    if (!spawnForm.monsterId) return;
     try {
       setIsInjectingSpawn(true);
       setAlertMsg(null);
+      // Envia payload estruturado com ID numérico correto — o backend gera a linha com TABs
       await axios.post(`${API_URL}/api/scripts/custom-spawns`, {
-        snippet: liveSnippet,
-        map_name: spawnForm.map,
-        monster_name: spawnForm.monsterName,
+        mapname: spawnForm.map,
+        x: spawnForm.x,
+        y: spawnForm.y,
+        rx: spawnForm.rx,
+        ry: spawnForm.ry,
+        mobid: spawnForm.monsterId,       // ID numérico
+        mobname: spawnForm.monsterAegis,  // Nome de exibição (AegisName)
+        amount: spawnForm.amount,
+        delay1: spawnForm.respawn,
+        delay2: 0,
+        event: '',
       });
       setAlertMsg({ text: t('map_engine.inject_success' as any) as string, type: 'success' });
-      setSpawnCount(c => c + 1);
       await fetchSpawnLines();
     } catch {
       setAlertMsg({ text: t('map_engine.inject_error' as any) as string, type: 'error' });
@@ -838,7 +846,7 @@ export const MapEngine: React.FC = () => {
               {/* Inject Button */}
               <button
                 onClick={handleInjectSpawn}
-                disabled={isInjectingSpawn || !spawnForm.monsterName}
+                disabled={isInjectingSpawn || !spawnForm.monsterId}
                 className="w-full flex items-center justify-center gap-2 py-2.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold shadow-lg shadow-teal-600/30 transition-all"
               >
                 {isInjectingSpawn
