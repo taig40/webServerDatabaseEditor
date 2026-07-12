@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Virtuoso } from 'react-virtuoso';
 import { API_URL } from '../config/env';
 import { Search, BookOpen, Package } from 'lucide-react';
-import ClientItemDetail from '../components/ClientItemDetail';
+import { ClientItemWorkspace } from '../components/ClientItemWorkspace';
 import ClientAssetAudit from '../components/ClientAssetAudit';
 import { ItemIcon } from '../components/ItemIcon';
 import { useLanguageStore } from '../store/useLanguageStore';
@@ -73,6 +73,14 @@ const ClientItemEditor: React.FC = () => {
   const handleSave = useCallback(async (itemId: number, fields: Record<string, any>) => {
     try {
       await axios.put(`${API_URL}/api/client_items/${itemId}`, fields);
+      
+      // Update local state so that edits are immediately reflected
+      setItems(prevItems => 
+        prevItems.map(item => 
+          item.Id === itemId ? { ...item, ...fields } : item
+        )
+      );
+      
       return true;
     } catch (err) {
       console.error('[webSDE] Falha ao salvar client item', err);
@@ -80,6 +88,14 @@ const ClientItemEditor: React.FC = () => {
       return false;
     }
   }, [t]);
+
+  const handleLocalItemUpdate = useCallback((itemId: number, newClassNum: number) => {
+    setItems(prevItems =>
+      prevItems.map(item =>
+        item.Id === itemId ? { ...item, ClassNum: newClassNum } : item
+      )
+    );
+  }, []);
 
   return (
     <div className="flex flex-col h-full w-full bg-[#0f0f14] overflow-hidden font-sans">
@@ -190,7 +206,11 @@ const ClientItemEditor: React.FC = () => {
             {/* ── Detail Panel ─────────────────────────────────────────────────── */}
             <div className="flex-1 overflow-hidden">
               {selectedItem ? (
-                <ClientItemDetail item={selectedItem} onSave={handleSave} />
+                <ClientItemWorkspace 
+                  item={selectedItem} 
+                  onSave={handleSave} 
+                  onLocalItemUpdate={handleLocalItemUpdate} 
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-gray-600">
                   <Package size={56} className="mb-4 opacity-20" />

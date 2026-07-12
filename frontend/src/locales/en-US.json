@@ -440,7 +440,18 @@
     "no_selection": {
       "title": "No Item Selected",
       "subtitle": "Select an item from the list to edit its client info."
+    },
+    "tabs": {
+      "basic": "Basic Information",
+      "visual": "Visual Configuration"
     }
+  },
+  "visual_equipment": {
+    "title": "Visual Equipment Configuration",
+    "invalid_view_id": "Invalid View ID.",
+    "missing_fields": "Identity and Sprite Name fields are required.",
+    "save_success": "Visual configuration saved successfully!",
+    "save_error": "Failed to save visual configuration."
   },
   "client_item_detail": {
     "description_placeholder": "One line per description entry.\nUse \\n for newlines in-game.",
