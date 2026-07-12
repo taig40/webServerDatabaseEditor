@@ -73,19 +73,20 @@ export const ComboEditor: React.FC = () => {
 
   const fetchItemsMap = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/items/?limit=50000`);
+      const res = await axios.get(`${API_URL}/api/items/references?t=${Date.now()}`);
       const items = res.data.items || [];
       const map: Record<string, string> = {};
       const opts: {value: string, label: string}[] = [];
       items.forEach((item: any) => {
-        if (item.AegisName) {
-          const name = item.Name || item.Name_English || item.AegisName;
-          map[item.AegisName.toLowerCase()] = name;
-          opts.push({
-            value: item.AegisName,
-            label: `${name} (${item.AegisName})`
-          });
-        }
+        const aegisName = item.AegisName || String(item.Id);
+        const name = item.Name || item.Name_English || aegisName;
+        map[aegisName.toLowerCase()] = name;
+        opts.push({
+          value: aegisName,
+          label: item.is_custom
+            ? `[Custom] ${name} (${aegisName}) [#${item.Id}]`
+            : `${name} (${aegisName}) [#${item.Id}]`
+        });
       });
       setItemMap(map);
       setItemOptions(opts);
@@ -372,7 +373,10 @@ export const ComboEditor: React.FC = () => {
                   </div>
                   <div className="space-y-4 mb-6">
                     {(selectedCombo._item_groups || []).map((grp: string[], varIdx: number) => {
-                       const selectedOpts = grp.map(g => itemOptions.find(o => o.value.toLowerCase() === g.toLowerCase()) || { value: g, label: g });
+                       const selectedOpts = grp.map(g => {
+                         const found = itemOptions.find(o => o.value.toLowerCase() === String(g).toLowerCase() || o.label.includes(`[#${g}]`));
+                         return found || { value: g, label: g };
+                       });
                        const hasError = grp.length > 0 && grp.length < 2;
                        return (
                          <div key={varIdx} className={`p-4 rounded-xl border ${hasError ? 'border-red-500/30 bg-red-500/5' : 'border-dark-700 bg-dark-900/40'}`}>
