@@ -126,8 +126,8 @@ export const SpawnEditor: React.FC = () => {
   };
 
   const handlePickerSelect = (id: number | string, name: string) => {
-    setMobId(name); // rAthena usa AegisName como referência
-    setMobName(name);
+    setMobId(id);   // ID numérico → vai após o último \t: mobid,amount,delay1,delay2
+    setMobName(name); // AegisName → nome de exibição (campo mobname no script)
     setPickerOpen(false);
   };
 
