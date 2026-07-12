@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Virtuoso } from 'react-virtuoso';
 import { API_URL } from '../config/env';
 import {
-  Search, Plus, ShieldAlert, Database, Sparkles, Loader2
+  Search, Plus, ShieldAlert, Database, Sparkles, Loader2, CheckCircle, AlertCircle
 } from 'lucide-react';
 import { useLanguageStore } from '../store/useLanguageStore';
 import MonsterAnimator from '../components/MonsterAnimator';
@@ -43,6 +43,7 @@ const MonsterEditor: React.FC = () => {
   const [selectedMobId, setSelectedMobId] = useState<number | null>(null);
   const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Debounce na busca
   useEffect(() => {
@@ -152,6 +153,29 @@ const MonsterEditor: React.FC = () => {
       return false;
     }
   }, []);
+
+  const showToast = useCallback((text: string, type: 'success' | 'error') => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 4000);
+  }, []);
+
+  const handleDeleteMob = useCallback(async (mobId: number) => {
+    try {
+      await axios.delete(`${API_URL}/api/mobs/${mobId}`);
+      setMobs(prev => prev.filter(m => m.Id !== mobId));
+      setSelectedMobId(null);
+      showToast((t('mob_editor_delete.success' as any) || 'Monstro #{id} excluído com sucesso!').replace('#{id}', String(mobId)), 'success');
+      return true;
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 403) {
+        showToast(t('mob_editor_delete.error_403' as any) || 'Não é possível excluir monstros do banco oficial do rAthena.', 'error');
+      } else {
+        showToast(error?.response?.data?.detail || (t('mob_editor_delete.error_generic' as any) || 'Erro ao excluir o monstro.'), 'error');
+      }
+      return false;
+    }
+  }, [t, showToast]);
 
   // ─── Mob list item ─────────────────────────────────────────────────────────
   const MobListItem = useCallback(({ mob }: { mob: any }) => {
@@ -333,6 +357,7 @@ const MonsterEditor: React.FC = () => {
             key={selectedMob.Id}
             mob={selectedMob}
             onUpdate={handleUpdate}
+            onDelete={handleDeleteMob}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-8 text-gray-600 gap-3">
@@ -344,6 +369,25 @@ const MonsterEditor: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div
+          className={`fixed bottom-6 right-6 z-[999] flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold shadow-2xl animate-in fade-in ${
+            toastMessage.type === 'success'
+              ? 'bg-emerald-950/95 text-emerald-300 border border-emerald-500/40 shadow-emerald-950/50'
+              : 'bg-rose-950/95 text-rose-300 border border-rose-500/40 shadow-rose-950/50'
+          }`}
+        >
+          {toastMessage.type === 'success' ? (
+            <CheckCircle className="w-4 h-4 text-emerald-400" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-rose-400" />
+          )}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
+
     </div>
   );
 };

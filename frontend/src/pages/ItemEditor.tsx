@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { API_URL } from '../config/env';
-import { Search, Plus, Package, Database, Sparkles } from 'lucide-react';
+import { Search, Plus, Package, Database, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
 import { useLanguageStore } from '../store/useLanguageStore';
 
 import NewItemModal from '../components/NewItemModal';
@@ -36,12 +36,11 @@ const ItemEditor: React.FC = () => {
   
   // Aba de origem
   const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Referência para rolar a lista virtualizada de volta ao topo
   const virtuosoRef = React.useRef<VirtuosoHandle>(null);
-
-  // Modal de novo item
-  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Item Selecionado
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
@@ -191,6 +190,29 @@ const ItemEditor: React.FC = () => {
       return false;
     }
   }, []);
+
+  const showToast = useCallback((text: string, type: 'success' | 'error') => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 4000);
+  }, []);
+
+  const handleDeleteItem = useCallback(async (itemId: number) => {
+    try {
+      await axios.delete(`${API_URL}/api/items/${itemId}`);
+      setItems(prev => prev.filter(it => it.Id !== itemId));
+      setSelectedItemId(null);
+      showToast((t('item_editor_delete.success' as any) || 'Item #{id} excluído com sucesso!').replace('#{id}', String(itemId)), 'success');
+      return true;
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 403) {
+        showToast(t('item_editor_delete.error_403' as any) || 'Não é possível excluir itens do banco oficial do rAthena.', 'error');
+      } else {
+        showToast(error?.response?.data?.detail || (t('item_editor_delete.error_generic' as any) || 'Erro ao excluir o item.'), 'error');
+      }
+      return false;
+    }
+  }, [t, showToast]);
 
   return (
     <div className="flex h-full w-full bg-dark-950 overflow-hidden font-sans">
@@ -379,7 +401,7 @@ const ItemEditor: React.FC = () => {
       {/* Detail View (Main) */}
       <div className="flex-1 bg-dark-950 flex flex-col overflow-hidden relative">
         {selectedItem ? (
-          <ItemDetail item={selectedItem} onUpdate={handleUpdateItem} />
+          <ItemDetail item={selectedItem} onUpdate={handleUpdateItem} onDelete={handleDeleteItem} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <Package size={64} className="mb-4 opacity-20" />
@@ -388,6 +410,24 @@ const ItemEditor: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div
+          className={`fixed bottom-6 right-6 z-[999] flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold shadow-2xl animate-in fade-in ${
+            toastMessage.type === 'success'
+              ? 'bg-emerald-950/95 text-emerald-300 border border-emerald-500/40 shadow-emerald-950/50'
+              : 'bg-rose-950/95 text-rose-300 border border-rose-500/40 shadow-rose-950/50'
+          }`}
+        >
+          {toastMessage.type === 'success' ? (
+            <CheckCircle className="w-4 h-4 text-emerald-400" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-rose-400" />
+          )}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
 
     </div>
   );

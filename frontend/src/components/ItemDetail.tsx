@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Package, Shield, Sword, Box, Save, Plus, X, Users, Store, DownloadCloud, Loader2, AlertCircle } from 'lucide-react';
+import { Package, Shield, Sword, Box, Save, Plus, X, Users, Store, DownloadCloud, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import { API_URL } from '../config/env';
 import Editor from '@monaco-editor/react';
 import { initRathenaItemScript, validateItemScript } from '../monaco/rathenaItemScript';
@@ -8,6 +8,7 @@ import NpcShopModal from './NpcShopModal';
 import { ItemIcon } from './ItemIcon';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { DivinePrideImporterPanel } from './DivinePrideImporterPanel';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 import Select from 'react-select';
 
 const LOCATION_OPTIONS = [
@@ -62,9 +63,10 @@ const customSelectStyles = {
 interface ItemDetailProps {
   item: any;
   onUpdate: (itemId: number, updatedData: any, saveMode?: 'import' | 'overwrite') => Promise<boolean | void>;
+  onDelete?: (itemId: number) => Promise<boolean>;
 }
 
-const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
+const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => {
   const t = useLanguageStore(state => state.t);
   const [drops, setDrops] = useState<any[]>([]);
   const [soldBy, setSoldBy] = useState<any[]>([]);
@@ -76,6 +78,8 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
   const [showDPPanel, setShowDPPanel] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [dpMessage, setDpMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDPImportSuccess = (mappedData: any) => {
     setLocalItem((prev: any) => ({
@@ -151,6 +155,17 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
       await onUpdate(item.Id, localItem, mode);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(item.Id);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
     }
   };
 
@@ -248,6 +263,16 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
               ● {t('item_detail.unsaved_changes')}
             </span>
           )}
+          {onDelete && item._source === 'custom' && (
+            <button
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 transition-all"
+              title={t('item_editor_delete.btn_label' as any) || 'Excluir Item'}
+            >
+              <Trash2 size={14} />
+              {t('item_editor_delete.btn_label' as any) || 'Excluir'}
+            </button>
+          )}
           <button
             onClick={handleSaveClick}
             disabled={!isModified || isSaving}
@@ -262,6 +287,15 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate }) => {
           </button>
         </div>
       </div>
+
+      {/* Delete Confirm Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        entityLabel={`Item #${item.Id} — ${item.Name || item.AegisName || String(item.Id)}`}
+        isDeleting={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
 
       {/* Forms Grid */}
       <div className="p-6 grid grid-cols-1 xl:grid-cols-2 gap-6">
