@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { Virtuoso } from 'react-virtuoso';
 import { API_URL } from '../config/env';
-import { Search, BookOpen, Package } from 'lucide-react';
+import { Search, BookOpen, Package, Plus } from 'lucide-react';
 import { ClientItemWorkspace } from '../components/ClientItemWorkspace';
 import ClientAssetAudit from '../components/ClientAssetAudit';
 import { ItemIcon } from '../components/ItemIcon';
@@ -18,6 +18,7 @@ const ClientItemEditor: React.FC = () => {
   const [itemsLoaded, setItemsLoaded] = useState(0);
   const [searchText, setSearchText] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  const [isDraftMode, setIsDraftMode] = useState(false);  // Draft Mode: criação via POST
 
   // ── Poll server item list (reuses the same YAML data as ItemEditor) ────────
   useEffect(() => {
@@ -97,6 +98,34 @@ const ClientItemEditor: React.FC = () => {
     );
   }, []);
 
+  // ── Create handler (POST) ─────────────────────────────────────────────────
+  const handleCreate = useCallback(async (itemId: number, fields: Record<string, any>) => {
+    try {
+      await axios.post(`${API_URL}/api/client_items/`, { item_id: itemId, ...fields });
+      // Adicionar o novo item ao array local para aparecer na lista virtualizada
+      setItems(prev => [
+        ...prev,
+        {
+          Id: itemId,
+          AegisName: '',
+          Name: '',
+          identifiedDisplayName: fields.identifiedDisplayName || '',
+        },
+      ]);
+      setIsDraftMode(false);
+      setSelectedItemId(itemId);
+      return true;
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 409) {
+        alert(t('client_item_editor.create_duplicate_error'));
+      } else {
+        alert(t('client_item_editor.create_error'));
+      }
+      return false;
+    }
+  }, [t]);
+
   return (
     <div className="flex flex-col h-full w-full bg-[#0f0f14] overflow-hidden font-sans">
       
@@ -147,9 +176,19 @@ const ClientItemEditor: React.FC = () => {
             <div className="w-[300px] flex-shrink-0 flex flex-col bg-[#12121a] border-r border-white/5 relative z-10">
               {/* Header */}
               <div className="p-4 border-b border-white/5 bg-gradient-to-b from-[#1a1a28] to-[#12121a]">
-                <div className="flex items-center gap-2 mb-3">
-                  <BookOpen size={16} className="text-cyan-400" />
-                  <h2 className="text-gray-200 font-semibold text-sm">{t('client_item_editor.sidebar.title')}</h2>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={16} className="text-cyan-400" />
+                    <h2 className="text-gray-200 font-semibold text-sm">{t('client_item_editor.sidebar.title')}</h2>
+                  </div>
+                  <button
+                    onClick={() => { setIsDraftMode(true); setSelectedItemId(null); }}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 hover:text-violet-300 text-xs font-medium transition-all"
+                    title={t('client_item_editor.new_item_btn' as any) || 'Novo Item'}
+                  >
+                    <Plus size={13} />
+                    {t('client_item_editor.new_item_btn' as any) || 'Novo Item'}
+                  </button>
                 </div>
 
                 <div className="relative">
@@ -177,7 +216,7 @@ const ClientItemEditor: React.FC = () => {
                       const isActive = selectedItemId === item.Id;
                       return (
                         <div
-                          onClick={() => setSelectedItemId(item.Id)}
+                          onClick={() => { setSelectedItemId(item.Id); setIsDraftMode(false); }}
                           className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer border-b border-white/5 transition-all duration-100 ${
                             isActive
                               ? 'bg-gradient-to-r from-cyan-600/20 to-transparent border-l-2 border-l-cyan-500'
@@ -205,11 +244,20 @@ const ClientItemEditor: React.FC = () => {
 
             {/* ── Detail Panel ─────────────────────────────────────────────────── */}
             <div className="flex-1 overflow-hidden">
-              {selectedItem ? (
+              {isDraftMode ? (
+                <ClientItemWorkspace
+                  item={{ Id: 0, AegisName: '', Name: '' }}
+                  onSave={handleSave}
+                  onLocalItemUpdate={handleLocalItemUpdate}
+                  mode="create"
+                  onCreate={handleCreate}
+                />
+              ) : selectedItem ? (
                 <ClientItemWorkspace 
                   item={selectedItem} 
                   onSave={handleSave} 
-                  onLocalItemUpdate={handleLocalItemUpdate} 
+                  onLocalItemUpdate={handleLocalItemUpdate}
+                  mode="edit"
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-gray-600">
