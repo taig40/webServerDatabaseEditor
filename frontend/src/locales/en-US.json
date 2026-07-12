@@ -165,7 +165,9 @@
       "random_options": "Random Options",
       "job_database": "Job Database",
       "exp_tables": "Experience Tables",
-      "skill_tree": "Skill Tree"
+      "skill_tree": "Skill Tree",
+      "map_engine": "Map Engine",
+      "size_fix_editor": "Size Penalties"
     }
   },
   "app": {

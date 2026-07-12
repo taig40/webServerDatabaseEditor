@@ -165,7 +165,9 @@
       "random_options": "Opções Aleatórias",
       "job_database": "Classes & Atributos",
       "exp_tables": "Tabelas de Experiência",
-      "skill_tree": "Árvore de Habilidades"
+      "skill_tree": "Árvore de Habilidades",
+      "map_engine": "Map Engine",
+      "size_fix_editor": "Penalidades de Tamanho"
     }
   },
   "app": {

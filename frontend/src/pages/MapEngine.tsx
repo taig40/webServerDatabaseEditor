@@ -168,7 +168,7 @@ export const MapEngine: React.FC = () => {
     monsterName: '',
     monsterId: 0,
     amount: 5,
-    respawn: 3000,
+    respawn: 5000,
   });
   const [spawnLines, setSpawnLines] = useState<string[]>([]);
   const [spawnFilePath, setSpawnFilePath] = useState('');
