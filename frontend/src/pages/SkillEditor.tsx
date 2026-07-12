@@ -26,13 +26,12 @@ export const SkillEditor: React.FC = () => {
   const [itemsMap, setItemsMap] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    axios.get(`${API_URL}/api/items/?limit=50000`)
+    axios.get(`${API_URL}/api/items/references?t=${Date.now()}`)
       .then(res => {
         const map: Record<string, any> = {};
         (res.data.items || []).forEach((item: any) => {
-          if (item.AegisName) {
-            map[item.AegisName.toLowerCase()] = item;
-          }
+          const aegisName = item.AegisName || String(item.Id);
+          map[aegisName.toLowerCase()] = item;
         });
         setItemsMap(map);
       })
