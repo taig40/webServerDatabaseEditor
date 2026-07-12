@@ -379,3 +379,28 @@ async def upload_mob_sprite_spr_act(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao salvar sprite: {e}")
+
+
+# ─── DELETE /api/mobs/{mob_id} ────────────────────────────────────────────────
+
+@router.delete("/{mob_id}", status_code=200)
+async def delete_mob(mob_id: int):
+    """
+    Remove permanentemente um monstro de db/import/mob_db.yml.
+
+    Retorna 403 se o monstro pertencer ao banco oficial do rAthena (db/re/ ou db/pre-re/).
+    Retorna 404 se o monstro não existir no índice.
+    Retorna 200 { deleted: true, mob_id } em caso de sucesso.
+    """
+    if mob_db.is_loading:
+        raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando.")
+
+    try:
+        deleted = mob_db.delete_mob(mob_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Monstro {mob_id} não encontrado.")
+
+    return {"deleted": True, "mob_id": mob_id}

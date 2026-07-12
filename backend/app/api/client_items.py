@@ -5,6 +5,7 @@ from app.services.grf_reader import grf_reader, _KOREAN_UI_FOLDER, _KOREAN_ITEM_
 from app.api.images import get_cached_item_icon
 from app.services.visuals_parser import visuals_db
 from app.models.visual import VisualEquipmentModelUpdate
+from app.services import custom_spawn_service
 
 router = APIRouter()
 
@@ -453,3 +454,46 @@ async def update_visual_equipment(view_id: int, payload: VisualEquipmentModelUpd
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ─── DELETE /api/client_items/{item_id} ──────────────────────────────────────────
+
+@router.delete("/{item_id}", status_code=200)
+async def delete_client_item(item_id: int):
+    """
+    Remove permanentemente o bloco [item_id] = { … } do iteminfo.lua.
+    Utiliza escrita atômica (tmp → rename) e invalida o cache em memória.
+    Retorna 404 se o item não existir no iteminfo.lua.
+    """
+    _require_loaded()
+    try:
+        deleted = iteminfo_db.delete_client_item(item_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Item {item_id} não encontrado no iteminfo.lua."
+        )
+
+    get_cached_item_icon.cache_clear()
+    return {"deleted": True, "item_id": item_id}
+
+
+# ─── DELETE /api/client_items/spawns/{line_index} ─────────────────────────────
+
+@router.delete("/spawns/{line_index}", status_code=200)
+async def delete_spawn_line(line_index: int):
+    """
+    Remove uma linha de spawn do arquivo npc/custom/ui_spawns.txt pelo índice
+    base-0 na lista retornada por GET /api/client_items/spawns.
+
+    Se a linha anterior for um comentário de bloco gerado pela engine
+    ('// --- Map Engine Inject'), ele também é removido automaticamente.
+    """
+    try:
+        result = custom_spawn_service.delete_spawn(line_index)
+        return result
+    except IndexError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))

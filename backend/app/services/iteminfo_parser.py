@@ -341,6 +341,23 @@ class ItemInfoParser:
         """
         lua_repository.write_block(self.iteminfo_path, item_id, fields)
 
+    def delete_client_item(self, item_id: int) -> bool:
+        """
+        Remove o bloco [item_id] = { … } do iteminfo.lua no disco e
+        invalida a entrada em memória.
+
+        Delega ao lua_repository.delete_block() (SRP — I/O isolado no repositório).
+
+        Retorna True em caso de sucesso, False se o item não existia no arquivo.
+        """
+        if not self.iteminfo_path:
+            raise RuntimeError("ItemInfo path is not configured.")
+
+        deleted = lua_repository.delete_block(self.iteminfo_path, item_id)
+        if deleted:
+            self.item_map.pop(item_id, None)
+        return deleted
+
 
 # ─── Singleton ─────────────────────────────────────────────────────────────────
-iteminfo_db = ItemInfoParser()
+iteminfo_db = ItemInfoParser()

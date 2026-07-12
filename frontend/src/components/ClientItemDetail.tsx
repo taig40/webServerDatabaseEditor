@@ -3,9 +3,10 @@ import axios from 'axios';
 import { API_URL } from '../config/env';
 import {
   Save, BookOpen, Eye, EyeOff, Hash, Upload, RefreshCw,
-  ImageIcon, Monitor, Database,
+  ImageIcon, Monitor, Database, Trash2,
 } from 'lucide-react';
 import { GrfAssetPickerModal } from './GrfAssetPickerModal';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { useLanguageStore } from '../store/useLanguageStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ interface Props {
   onSave: (itemId: number, fields: Record<string, any>) => Promise<boolean>;
   isNew?: boolean;               // Draft Mode — roteando para POST
   onCreate?: (itemId: number, fields: Record<string, any>) => Promise<boolean>;
+  onDelete?: (itemId: number) => Promise<boolean>;  // Chamado após DELETE com sucesso
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -226,14 +228,17 @@ const decodeLatin1ToEucKr = (str: string): string => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCreate }) => {
+const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCreate, onDelete }) => {
   const t = useLanguageStore(state => state.t);
   const [fields, setFields]       = useState<ClientFields>(EMPTY_FIELDS);
   const [original, setOriginal]   = useState<ClientFields>(EMPTY_FIELDS);
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving]   = useState(false);
-  const [draftItemId, setDraftItemId] = useState<number>(0); // ID digitado em modo criação
+  const [draftItemId, setDraftItemId] = useState<number>(0);
   const [createMsg, setCreateMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  // Delete Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   // Bust the icon URL cache after an upload
   const [iconBust, setIconBust]   = useState(Date.now());
   const [assetsStatus, setAssetsStatus] = useState<AssetsStatus>(DEFAULT_ASSETS_STATUS);
@@ -328,6 +333,18 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
       }
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // ── Delete (DELETE — confirmação via modal) ─────────────────────────────
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(item.Id);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
     }
   };
 
@@ -428,18 +445,31 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
               {isSaving ? t('common.saving') : (t('client_item_editor.create_btn' as any) || 'Criar no ItemInfo.lua')}
             </button>
           ) : (
-            <button
-              onClick={handleSave}
-              disabled={!isModified || isSaving || isFetching}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-lg ${
-                isModified && !isFetching
-                  ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-900/40 cursor-pointer'
-                  : 'bg-[#1a1a28] text-gray-600 border border-white/5 cursor-not-allowed'
-              }`}
-            >
-              <Save size={15} />
-              {isSaving ? t('common.saving') : t('common.save')}
-            </button>
+            <>
+              {/* Botão Excluir — só aparece quando o item já existe no LUA e há handler */}
+              {onDelete && fields.exists_in_lua && (
+                <button
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 transition-all"
+                  title={t('client_item_delete.btn_label' as any) || 'Excluir do ItemInfo'}
+                >
+                  <Trash2 size={14} />
+                  {t('client_item_delete.btn_label' as any) || 'Excluir'}
+                </button>
+              )}
+              <button
+                onClick={handleSave}
+                disabled={!isModified || isSaving || isFetching}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-lg ${
+                  isModified && !isFetching
+                    ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-900/40 cursor-pointer'
+                    : 'bg-[#1a1a28] text-gray-600 border border-white/5 cursor-not-allowed'
+                }`}
+              >
+                <Save size={15} />
+                {isSaving ? t('common.saving') : t('common.save')}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -454,6 +484,15 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
           <span>{createMsg.text}</span>
         </div>
       )}
+
+      {/* ── Delete Confirm Modal ───────────────────────────────────────────── */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        entityLabel={`Item #${item.Id} — ${fields.identifiedDisplayName || item.Name || String(item.Id)}`}
+        isDeleting={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
 
       {/* ── Content Grid ─────────────────────────────────────────────────── */}
       <div className="p-6 grid grid-cols-1 xl:grid-cols-2 gap-5">

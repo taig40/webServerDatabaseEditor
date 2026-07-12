@@ -83,3 +83,61 @@ def append_spawn(snippet: str) -> dict:
         "file_path": path,
         "injected": block,
     }
+
+
+def delete_spawn(line_index: int) -> dict:
+    """
+    Remove a linha (ou bloco de comentário + spawn) pelo índice de linha real no arquivo.
+
+    Estratégia:
+    - Lê todas as linhas do arquivo.
+    - Identifica a linha de spawn no índice fornecido (0-based sobre a lista retornada
+      por read_spawns(), que já remove os '\\n' finais).
+    - Se a linha imediatamente anterior for um comentário de injeção ("// ---"), remove-a também
+      para não deixar cabeçalhos de bloco órfãos.
+    - Reescreve o arquivo atomicamente via arquivo temporário.
+
+    Args:
+        line_index: Índice base-0 da linha de spawn na lista retornada por read_spawns().
+
+    Returns:
+        dict com { success, file_path, deleted_line }.
+
+    Raises:
+        IndexError: se line_index estiver fora dos limites.
+        RuntimeError: se o arquivo não existir.
+    """
+    path = ensure_spawn_file()
+
+    with open(path, "r", encoding="utf-8") as f:
+        raw_lines = f.readlines()   # preserva os '\n' originais para reescrita fiel
+
+    # Monta uma lista paralela sem o '\n' final para expor ao chamador (igual a read_spawns)
+    stripped = [l.rstrip("\n") for l in raw_lines]
+
+    if line_index < 0 or line_index >= len(stripped):
+        raise IndexError(f"Índice {line_index} fora dos limites (arquivo tem {len(stripped)} linhas).")
+
+    deleted_line = stripped[line_index]
+
+    # Conjunto de índices a remover (começamos com o spawn em si)
+    indices_to_remove: set[int] = {line_index}
+
+    # Se a linha anterior for um cabeçalho de bloco gerado pela engine, remove junto
+    if line_index > 0 and stripped[line_index - 1].startswith("// --- Map Engine Inject"):
+        indices_to_remove.add(line_index - 1)
+
+    # Filtra as linhas removendo os índices marcados
+    new_raw_lines = [l for i, l in enumerate(raw_lines) if i not in indices_to_remove]
+
+    # Reescreve atomicamente
+    tmp_path = path + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8", newline="\n") as f:
+        f.writelines(new_raw_lines)
+    os.replace(tmp_path, path)
+
+    return {
+        "success": True,
+        "file_path": path,
+        "deleted_line": deleted_line,
+    }

@@ -1255,6 +1255,34 @@
     "remove": "Remove",
     "inject_button": "Inject to Custom Script",
     "inject_success": "Spawn injected into ui_spawns.txt successfully!",
-    "inject_error": "Error injecting spawn."
+    "inject_error": "Error injecting spawn.",
+    "delete_spawn_confirm": "Delete this spawn from ui_spawns.txt?",
+    "delete_spawn_success": "Spawn removed successfully!",
+    "delete_spawn_error": "Error removing spawn."
+  },
+  "delete_modal": {
+    "title": "Confirm Deletion",
+    "irreversible_warning": "This action cannot be undone.",
+    "confirm_message": "Are you sure you want to delete",
+    "file_warning": "The file will be permanently modified on disk. Backups are not created automatically.",
+    "confirm_btn": "Yes, Delete",
+    "deleting": "Deleting…"
+  },
+  "item_editor_delete": {
+    "btn_label": "Delete Item",
+    "success": "Item #{id} deleted successfully!",
+    "error_403": "Cannot delete items from the official rAthena database.",
+    "error_generic": "Error deleting item."
+  },
+  "mob_editor_delete": {
+    "btn_label": "Delete Monster",
+    "success": "Monster #{id} deleted successfully!",
+    "error_403": "Cannot delete monsters from the official rAthena database.",
+    "error_generic": "Error deleting monster."
+  },
+  "client_item_delete": {
+    "btn_label": "Remove from ItemInfo",
+    "success": "Item #{id} removed from iteminfo.lua successfully!",
+    "error_generic": "Error removing item from iteminfo.lua."
   }
 }

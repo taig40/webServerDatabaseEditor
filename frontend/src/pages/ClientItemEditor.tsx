@@ -126,6 +126,27 @@ const ClientItemEditor: React.FC = () => {
     }
   }, [t]);
 
+  // ── Delete handler (DELETE) ────────────────────────────────────────────────
+  const handleDelete = useCallback(async (itemId: number) => {
+    try {
+      await axios.delete(`${API_URL}/api/client_items/${itemId}`);
+      // Remove do array local — item some da sidebar sem recarregar a página
+      setItems(prev => prev.filter(item => item.Id !== itemId));
+      setSelectedItemId(null);
+      return true;
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 404) {
+        // Item não existia no LUA — remove da lista local mesmo assim
+        setItems(prev => prev.filter(item => item.Id !== itemId));
+        setSelectedItemId(null);
+        return true;
+      }
+      alert(t('client_item_delete.error_generic'));
+      return false;
+    }
+  }, [t]);
+
   return (
     <div className="flex flex-col h-full w-full bg-[#0f0f14] overflow-hidden font-sans">
       
@@ -258,6 +279,7 @@ const ClientItemEditor: React.FC = () => {
                   onSave={handleSave} 
                   onLocalItemUpdate={handleLocalItemUpdate}
                   mode="edit"
+                  onDelete={handleDelete}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-gray-600">
