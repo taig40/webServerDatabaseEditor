@@ -1230,6 +1230,9 @@
     "spawn_live_preview_desc": "Esta linha separada por TABs será adicionada ao arquivo npc/custom/ui_spawns.txt.",
     "spawn_location_section": "1. Localização",
     "spawn_entity_section": "2. Entidade & Regras",
-    "remove": "Remover"
+    "remove": "Remover",
+    "inject_button": "Injetar no Script Customizado",
+    "inject_success": "Spawn injetado em ui_spawns.txt com sucesso!",
+    "inject_error": "Erro ao injetar spawn."
   }
 }
