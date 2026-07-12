@@ -35,7 +35,7 @@ const ClientItemEditor: React.FC = () => {
           clearInterval(intervalId);
           setLoadingStatus(t('loading.loadingItems'));
           try {
-            const res = await axios.get(`${API_URL}/api/items/?skip=0&limit=150000`);
+            const res = await axios.get(`${API_URL}/api/client_items/`);
             setItems(res.data.items);
             setIsLoading(false);
           } catch {

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File
+from app.services.yaml_parser import yaml_db
 from app.services.iteminfo_parser import iteminfo_db
 from app.services.grf_reader import grf_reader, _KOREAN_UI_FOLDER, _KOREAN_ITEM_FOLDER
 from app.api.images import get_cached_item_icon
@@ -22,6 +23,49 @@ def _require_loaded():
             status_code=503,
             detail="ItemInfo.lua ainda não foi carregado. Aguarde e tente novamente.",
         )
+
+
+# ─── GET /api/client_items/ ──────────────────────────────────────────────────
+
+@router.get("/")
+async def get_client_items_list():
+    """
+    Retorna uma lista resumida (Id, AegisName, Name, identifiedDisplayName)
+    sem limite de paginação, para a barra lateral do Client Item Editor.
+    """
+    _require_loaded()
+    
+    result = []
+    processed_ids = set()
+
+    # 1. Pegar todos os itens do YAML (Server-side items)
+    if not yaml_db.is_loading:
+        for item in yaml_db.get_items():
+            item_id = item.get("Id")
+            if not item_id: continue
+            
+            processed_ids.add(item_id)
+            lua_entry = iteminfo_db.item_map.get(item_id)
+            lua_name = lua_entry.get("identifiedDisplayName", "") if lua_entry else ""
+            
+            result.append({
+                "Id": item_id,
+                "AegisName": item.get("AegisName", ""),
+                "Name": item.get("Name", ""),
+                "identifiedDisplayName": lua_name
+            })
+            
+    # 2. Pegar os itens custom que só existem no LUA
+    for item_id, lua_entry in iteminfo_db.item_map.items():
+        if item_id not in processed_ids:
+            result.append({
+                "Id": item_id,
+                "AegisName": f"UNKNOWN_{item_id}",
+                "Name": "",
+                "identifiedDisplayName": lua_entry.get("identifiedDisplayName", "")
+            })
+
+    return {"items": result}
 
 
 # ─── GET /api/client_items/audit-assets ───────────────────────────────────────
