@@ -3,6 +3,8 @@ from app.services.yaml_parser import yaml_db
 from app.services.iteminfo_parser import iteminfo_db
 from app.services.grf_reader import grf_reader, _KOREAN_UI_FOLDER, _KOREAN_ITEM_FOLDER
 from app.api.images import get_cached_item_icon
+from app.services.visuals_parser import visuals_db
+from app.models.visual import VisualEquipmentModelUpdate
 
 router = APIRouter()
 
@@ -384,5 +386,38 @@ async def upload_item_drop_act(item_id: int, file: UploadFile = File(...)):
         "resource_name": resource_name,
         "saved_path": saved_path,
     }
+
+
+# ─── GET /api/client_items/visuals/{view_id} ─────────────────────────────────
+
+@router.get("/visuals/{view_id}")
+async def get_visual_equipment(view_id: int):
+    """
+    Retorna a configuração visual (identity e nome do sprite) para uma View ID.
+    """
+    try:
+        data = visuals_db.get_visual(view_id)
+        if not data:
+            return {"view_id": view_id, "identity": "", "name": ""}
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ─── PUT /api/client_items/visuals/{view_id} ─────────────────────────────────
+
+@router.put("/visuals/{view_id}")
+async def update_visual_equipment(view_id: int, payload: VisualEquipmentModelUpdate):
+    """
+    Atualiza (ou insere) a configuração visual de uma View ID.
+    Preserva o encoding CP949 nativo nos arquivos .lua.
+    """
+    if not payload.identity or not payload.name:
+        raise HTTPException(status_code=400, detail="Identity and Name are required")
+        
+    try:
+        data = visuals_db.upsert_visual(view_id, payload.identity, payload.name)
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 

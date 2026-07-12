@@ -440,7 +440,18 @@
     "no_selection": {
       "title": "Nenhum Item Selecionado",
       "subtitle": "Selecione um item da lista ao lado para editar suas informações de client."
+    },
+    "tabs": {
+      "basic": "Informações Básicas",
+      "visual": "Configuração Visual"
     }
+  },
+  "visual_equipment": {
+    "title": "Configuração Visual de Equipamento",
+    "invalid_view_id": "View ID inválido.",
+    "missing_fields": "Campos Identity e Sprite Name são obrigatórios.",
+    "save_success": "Configuração visual salva com sucesso!",
+    "save_error": "Falha ao salvar a configuração visual."
   },
   "client_item_detail": {
     "description_placeholder": "Uma linha por entrada da descrição.\nUse \\n para quebra de linha no jogo.",
