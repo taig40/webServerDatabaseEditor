@@ -480,6 +480,49 @@ class YamlDatabase:
         self.rebuild_cache()
         return result
 
+    def delete_item(self, item_id: int) -> bool:
+        """
+        Remove permanentemente um item do arquivo YAML em que reside.
+
+        Guard de Segurança (SRP):
+        - Apenas itens que vivem em db/import/ podem ser excluídos.
+        - Itens do banco oficial do rAthena (db/re/ ou db/pre-re/) lançam
+          PermissionError que a rota da API converte em HTTP 403.
+
+        Retorna True em caso de sucesso, False se o item não foi encontrado.
+        """
+        if item_id not in self.item_index:
+            return False
+
+        filepath = self.item_index[item_id]
+        norm_path = filepath.replace('\\', '/')
+
+        if '/db/import/' not in norm_path:
+            raise PermissionError(
+                f"O item {item_id} reside em '{norm_path}' que faz parte do banco "
+                "oficial do rAthena. Somente itens em db/import/ podem ser excluídos."
+            )
+
+        data = self.db_cache.get(filepath)
+        if not data:
+            return False
+
+        body = data.get('Body', [])
+        original_len = len(body)
+
+        # Remove o nó cujo Id corresponde — ruamel.yaml preserva objetos de comentários nos demais
+        data['Body'] = [item for item in body if item.get('Id') != item_id]
+
+        if len(data['Body']) == original_len:
+            # ID estava no índice mas não no Body — estado inconsistente, corrige silenciosamente
+            del self.item_index[item_id]
+            return False
+
+        self.save_file(filepath)
+        del self.item_index[item_id]
+        self.cached_items_list = None   # Invalida o cache para a listagem refletir a remoção
+        return True
+
 
 # Singleton global
 yaml_db = YamlDatabase()

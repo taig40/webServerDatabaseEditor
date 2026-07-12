@@ -331,4 +331,46 @@ class MobDatabase:
         self.rebuild_cache()
         return mob_data
 
+    def delete_mob(self, mob_id: int) -> bool:
+        """
+        Remove permanentemente um monstro do arquivo YAML em que reside.
+
+        Guard de Segurança (SRP):
+        - Apenas monstros que vivem em db/import/ podem ser excluídos.
+        - Monstros do banco oficial do rAthena (db/re/ ou db/pre-re/) lançam
+          PermissionError que a rota da API converte em HTTP 403.
+
+        Retorna True em caso de sucesso, False se o monstro não foi encontrado.
+        """
+        if mob_id not in self.mob_index:
+            return False
+
+        filepath = self.mob_index[mob_id]
+        norm_path = filepath.replace('\\', '/')
+
+        if '/db/import/' not in norm_path:
+            raise PermissionError(
+                f"O monstro {mob_id} reside em '{norm_path}' que faz parte do banco "
+                "oficial do rAthena. Somente monstros em db/import/ podem ser excluídos."
+            )
+
+        data = self.db_cache.get(filepath)
+        if not data:
+            return False
+
+        body = data.get('Body', [])
+        original_len = len(body)
+
+        data['Body'] = [mob for mob in body if mob.get('Id') != mob_id]
+
+        if len(data['Body']) == original_len:
+            del self.mob_index[mob_id]
+            return False
+
+        self.save_file(filepath)
+        del self.mob_index[mob_id]
+        self.cached_mobs_list = None   # Invalida o cache para a listagem refletir a remoção
+        return True
+
+
 mob_db = MobDatabase()

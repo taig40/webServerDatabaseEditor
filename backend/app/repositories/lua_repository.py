@@ -161,3 +161,50 @@ def write_block(filepath: str, item_id: int, fields: dict) -> None:
     with open(tmp_path, "w", encoding="latin-1") as f:
         f.write(new_content)
     os.replace(tmp_path, filepath)
+
+
+def delete_block(filepath: str, item_id: int) -> bool:
+    """
+    Localiza e remove o bloco [item_id] = { … } do arquivo Lua.
+
+    Reutiliza find_lua_block_bounds() para localizar o bloco com precisão,
+    respeitando chaves aninhadas e strings escapadas.
+
+    Após a remoção, colapsa múltiplas linhas em branco consecutivas para
+    manter a legibilidade humana do arquivo.
+
+    Encoding: sempre latin-1 (byte-transparent) para preservar bytes EUC-KR.
+
+    Retorna:
+        True  — bloco encontrado e removido com sucesso.
+        False — bloco não encontrado (item_id inexistente no arquivo).
+
+    Raises:
+        RuntimeError: se o filepath não estiver configurado ou não existir.
+        IOError: em caso de falha de escrita.
+    """
+    if not filepath or not os.path.exists(filepath):
+        raise RuntimeError(f"Arquivo Lua não encontrado ou não configurado: {filepath!r}")
+
+    with open(filepath, "r", encoding="latin-1") as f:
+        content = f.read()
+
+    bounds = find_lua_block_bounds(content, item_id)
+    if not bounds:
+        return False
+
+    start_idx, end_idx = bounds
+
+    # Excisa o bloco inteiro (incluindo o newline terminal já consumido por find_lua_block_bounds)
+    new_content = content[:start_idx] + content[end_idx:]
+
+    # Colapsa linhas em branco triplas ou mais em duplas para manter legibilidade
+    new_content = re.sub(r'\n{3,}', '\n\n', new_content)
+
+    # Escrita atômica: temp → rename
+    tmp_path = filepath + ".tmp"
+    with open(tmp_path, "w", encoding="latin-1") as f:
+        f.write(new_content)
+    os.replace(tmp_path, filepath)
+
+    return True

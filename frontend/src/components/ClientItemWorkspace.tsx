@@ -10,9 +10,10 @@ interface ClientItemWorkspaceProps {
   onLocalItemUpdate: (itemId: number, newClassNum: number) => void;
   mode?: 'edit' | 'create';
   onCreate?: (itemId: number, fields: Record<string, any>) => Promise<boolean>;
+  onDelete?: (itemId: number) => Promise<boolean>;
 }
 
-export const ClientItemWorkspace: React.FC<ClientItemWorkspaceProps> = ({ item, onSave, onLocalItemUpdate, mode = 'edit', onCreate }) => {
+export const ClientItemWorkspace: React.FC<ClientItemWorkspaceProps> = ({ item, onSave, onLocalItemUpdate, mode = 'edit', onCreate, onDelete }) => {
   const t = useLanguageStore((state) => state.t);
   const [activeTab, setActiveTab] = useState<'basic' | 'visual'>('basic');
   const [toast, setToast] = useState<string | null>(null);
@@ -78,7 +79,7 @@ export const ClientItemWorkspace: React.FC<ClientItemWorkspaceProps> = ({ item, 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden relative">
         <div className={`absolute inset-0 transition-opacity duration-200 ${activeTab === 'basic' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none z-0'}`}>
-          <ClientItemDetail item={item} onSave={onSave} isNew={mode === 'create'} onCreate={onCreate} />
+          <ClientItemDetail item={item} onSave={onSave} isNew={mode === 'create'} onCreate={onCreate} onDelete={onDelete} />
         </div>
         <div className={`absolute inset-0 transition-opacity duration-200 ${activeTab === 'visual' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none z-0'}`}>
           {mode === 'create' ? (

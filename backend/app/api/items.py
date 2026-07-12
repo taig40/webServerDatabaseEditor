@@ -226,3 +226,28 @@ async def create_item(item_data: ItemDBModel):
         return new_item
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── DELETE /api/items/{item_id} ──────────────────────────────────────────────
+
+@router.delete("/{item_id}", status_code=200)
+async def delete_item(item_id: int):
+    """
+    Remove permanentemente um item de db/import/item_db.yml.
+
+    Retorna 403 se o item pertencer ao banco oficial do rAthena (db/re/ ou db/pre-re/).
+    Retorna 404 se o item não existir no índice.
+    Retorna 200 { deleted: true, item_id } em caso de sucesso.
+    """
+    if yaml_db.is_loading:
+        raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando.")
+
+    try:
+        deleted = yaml_db.delete_item(item_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Item {item_id} não encontrado.")
+
+    return {"deleted": True, "item_id": item_id}

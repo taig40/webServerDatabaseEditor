@@ -1255,6 +1255,34 @@
     "remove": "Remover",
     "inject_button": "Injetar no Script Customizado",
     "inject_success": "Spawn injetado em ui_spawns.txt com sucesso!",
-    "inject_error": "Erro ao injetar spawn."
+    "inject_error": "Erro ao injetar spawn.",
+    "delete_spawn_confirm": "Excluir este spawn do ui_spawns.txt?",
+    "delete_spawn_success": "Spawn removido com sucesso!",
+    "delete_spawn_error": "Erro ao remover o spawn."
+  },
+  "delete_modal": {
+    "title": "Confirmar Exclusão",
+    "irreversible_warning": "Esta ação não pode ser desfeita.",
+    "confirm_message": "Tem certeza que deseja excluir",
+    "file_warning": "O arquivo será modificado permanentemente no disco. Backups não são criados automaticamente.",
+    "confirm_btn": "Sim, Excluir",
+    "deleting": "Excluindo…"
+  },
+  "item_editor_delete": {
+    "btn_label": "Excluir Item",
+    "success": "Item #{id} excluído com sucesso!",
+    "error_403": "Não é possível excluir itens do banco oficial do rAthena.",
+    "error_generic": "Erro ao excluir o item."
+  },
+  "mob_editor_delete": {
+    "btn_label": "Excluir Monstro",
+    "success": "Monstro #{id} excluído com sucesso!",
+    "error_403": "Não é possível excluir monstros do banco oficial do rAthena.",
+    "error_generic": "Erro ao excluir o monstro."
+  },
+  "client_item_delete": {
+    "btn_label": "Excluir do ItemInfo",
+    "success": "Item #{id} removido do iteminfo.lua com sucesso!",
+    "error_generic": "Erro ao remover o item do iteminfo.lua."
   }
 }
