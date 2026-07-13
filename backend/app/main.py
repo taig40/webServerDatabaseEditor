@@ -4,18 +4,25 @@ import sys
 from dotenv import load_dotenv
 
 # ─── Load Environment Variables First (Highest Priority) ─────────────────────
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-env_template_path = os.path.join(base_dir, ".env-template")
-env_path = os.path.join(base_dir, ".env")
+if getattr(sys, 'frozen', False):
+    exe_dir = os.path.dirname(sys.executable)
+    bundle_dir = getattr(sys, '_MEIPASS', exe_dir)
+    env_path = os.path.join(exe_dir, ".env")
+    env_template_path = os.path.join(bundle_dir, ".env-template")
+else:
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env_template_path = os.path.join(base_dir, ".env-template")
+    env_path = os.path.join(base_dir, ".env")
 
-# 1. Se é a primeira vez rodando (não existe .env), transforma o .env-template em .env
+# 1. Se é a primeira vez rodando (não existe .env), transforma o .env-template em .env (ou cria vazio em Safe Mode)
 if not os.path.exists(env_path):
     if os.path.exists(env_template_path):
         shutil.copyfile(env_template_path, env_path)
         print(f"[*] Arquivo .env criado a partir de .env-template em {env_path}")
     else:
-        print(f"[Erro] Arquivo .env-template não encontrado em {env_template_path}")
-        sys.exit(1)
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write("# rAthena Web Editor - Gerado automaticamente em Safe Mode\nSERVER_DB_BASE_PATH=\n")
+        print(f"[*] Arquivo .env vazio gerado para modo First-Time Setup em {env_path}")
 
 # 2. Carrega as variáveis (com override=True para garantir precedência do arquivo .env)
 load_dotenv(dotenv_path=env_path, override=True)

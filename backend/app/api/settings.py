@@ -22,7 +22,11 @@ MAX_GRF_SLOTS = 10
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _get_env_path() -> str:
-    base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import sys
+    if getattr(sys, 'frozen', False):
+        base = os.path.dirname(sys.executable)
+    else:
+        base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     return os.path.join(base, ".env")
 
 
