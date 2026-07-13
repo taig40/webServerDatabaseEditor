@@ -218,7 +218,7 @@ def get_system_status():
     }
 
 @app.post("/api/setup")
-def post_system_setup(payload: SetupPayload):
+async def post_system_setup(payload: SetupPayload):
     from fastapi import HTTPException
     from app.api.settings import _read_env, _write_env, reload_settings
     db_base = payload.SERVER_DB_BASE_PATH.strip().replace("\\", "/")
@@ -251,10 +251,10 @@ def post_system_setup(payload: SetupPayload):
         os.environ[env_key] = full_p
         
     _write_env(env)
+    
+    await reload_settings()
     APP_STATE["setup_required"] = False
     APP_STATE["missing_keys"] = []
-    
-    reload_settings()
     return {"status": "ok", "message": "Setup concluído com sucesso."}
 
 @app.get("/")
