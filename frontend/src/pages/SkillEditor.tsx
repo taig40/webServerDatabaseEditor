@@ -10,6 +10,7 @@ import { useLanguageStore } from '../store/useLanguageStore';
 import { localizeLoadingStatus } from '../utils/i18nHelpers';
 import { DivinePrideImporterPanel } from '../components/DivinePrideImporterPanel';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
+import CreateSkillModal from '../components/CreateSkillModal';
 
 type SourceTab = 'rathena' | 'custom';
 
@@ -26,6 +27,7 @@ export const SkillEditor: React.FC = () => {
   const [isNew, setIsNew] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showDPPanel, setShowDPPanel] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [pickerConfig, setPickerConfig] = useState<{ open: boolean; type: 'item' | 'mob' | 'skill'; targetKey?: string }>({ open: false, type: 'item' });
@@ -165,22 +167,7 @@ export const SkillEditor: React.FC = () => {
   };
 
   const handleCreateNewSkill = () => {
-    const maxId = skills.reduce((max, s) => Math.max(max, Number(s.Id) || 0), 10000);
-    const newId = maxId + 1;
-    const draftSkill = {
-      Id: newId,
-      Name: 'NV_SKILL',
-      Description: 'Nova Habilidade Customizada',
-      MaxLevel: 10,
-      Type: 'Weapon',
-      TargetType: 'Single',
-      _source: 'custom',
-      _isDraft: true
-    };
-    setSkills(prev => [draftSkill, ...prev]);
-    setSelectedSkillId(newId);
-    setSourceTab('custom');
-    setIsNew(true);
+    setIsCreateModalOpen(true);
   };
 
   const handleDeleteSkill = async () => {
@@ -398,6 +385,16 @@ export const SkillEditor: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {activeTab === 'geral' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-400">ID (Chave Primária / Imutável)</label>
+                    <input
+                      type="number"
+                      value={selectedSkill.Id || ''}
+                      disabled
+                      readOnly
+                      className="bg-dark-950 border border-dark-700 rounded px-3 py-2 text-sm font-mono text-amber-400/80 cursor-not-allowed opacity-75"
+                    />
+                  </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.aegis_name')}</label>
                     <input
@@ -950,6 +947,19 @@ export const SkillEditor: React.FC = () => {
         resourceType="skill"
         onImportSuccess={handleDPImportSuccess}
       />
+
+      {isCreateModalOpen && (
+        <CreateSkillModal
+          onClose={() => setIsCreateModalOpen(false)}
+          onSkillCreated={(newSkill) => {
+            setSkills(prev => [newSkill, ...prev]);
+            setSelectedSkillId(newSkill.Id);
+            setIsCreateModalOpen(false);
+            setSourceTab('custom');
+            showToast(t('skill_editor.create_success' as any) || t('skill_editor.save_success'), 'success');
+          }}
+        />
+      )}
 
       {/* Floating Toast Notification */}
       {toastMessage && (

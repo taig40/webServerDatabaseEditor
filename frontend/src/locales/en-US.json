@@ -951,6 +951,27 @@
         "create_btn": "Create Item",
         "creating": "Creating..."
       },
+      "new_skill": {
+        "title": "Create Custom Skill",
+        "error_id": "ID must be greater than 0.",
+        "error_required": "Skill Name (Code/AegisName) is required.",
+        "error_create": "Error creating skill.",
+        "fields": {
+          "id": "Skill ID",
+          "id_tip": "Recommended to use free or custom rAthena IDs.",
+          "name": "AegisName / Code",
+          "name_tip": "Internal rAthena name (e.g. NV_BASIC, MG_FIREBOLT).",
+          "description": "Display Name",
+          "description_tip": "Name displayed in UI (e.g. Basic Skill).",
+          "max_level": "Max Level",
+          "type": "Skill Type",
+          "target_type": "Target Type"
+        },
+        "dp_fill_btn": "Fetch from Divine Pride",
+        "dp_fill_success": "Data imported from Divine Pride!",
+        "create_btn": "Create Skill",
+        "creating": "Creating..."
+      },
       "npc_shop": {
         "title": "Shop NPC",
         "copy_success": "Copied!",

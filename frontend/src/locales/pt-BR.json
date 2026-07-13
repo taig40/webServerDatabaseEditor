@@ -951,6 +951,27 @@
         "create_btn": "Criar Item",
         "creating": "Criando..."
       },
+      "new_skill": {
+        "title": "Criar Habilidade Customizada",
+        "error_id": "ID deve ser maior que 0.",
+        "error_required": "Nome da Habilidade (Código/AegisName) é obrigatório.",
+        "error_create": "Erro ao criar habilidade.",
+        "fields": {
+          "id": "ID da Habilidade",
+          "id_tip": "Recomendado usar IDs livres ou customizados do rAthena.",
+          "name": "AegisName / Código",
+          "name_tip": "Nome interno no rAthena (ex: NV_BASIC, MG_FIREBOLT).",
+          "description": "Nome de Exibição",
+          "description_tip": "Nome exibido na interface (ex: Habilidade Básica).",
+          "max_level": "Nível Máximo",
+          "type": "Tipo da Habilidade",
+          "target_type": "Tipo de Alvo"
+        },
+        "dp_fill_btn": "Buscar no Divine Pride",
+        "dp_fill_success": "Dados importados do Divine Pride!",
+        "create_btn": "Criar Habilidade",
+        "creating": "Criando..."
+      },
       "npc_shop": {
         "title": "NPC de Loja",
         "copy_success": "Copiado!",
