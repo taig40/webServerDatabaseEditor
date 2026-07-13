@@ -43,17 +43,8 @@ function App() {
   const [statusMessage, setStatusMessage] = useState('');
   const [connectionError, setConnectionError] = useState(false);
 
-  useEffect(() => {
-    // Check First-Time Setup status before initializing cache
-    axios.get(`${API_URL}/api/status`).then((res) => {
-      if (res.data && res.data.status === 'setup_required') {
-        setSetupRequired(true);
-        setIsCacheReady(true);
-      }
-    }).catch(() => {
-      // If error or unconfigured, allow SSE to continue or handle retry
-    });
-
+  const startCacheInitialization = () => {
+    setStatusMessage(t('global_loading.readingFiles'));
     const es = new EventSource(getSSEUrl('/api/system/initialize-cache'));
 
     es.onopen = () => {
@@ -89,8 +80,35 @@ function App() {
       es.close();
     };
 
+    return es;
+  };
+
+  useEffect(() => {
+    let esInstance: EventSource | null = null;
+    let cancelled = false;
+
+    setStatusMessage(t('global_loading.connecting'));
+
+    axios.get(`${API_URL}/api/status`)
+      .then((res) => {
+        if (cancelled) return;
+        if (res.data && res.data.status === 'setup_required') {
+          setSetupRequired(true);
+          setIsCacheReady(true);
+        } else {
+          esInstance = startCacheInitialization();
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('[App] Falha de conexão ao verificar status do servidor:', err);
+        setConnectionError(true);
+        setStatusMessage(t('global_loading.connectionFailedPort'));
+      });
+
     return () => {
-      es.close();
+      cancelled = true;
+      if (esInstance) esInstance.close();
     };
   }, [t]);
 
@@ -146,6 +164,8 @@ function App() {
         onSetupComplete={() => {
           setSetupRequired(false);
           setIsCacheReady(false);
+          setConnectionError(false);
+          startCacheInitialization();
         }}
       />
     );

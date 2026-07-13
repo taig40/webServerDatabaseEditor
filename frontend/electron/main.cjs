@@ -1,6 +1,6 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
-const { spawn, exec } = require('child_process');
+const { spawn, exec, execSync } = require('child_process');
 const http = require('http');
 
 let mainWindow = null;
@@ -20,16 +20,31 @@ function getBackendBinaryPath() {
 }
 
 function killBackendProcess() {
-  if (!backendProcess) return;
-  console.log('[*] Encerrando processo do Backend (PID:', backendProcess.pid, ')...');
+  console.log('[*] Encerrando processos do Backend...');
 
-  if (process.platform === 'win32') {
-    exec(`taskkill /F /T /PID ${backendProcess.pid}`, (err) => {
-      if (err) console.error('[!] Erro ao executar taskkill:', err.message);
-    });
-  } else {
-    backendProcess.kill('SIGTERM');
+  if (backendProcess && backendProcess.pid) {
+    try {
+      if (process.platform === 'win32') {
+        execSync(`taskkill /F /T /PID ${backendProcess.pid}`, { stdio: 'ignore' });
+      } else {
+        backendProcess.kill('SIGKILL');
+      }
+    } catch (err) {
+      // Processo já encerrado
+    }
   }
+
+  // Fallback para evitar processos zumbis na porta 8000 (Errno 10048)
+  try {
+    if (process.platform === 'win32') {
+      execSync('taskkill /F /IM "rathena-sde-backend.exe"', { stdio: 'ignore' });
+    } else {
+      execSync('pkill -f rathena-sde-backend', { stdio: 'ignore' });
+    }
+  } catch (err) {
+    // Nenhum processo remanescente encontrado
+  }
+
   backendProcess = null;
 }
 
@@ -64,6 +79,9 @@ function waitForBackendReady(maxRetries = 50, intervalMs = 300) {
 }
 
 function startBackendServer() {
+  // Limpa processos zumbis anteriores antes de iniciar novo servidor na porta 8000
+  killBackendProcess();
+
   const binaryPath = getBackendBinaryPath();
   const fs = require('fs');
 
@@ -137,6 +155,10 @@ app.whenReady().then(async () => {
 });
 
 app.on('before-quit', () => {
+  killBackendProcess();
+});
+
+app.on('will-quit', () => {
   killBackendProcess();
 });
 

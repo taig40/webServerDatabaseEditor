@@ -1164,7 +1164,8 @@
     "completed": "Carregamento concluído com sucesso!",
     "connecting": "Conectando ao servidor...",
     "readingFiles": "Lendo arquivos...",
-    "connectionFailed": "Falha na conexão! Verifique se o servidor Backend está em execução."
+    "connectionFailed": "Falha na conexão! Verifique se o servidor Backend está em execução.",
+    "connectionFailedPort": "Falha de conexão com o servidor local. Verifique se a porta 8000 está livre."
   },
   "pagination": {
     "loading_more": "Carregando mais itens...",

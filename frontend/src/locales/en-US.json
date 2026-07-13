@@ -1164,7 +1164,8 @@
     "completed": "Loading completed successfully!",
     "connecting": "Connecting to server...",
     "readingFiles": "Reading files...",
-    "connectionFailed": "Connection failed! Please verify if the Backend server is running."
+    "connectionFailed": "Connection failed! Please verify if the Backend server is running.",
+    "connectionFailedPort": "Failed to connect to local server. Please verify if port 8000 is available."
   },
   "pagination": {
     "loading_more": "Loading more items...",
