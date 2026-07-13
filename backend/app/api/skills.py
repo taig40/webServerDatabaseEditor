@@ -14,6 +14,11 @@ class SkillUpdate(BaseModel):
     data: SkillModel
 
 
+class SkillCreate(BaseModel):
+    data: SkillModel
+
+
+
 @router.get("/status")
 async def get_skill_status():
     return {
@@ -78,3 +83,43 @@ async def update_skill(skill_id: int, body: SkillUpdate):
     if result is None:
         raise HTTPException(status_code=404, detail="ERROR_SKILL_NOT_FOUND")
     return result
+
+
+@router.post("/", status_code=201)
+async def create_skill(body: SkillCreate):
+    if skill_db.is_loading:
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
+
+    validated_data = body.data.model_dump(exclude_none=True)
+    if "Id" not in validated_data or not validated_data["Id"]:
+        raise HTTPException(status_code=422, detail="O campo 'Id' é obrigatório para criação de uma habilidade.")
+
+    if skill_db.get_skill(validated_data["Id"]) is not None:
+        raise HTTPException(status_code=409, detail=f"A habilidade com Id {validated_data['Id']} já existe.")
+
+    created = skill_db.create_skill(validated_data)
+    return created
+
+
+@router.delete("/{skill_id}", status_code=200)
+async def delete_skill(skill_id: int):
+    """
+    Remove permanentemente uma habilidade de db/import/skill_db.yml.
+
+    Retorna 403 se a habilidade pertencer ao banco oficial do rAthena (db/re/ ou db/pre-re/).
+    Retorna 404 se a habilidade não existir no índice.
+    Retorna 200 { deleted: true, skill_id } em caso de sucesso.
+    """
+    if skill_db.is_loading:
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
+
+    try:
+        deleted = skill_db.delete_skill(skill_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail="ERROR_SKILL_NOT_FOUND")
+
+    return {"deleted": True, "skill_id": skill_id}
+

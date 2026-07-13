@@ -518,8 +518,14 @@
     },
     "save_success": "Habilidade salva com sucesso em db/import/skill_db.yml!",
     "save_error": "Erro ao salvar habilidade.",
+    "create_success": "Habilidade criada com sucesso em db/import/skill_db.yml!",
+    "create_error": "Erro ao criar habilidade.",
+    "delete_success": "Habilidade excluída com sucesso!",
+    "delete_error": "Erro ao excluir habilidade.",
+    "delete_button": "Excluir",
     "sidebar": {
       "title": "Habilidades",
+      "new_skill": "Nova Habilidade",
       "search_placeholder": "Buscar por ID ou AegisName..."
     },
     "detail": {

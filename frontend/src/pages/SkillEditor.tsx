@@ -9,6 +9,7 @@ import { PercentBadge } from '../components/PercentBadge';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { localizeLoadingStatus } from '../utils/i18nHelpers';
 import { DivinePrideImportButton } from '../components/DivinePrideImportButton';
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 
 type SourceTab = 'rathena' | 'custom';
 
@@ -22,6 +23,9 @@ export const SkillEditor: React.FC = () => {
   const [selectedSkillId, setSelectedSkillId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'geral' | 'dano' | 'tempo' | 'requisitos' | 'unidade'>('geral');
   const [isSaving, setIsSaving] = useState(false);
+  const [isNew, setIsNew] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [pickerConfig, setPickerConfig] = useState<{ open: boolean; type: 'item' | 'mob' | 'skill'; targetKey?: string }>({ open: false, type: 'item' });
   const [itemsMap, setItemsMap] = useState<Record<string, any>>({});
 
@@ -124,18 +128,72 @@ export const SkillEditor: React.FC = () => {
     if (!selectedSkill) return;
     setIsSaving(true);
     try {
-      const res = await axios.put(`${API_URL}/api/skills/${selectedSkill.Id}`, {
-        data: selectedSkill
-      });
-      const saved = res.data;
-      setSkills(prev => prev.map(s => s.Id === saved.Id ? { ...saved, _source: 'custom' } : s));
-      setSourceTab('custom');
-      alert(t('skill_editor.save_success'));
-    } catch (err) {
+      if (isNew || selectedSkill._isDraft) {
+        const payload = { ...selectedSkill };
+        delete payload._isDraft;
+        const res = await axios.post(`${API_URL}/api/skills/`, {
+          data: payload
+        });
+        const created = res.data;
+        setSkills(prev => prev.map(s => s.Id === selectedSkill.Id ? { ...created, _source: 'custom' } : s));
+        setIsNew(false);
+        setSourceTab('custom');
+        alert(t('skill_editor.create_success' as any) || t('skill_editor.save_success'));
+      } else {
+        const res = await axios.put(`${API_URL}/api/skills/${selectedSkill.Id}`, {
+          data: selectedSkill
+        });
+        const saved = res.data;
+        setSkills(prev => prev.map(s => s.Id === saved.Id ? { ...saved, _source: 'custom' } : s));
+        setSourceTab('custom');
+        alert(t('skill_editor.save_success'));
+      }
+    } catch (err: any) {
       console.error("Erro ao salvar skill:", err);
-      alert(t('skill_editor.save_error'));
+      alert(err?.response?.data?.detail || t('skill_editor.save_error'));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleCreateNewSkill = () => {
+    const maxId = skills.reduce((max, s) => Math.max(max, Number(s.Id) || 0), 10000);
+    const newId = maxId + 1;
+    const draftSkill = {
+      Id: newId,
+      Name: 'NV_SKILL',
+      Description: 'Nova Habilidade Customizada',
+      MaxLevel: 10,
+      Type: 'Weapon',
+      TargetType: 'Single',
+      _source: 'custom',
+      _isDraft: true
+    };
+    setSkills(prev => [draftSkill, ...prev]);
+    setSelectedSkillId(newId);
+    setSourceTab('custom');
+    setIsNew(true);
+  };
+
+  const handleDeleteSkill = async () => {
+    if (!selectedSkill) return;
+    setIsDeleting(true);
+    try {
+      await axios.delete(`${API_URL}/api/skills/${selectedSkill.Id}`);
+      alert(t('skill_editor.delete_success' as any) || 'Habilidade excluída com sucesso!');
+      setSkills(prev => prev.filter(s => s.Id !== selectedSkill.Id));
+      setSelectedSkillId(null);
+      setIsNew(false);
+    } catch (err: any) {
+      console.error("Erro ao excluir skill:", err);
+      if (err?.response?.status === 403) {
+        alert(err.response.data.detail || t('skill_editor.delete_error' as any));
+      } else {
+        alert(t('skill_editor.delete_error' as any) || 'Erro ao excluir habilidade.');
+      }
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
     }
   };
 
@@ -148,6 +206,15 @@ export const SkillEditor: React.FC = () => {
             <h2 className="text-gray-200 font-semibold text-lg flex items-center gap-2">
               <Zap size={18} className="text-amber-500" /> {t('skill_editor.sidebar.title')}
             </h2>
+            <button
+              type="button"
+              onClick={handleCreateNewSkill}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all cursor-pointer"
+              title={t('skill_editor.sidebar.new_skill' as any) || 'Nova Skill'}
+            >
+              <Plus size={14} />
+              <span>{t('skill_editor.sidebar.new_skill' as any) || 'Nova Skill'}</span>
+            </button>
           </div>
 
           {/* Tabs */}
@@ -208,7 +275,10 @@ export const SkillEditor: React.FC = () => {
                 const isCustom = skill._source === 'custom';
                 return (
                   <div
-                    onClick={() => setSelectedSkillId(skill.Id)}
+                    onClick={() => {
+                      setSelectedSkillId(skill.Id);
+                      setIsNew(false);
+                    }}
                     className={`flex items-center justify-between p-3 cursor-pointer border-b border-white/5 transition-all duration-150 ${
                       isSelected
                         ? isCustom
@@ -261,15 +331,28 @@ export const SkillEditor: React.FC = () => {
                 </h1>
                 <span className="text-xs font-mono text-gray-400">{selectedSkill.Name}</span>
               </div>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-amber-900/30 transition-all disabled:opacity-50"
-              >
-                <Save size={16} />
-                <span>{isSaving ? t('common.saving') : t('skill_editor.detail.save_button')}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {!isNew && !selectedSkill._isDraft && selectedSkill._source === 'custom' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 transition-all cursor-pointer"
+                    title={t('skill_editor.delete_button' as any) || 'Excluir Habilidade'}
+                  >
+                    <Trash2 size={16} />
+                    <span>{t('skill_editor.delete_button' as any) || 'Excluir'}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-amber-900/30 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <Save size={16} />
+                  <span>{isSaving ? t('common.saving') : t('skill_editor.detail.save_button')}</span>
+                </button>
+              </div>
             </div>
 
             {/* Sub-tabs */}
@@ -839,6 +922,14 @@ export const SkillEditor: React.FC = () => {
           }
           setPickerConfig({ ...pickerConfig, open: false });
         }}
+      />
+
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        entityLabel={`Skill #${selectedSkill?.Id} — ${selectedSkill?.Description || selectedSkill?.Name || ''}`}
+        isDeleting={isDeleting}
+        onConfirm={handleDeleteSkill}
+        onCancel={() => setIsDeleteModalOpen(false)}
       />
     </div>
   );

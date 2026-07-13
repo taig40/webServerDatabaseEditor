@@ -518,8 +518,14 @@
     },
     "save_success": "Skill saved successfully to db/import/skill_db.yml!",
     "save_error": "Error saving skill.",
+    "create_success": "Skill created successfully in db/import/skill_db.yml!",
+    "create_error": "Error creating skill.",
+    "delete_success": "Skill deleted successfully!",
+    "delete_error": "Error deleting skill.",
+    "delete_button": "Delete",
     "sidebar": {
       "title": "Skills",
+      "new_skill": "New Skill",
       "search_placeholder": "Search by ID or AegisName..."
     },
     "detail": {
