@@ -5,6 +5,7 @@ build/
 # Node modules
 node_modules/
 .agents/
+.agents/rules/CONVENTIONS.md
 
 # Python virtual environment
 venv/
