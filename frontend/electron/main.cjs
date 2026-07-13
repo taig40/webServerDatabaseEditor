@@ -146,8 +146,10 @@ async function createWindow() {
     return result.filePaths[0];
   });
 
-  if (app.isPackaged) {
-    await mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  const fs = require('fs');
+  const distHtmlPath = path.join(__dirname, '..', 'dist', 'index.html');
+  if (app.isPackaged || (!process.env.VITE_DEV_SERVER_URL && fs.existsSync(distHtmlPath))) {
+    await mainWindow.loadFile(distHtmlPath);
   } else {
     const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
     await mainWindow.loadURL(devUrl);
