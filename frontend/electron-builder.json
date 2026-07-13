@@ -17,6 +17,7 @@
     }
   ],
   "win": {
+    "icon": "favicon.png",
     "target": [
       {
         "target": "nsis",
@@ -25,6 +26,7 @@
     ]
   },
   "linux": {
+    "icon": "favicon.png",
     "target": ["AppImage", "deb"],
     "category": "Development"
   },

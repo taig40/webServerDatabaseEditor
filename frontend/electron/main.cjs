@@ -100,6 +100,7 @@ async function createWindow() {
     minWidth: 1100,
     minHeight: 700,
     title: 'rAthena Web Editor — Desktop Edition',
+    icon: path.join(__dirname, '..', 'favicon.png'),
     backgroundColor: '#0a0a0f',
     webPreferences: {
       nodeIntegration: false,
