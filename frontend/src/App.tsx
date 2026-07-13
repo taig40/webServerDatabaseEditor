@@ -65,7 +65,11 @@ function App() {
       try {
         setConnectionError(false);
         const data = JSON.parse(event.data);
-        if (data.status === 'complete') {
+        if (data.status === 'setup_required') {
+          es.close();
+          setSetupRequired(true);
+          setIsCacheReady(true);
+        } else if (data.status === 'complete') {
           es.close();
           setIsCacheReady(true);
         } else if (data.status === 'loading') {

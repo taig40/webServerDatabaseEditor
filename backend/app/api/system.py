@@ -84,6 +84,11 @@ async def initialize_cache():
     ]
 
     async def event_generator():
+        from app.main import APP_STATE
+        if APP_STATE.get("setup_required", False):
+            yield f"data: {json.dumps({'status': 'setup_required', 'progress': 100.0}, ensure_ascii=False)}\n\n"
+            return
+
         # 1. Yield inicial imediato para confirmar abertura do stream no front-end
         initial_payload = {
             "status": "loading",
@@ -93,7 +98,7 @@ async def initialize_cache():
         yield f"data: {json.dumps(initial_payload, ensure_ascii=False)}\n\n"
         await asyncio.sleep(0.05)
 
-        # 2. Inicializa bases rápidas secundárias sem travar
+        # 2. Inicializa bases rápidas secundárias e GRFs em background sem travar o stream principal
         def init_secondary():
             randomopt_db.initialize()
             sizefix_db.initialize()
@@ -116,7 +121,7 @@ async def initialize_cache():
                     grf_list.append({"priority": 0, "path": grf_path})
                 grf_reader.load_multi(grf_list, override_path=override_path)
 
-        await asyncio.to_thread(init_secondary)
+        asyncio.create_task(asyncio.to_thread(init_secondary))
 
         valid_tasks = [t for t in db_tasks if t[2]]
         total_files = max(1, len(valid_tasks))

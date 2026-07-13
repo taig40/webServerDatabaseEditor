@@ -107,22 +107,7 @@ class YamlDatabase:
         progress_tracker.update(current_db=filename, status=self.loading_status, progress=min(45.0, progress_tracker.progress + 5.0))
 
         try:
-            # ── Pré-scan de integridade: detecta chaves duplicadas sem abortar o load ──
-            try:
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    self._yaml_strict.load(f)
-            except Exception as dup_err:
-                # ruamel.yaml embute linha, coluna e valores na representação textual.
-                # Formata cada linha da mensagem com indentação para fácil leitura.
-                raw_lines = str(dup_err).strip().splitlines()
-                detail    = "\n  ".join(raw_lines)
-                print(
-                    f"\n[WARN] Integridade YAML — chave duplicada em '{filename}':\n"
-                    f"  {detail}\n"
-                    f"  >> O arquivo sera carregado assim mesmo (ultimo valor prevalece).\n"
-                )
-
-            # ── Load real com parser permissivo ──
+            # ── Load com parser YAML ──
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = self.yaml.load(f)
                 
