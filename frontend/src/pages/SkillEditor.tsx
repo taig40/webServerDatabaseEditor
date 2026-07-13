@@ -2,13 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { Virtuoso } from 'react-virtuoso';
 import { API_URL } from '../config/env';
-import { Search, Zap, Database, Sparkles, Save, Shield, Clock, Sliders, Box, Layers, Plus, Trash2, Coins, Activity, ShieldAlert, Award, Sword } from 'lucide-react';
+import { Search, Zap, Database, Sparkles, Save, Shield, Clock, Sliders, Box, Layers, Plus, Trash2, Coins, Activity, ShieldAlert, Award, Sword, DownloadCloud, CheckCircle, AlertCircle } from 'lucide-react';
 import { LevelArrayEditor } from '../components/LevelArrayEditor';
 import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { localizeLoadingStatus } from '../utils/i18nHelpers';
-import { DivinePrideImportButton } from '../components/DivinePrideImportButton';
+import { DivinePrideImporterPanel } from '../components/DivinePrideImporterPanel';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 
 type SourceTab = 'rathena' | 'custom';
@@ -26,7 +26,14 @@ export const SkillEditor: React.FC = () => {
   const [isNew, setIsNew] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [showDPPanel, setShowDPPanel] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [pickerConfig, setPickerConfig] = useState<{ open: boolean; type: 'item' | 'mob' | 'skill'; targetKey?: string }>({ open: false, type: 'item' });
+
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 3500);
+  };
   const [itemsMap, setItemsMap] = useState<Record<string, any>>({});
 
   useEffect(() => {
@@ -99,6 +106,7 @@ export const SkillEditor: React.FC = () => {
       }
       return s;
     }));
+    showToast(t('divinepride.import_success' as any) || 'Habilidade importada do Divine Pride com sucesso!', 'success');
   };
 
 
@@ -138,7 +146,7 @@ export const SkillEditor: React.FC = () => {
         setSkills(prev => prev.map(s => s.Id === selectedSkill.Id ? { ...created, _source: 'custom' } : s));
         setIsNew(false);
         setSourceTab('custom');
-        alert(t('skill_editor.create_success' as any) || t('skill_editor.save_success'));
+        showToast(t('skill_editor.create_success' as any) || t('skill_editor.save_success'), 'success');
       } else {
         const res = await axios.put(`${API_URL}/api/skills/${selectedSkill.Id}`, {
           data: selectedSkill
@@ -146,11 +154,11 @@ export const SkillEditor: React.FC = () => {
         const saved = res.data;
         setSkills(prev => prev.map(s => s.Id === saved.Id ? { ...saved, _source: 'custom' } : s));
         setSourceTab('custom');
-        alert(t('skill_editor.save_success'));
+        showToast(t('skill_editor.save_success'), 'success');
       }
     } catch (err: any) {
       console.error("Erro ao salvar skill:", err);
-      alert(err?.response?.data?.detail || t('skill_editor.save_error'));
+      showToast(err?.response?.data?.detail || t('skill_editor.save_error'), 'error');
     } finally {
       setIsSaving(false);
     }
@@ -180,16 +188,16 @@ export const SkillEditor: React.FC = () => {
     setIsDeleting(true);
     try {
       await axios.delete(`${API_URL}/api/skills/${selectedSkill.Id}`);
-      alert(t('skill_editor.delete_success' as any) || 'Habilidade excluída com sucesso!');
+      showToast(t('skill_editor.delete_success' as any) || 'Habilidade excluída com sucesso!', 'success');
       setSkills(prev => prev.filter(s => s.Id !== selectedSkill.Id));
       setSelectedSkillId(null);
       setIsNew(false);
     } catch (err: any) {
       console.error("Erro ao excluir skill:", err);
       if (err?.response?.status === 403) {
-        alert(err.response.data.detail || t('skill_editor.delete_error' as any));
+        showToast(err.response.data.detail || t('skill_editor.delete_error' as any), 'error');
       } else {
-        alert(t('skill_editor.delete_error' as any) || 'Erro ao excluir habilidade.');
+        showToast(t('skill_editor.delete_error' as any) || 'Erro ao excluir habilidade.', 'error');
       }
     } finally {
       setIsDeleting(false);
@@ -314,14 +322,18 @@ export const SkillEditor: React.FC = () => {
             <div className="p-4 border-b border-white/5 bg-[#12121a]/80 flex justify-between items-center">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded">
-                    ID: {selectedSkill.Id}
+                  <span className="flex items-center gap-1.5 bg-dark-800 px-2 py-0.5 rounded border border-white/10 text-xs font-mono">
+                    <span>ID: <span className="text-amber-400">{selectedSkill.Id}</span></span>
+                    <button
+                      type="button"
+                      onClick={() => setShowDPPanel(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all shadow-sm cursor-pointer"
+                      title={t('divinepride.import_button')}
+                    >
+                      <DownloadCloud size={13} />
+                      <span>{t('divinepride.import_button')}</span>
+                    </button>
                   </span>
-                  <DivinePrideImportButton
-                    resourceType="skill"
-                    resourceId={selectedSkill.Id}
-                    onImportSuccess={handleDPImportSuccess}
-                  />
                   <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${selectedSkill._source === 'custom' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-dark-800 text-gray-400'}`}>
                     {selectedSkill._source === 'custom' ? t('skill_editor.source.custom') : t('skill_editor.source.rathena')}
                   </span>
@@ -931,6 +943,31 @@ export const SkillEditor: React.FC = () => {
         onConfirm={handleDeleteSkill}
         onCancel={() => setIsDeleteModalOpen(false)}
       />
+
+      <DivinePrideImporterPanel
+        isOpen={showDPPanel}
+        onClose={() => setShowDPPanel(false)}
+        resourceType="skill"
+        onImportSuccess={handleDPImportSuccess}
+      />
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div
+          className={`fixed bottom-6 right-6 z-[999] flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold shadow-2xl animate-in fade-in ${
+            toastMessage.type === 'success'
+              ? 'bg-emerald-950/95 text-emerald-300 border border-emerald-500/40 shadow-emerald-950/50'
+              : 'bg-rose-950/95 text-rose-300 border border-rose-500/40 shadow-rose-950/50'
+          }`}
+        >
+          {toastMessage.type === 'success' ? (
+            <CheckCircle className="w-4 h-4 text-emerald-400" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-rose-400" />
+          )}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
     </div>
   );
 };
