@@ -151,6 +151,10 @@ from pydantic import BaseModel
 class SetupPayload(BaseModel):
     SERVER_DB_BASE_PATH: str
     GRF_0: str = ""
+    ITEMINFO_PATH: str = ""
+    API_URL: str = ""
+    SERVER_ENCODING: str = "utf-8"
+    CLIENT_ENCODING: str = "latin1"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -233,6 +237,22 @@ async def post_system_setup(payload: SetupPayload):
         grf_path = payload.GRF_0.strip().replace("\\", "/")
         env["GRF_0"] = grf_path
         os.environ["GRF_0"] = grf_path
+
+    if payload.ITEMINFO_PATH.strip():
+        i_path = payload.ITEMINFO_PATH.strip().replace("\\", "/")
+        env["ITEMINFO_PATH"] = i_path
+        os.environ["ITEMINFO_PATH"] = i_path
+
+    if payload.API_URL.strip():
+        api_u = payload.API_URL.strip()
+        env["DIVINE_PRIDE_API_KEY"] = api_u
+        os.environ["DIVINE_PRIDE_API_KEY"] = api_u
+
+    env["SERVER_ENCODING"] = (payload.SERVER_ENCODING or "utf-8").strip()
+    os.environ["SERVER_ENCODING"] = env["SERVER_ENCODING"]
+
+    env["CLIENT_ENCODING"] = (payload.CLIENT_ENCODING or "latin1").strip()
+    os.environ["CLIENT_ENCODING"] = env["CLIENT_ENCODING"]
         
     db_defaults = {
         "ITEM_DB_PATH": "re/item_db.yml",

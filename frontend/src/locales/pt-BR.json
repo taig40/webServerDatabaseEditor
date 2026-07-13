@@ -1320,16 +1320,27 @@
   "setup_screen": {
     "title": "Bem-vindo ao rAthena Web Editor",
     "subtitle": "Configuração Inicial (First-Time Setup)",
-    "description": "Selecione a pasta raiz dos bancos de dados do seu rAthena para iniciar. O sistema verificará e carregará seus arquivos automaticamente.",
-    "db_base_path_label": "Pasta do Banco de Dados (rAthena /db)",
-    "db_base_path_placeholder": "Ex: C:/rAthena/db ou /home/rathena/db",
-    "db_base_path_help": "Caminho completo até a pasta db do rAthena contendo re/item_db.yml, re/mob_db.yml, etc.",
+    "description": "Selecione a pasta raiz do seu rAthena e arquivos do cliente para iniciar. O sistema verificará e carregará tudo automaticamente.",
+    "browse": "Procurar",
+    "db_base_path_label": "Pasta Raiz do rAthena (Obrigatório)",
+    "db_base_path_placeholder": "Ex: C:/rAthena ou /home/rathena",
+    "db_base_path_help": "Caminho completo até a pasta raiz do rAthena contendo as pastas db/ e conf/.",
     "grf_0_label": "Arquivo GRF Principal (Opcional)",
     "grf_0_placeholder": "Ex: C:/Ragnarok/data.grf",
     "grf_0_help": "Arquivo .grf do cliente para visualização de sprites e ícones no editor.",
+    "iteminfo_label": "Arquivo System/iteminfo.lub (Cliente - Opcional)",
+    "iteminfo_placeholder": "Ex: C:/Ragnarok/System/iteminfo.lub",
+    "iteminfo_help": "Arquivo LUA contendo nomes identificados e descrições do cliente.",
+    "api_url_label": "Caminho / URL ou Chave da API Externa",
+    "api_url_placeholder": "Ex: Chave DivinePride ou URL externa",
+    "api_url_help": "Chave ou endereço da API para consultas externas adicionais.",
+    "encoding_title": "Configurações de Codificação (Encodings)",
+    "encoding_desc": "Padrões imutáveis ou sugeridos para leitura e gravação dos arquivos sem quebrar caracteres especiais.",
+    "server_encoding_label": "Servidor rAthena (Padrão: UTF-8)",
+    "client_encoding_label": "Cliente LUA/LUB (Padrão: LATIN1)",
     "save_and_start": "Salvar e Iniciar",
     "saving": "Validando e carregando bases...",
     "success_toast": "Configurações salvas e bases carregadas com sucesso!",
-    "error_path_required": "Por favor, informe a pasta do banco de dados (db) do rAthena."
+    "error_path_required": "Por favor, informe a pasta raiz do rAthena."
   }
 }

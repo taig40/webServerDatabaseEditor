@@ -1320,16 +1320,27 @@
   "setup_screen": {
     "title": "Welcome to rAthena Web Editor",
     "subtitle": "First-Time Setup",
-    "description": "Please select your rAthena database root folder to begin. The system will automatically verify and load your YAML files.",
-    "db_base_path_label": "Database Folder (rAthena /db)",
-    "db_base_path_placeholder": "E.g. C:/rAthena/db or /home/rathena/db",
-    "db_base_path_help": "Full path to the rAthena db folder containing re/item_db.yml, re/mob_db.yml, etc.",
+    "description": "Select your rAthena root folder and client files to start. The system will automatically check and load your files.",
+    "browse": "Browse",
+    "db_base_path_label": "rAthena Root Folder (Required)",
+    "db_base_path_placeholder": "E.g. C:/rAthena or /home/rathena",
+    "db_base_path_help": "Full path to rAthena root folder containing db/ and conf/ folders.",
     "grf_0_label": "Primary GRF File (Optional)",
     "grf_0_placeholder": "E.g. C:/Ragnarok/data.grf",
     "grf_0_help": "Client .grf file for rendering sprites and icons inside the editor.",
+    "iteminfo_label": "Client System/iteminfo.lub File (Optional)",
+    "iteminfo_placeholder": "E.g. C:/Ragnarok/System/iteminfo.lub",
+    "iteminfo_help": "LUA file containing client identified names and visual descriptions.",
+    "api_url_label": "External API URL / Key",
+    "api_url_placeholder": "E.g. DivinePride Key or External URL",
+    "api_url_help": "API key or endpoint for external item data and icon queries.",
+    "encoding_title": "Character Encoding Settings",
+    "encoding_desc": "Standard encodings for reading and saving files without corrupting special characters.",
+    "server_encoding_label": "rAthena Server (Default: UTF-8)",
+    "client_encoding_label": "Client LUA/LUB (Default: LATIN1)",
     "save_and_start": "Save & Launch",
     "saving": "Validating and loading databases...",
     "success_toast": "Configuration saved and databases loaded successfully!",
-    "error_path_required": "Please provide the rAthena database (db) folder path."
+    "error_path_required": "Please provide your rAthena root folder path."
   }
 }
