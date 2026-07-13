@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { Virtuoso } from 'react-virtuoso';
 import { API_URL } from '../config/env';
 import { Search, Layers, Plus, Database, Sparkles, Save, Trash2, Code2 } from 'lucide-react';
 import { ScriptEditor } from '../components/ScriptEditor';
 import { useLanguageStore } from '../store/useLanguageStore';
-import Select from 'react-select';
+import AsyncSelect from 'react-select/async';
 import yaml from 'yaml';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 
@@ -97,6 +97,30 @@ export const ComboEditor: React.FC = () => {
       console.error("Erro ao carregar mapa de itens:", err);
     }
   };
+
+  const timerRef = useRef<any>(null);
+
+  const loadItemOptionsDebounced = useCallback((inputValue: string): Promise<{value: string, label: string}[]> => {
+    return new Promise((resolve) => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      timerRef.current = setTimeout(() => {
+        if (!inputValue || !inputValue.trim()) {
+          resolve(itemOptions.slice(0, 100));
+          return;
+        }
+        const query = inputValue.toLowerCase().trim();
+        const filtered = itemOptions.filter(opt =>
+          opt.label.toLowerCase().includes(query) ||
+          opt.value.toLowerCase().includes(query)
+        ).slice(0, 100);
+        resolve(filtered);
+      }, 500);
+    });
+  }, [itemOptions]);
+
+  const defaultItemOptions = useMemo(() => itemOptions.slice(0, 100), [itemOptions]);
 
   const getItemDisplayName = (aegisName: string) => {
     if (!aegisName) return '';
@@ -423,11 +447,13 @@ export const ComboEditor: React.FC = () => {
                                 <Trash2 size={16} />
                               </button>
                             </div>
-                            <Select
+                             <AsyncSelect
                               isMulti
-                              options={itemOptions}
+                              cacheOptions
+                              defaultOptions={defaultItemOptions}
+                              loadOptions={loadItemOptionsDebounced}
                               value={selectedOpts}
-                              onChange={(newVal) => handleUpdateVariant(varIdx, newVal.map(v => v.value))}
+                              onChange={(newVal: any) => handleUpdateVariant(varIdx, (newVal || []).map((v: any) => v.value))}
                               styles={selectStyles}
                               placeholder={t('combo_editor.variants.select_placeholder')}
                               className="text-sm"
