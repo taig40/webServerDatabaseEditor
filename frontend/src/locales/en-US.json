@@ -390,6 +390,9 @@
     "save_success": "Item combo saved successfully to db/import/item_combos.yml!",
     "save_error": "Error saving combo.",
     "create_error": "Error creating new combo.",
+    "delete_success": "Combo deleted successfully!",
+    "delete_error": "Error deleting combo.",
+    "delete_button": "Delete",
     "no_script": "No script",
     "sidebar": {
       "title": "Item Combos",

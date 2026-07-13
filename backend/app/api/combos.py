@@ -66,3 +66,27 @@ async def create_combo(body: ComboCreate):
     
     result = combo_db.add_combo(validated_data)
     return result
+
+
+@router.delete("/{index}", status_code=200)
+async def delete_combo(index: str):
+    """
+    Remove permanentemente um combo de db/import/item_combos.yml.
+
+    Retorna 403 se o combo pertencer ao banco oficial do rAthena (db/re/ ou db/pre-re/).
+    Retorna 404 se o combo não existir no índice.
+    Retorna 200 { deleted: true, index } em caso de sucesso.
+    """
+    if combo_db.is_loading:
+        raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando.")
+
+    try:
+        deleted = combo_db.delete_combo(index)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Combo {index} não encontrado.")
+
+    return {"deleted": True, "index": index}
+

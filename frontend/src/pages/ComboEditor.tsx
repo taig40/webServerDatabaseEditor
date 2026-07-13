@@ -7,6 +7,7 @@ import { ScriptEditor } from '../components/ScriptEditor';
 import { useLanguageStore } from '../store/useLanguageStore';
 import Select from 'react-select';
 import yaml from 'yaml';
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 
 const selectStyles = {
   control: (base: any, state: any) => ({
@@ -63,6 +64,8 @@ export const ComboEditor: React.FC = () => {
   const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
   const [selectedIndex, setSelectedIndex] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemMap, setItemMap] = useState<Record<string, string>>({});
   const [itemOptions, setItemOptions] = useState<{value: string, label: string}[]>([]);
 
@@ -218,6 +221,27 @@ export const ComboEditor: React.FC = () => {
     }
   };
 
+  const handleDeleteCombo = async () => {
+    if (!selectedCombo) return;
+    setIsDeleting(true);
+    try {
+      await axios.delete(`${API_URL}/api/combos/${selectedCombo._index}`);
+      alert(t('combo_editor.delete_success' as any) || 'Combo excluído com sucesso!');
+      setCombos(prev => prev.filter(c => c._index !== selectedCombo._index));
+      setSelectedIndex(null);
+    } catch (err: any) {
+      console.error("Erro ao excluir combo:", err);
+      if (err.response && err.response.status === 403) {
+        alert(err.response.data.detail || t('combo_editor.delete_error' as any));
+      } else {
+        alert(t('combo_editor.delete_error' as any) || 'Erro ao excluir combo.');
+      }
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+    }
+  };
+
   // Live Preview Generator
   const livePreviewYaml = useMemo(() => {
     if (!selectedCombo) return "";
@@ -351,15 +375,28 @@ export const ComboEditor: React.FC = () => {
                   {t('combo_editor.detail.index', { index: selectedCombo._index })}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={handleSaveCombo}
-                disabled={isSaving}
-                className="flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-cyan-900/30 transition-all disabled:opacity-50"
-              >
-                <Save size={16} />
-                <span>{t('combo_editor.detail.save_button')}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedCombo._source === 'custom' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 transition-all cursor-pointer"
+                    title={t('combo_editor.delete_button' as any) || 'Excluir Combo'}
+                  >
+                    <Trash2 size={16} />
+                    <span>{t('combo_editor.delete_button' as any) || 'Excluir'}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveCombo}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-cyan-900/30 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <Save size={16} />
+                  <span>{t('combo_editor.detail.save_button')}</span>
+                </button>
+              </div>
             </div>
             
             <div className="flex flex-1 overflow-hidden">
@@ -433,6 +470,14 @@ export const ComboEditor: React.FC = () => {
           </div>
         )}
       </div>
+
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        entityLabel={`Combo #${selectedCombo?._index}`}
+        isDeleting={isDeleting}
+        onConfirm={handleDeleteCombo}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 };

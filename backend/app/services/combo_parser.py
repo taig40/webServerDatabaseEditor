@@ -138,5 +138,46 @@ class ComboDatabase(GenericYamlParser):
         self.entry_index[new_index] = import_path
         return combo_data
 
+    def delete_combo(self, index: str) -> bool:
+        """
+        Remove permanentemente um combo do arquivo YAML em que reside.
+
+        Guard de Segurança (SRP):
+        - Apenas combos que vivem em db/import/ podem ser excluídos.
+        - Combos do banco oficial do rAthena (db/re/ ou db/pre-re/) lançam
+          PermissionError que a rota da API converte em HTTP 403.
+
+        Retorna True em caso de sucesso, False se o combo não foi encontrado.
+        """
+        if index not in self.entry_index:
+            return False
+
+        filepath = self.entry_index[index]
+        norm_path = filepath.replace('\\', '/')
+
+        if '/db/import/' not in norm_path:
+            raise PermissionError(
+                f"O combo {index} reside em '{norm_path}' que faz parte do banco "
+                "oficial do rAthena. Somente combos em db/import/ podem ser excluídos."
+            )
+
+        data = self.db_cache.get(filepath)
+        if not data:
+            return False
+
+        body = data.get('Body', [])
+        original_len = len(body)
+
+        data['Body'] = [combo for combo in body if combo.get('_index') != index]
+
+        if len(data['Body']) == original_len:
+            del self.entry_index[index]
+            return False
+
+        self.save_file(filepath)
+        del self.entry_index[index]
+        return True
+
 
 combo_db = ComboDatabase()
+

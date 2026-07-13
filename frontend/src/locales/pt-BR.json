@@ -390,6 +390,9 @@
     "save_success": "Combo de itens salvo com sucesso em db/import/item_combos.yml!",
     "save_error": "Erro ao salvar combo.",
     "create_error": "Erro ao criar novo combo.",
+    "delete_success": "Combo excluído com sucesso!",
+    "delete_error": "Erro ao excluir combo.",
+    "delete_button": "Excluir",
     "no_script": "Sem script",
     "sidebar": {
       "title": "Combos de Itens",
