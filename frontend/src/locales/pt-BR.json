@@ -1,0 +1,1288 @@
+{
+  "common": {
+    "save": "Salvar",
+    "saving": "Salvando...",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "loading": "Carregando...",
+    "success": "Sucesso",
+    "error": "Erro",
+    "reload": "Recarregar",
+    "reloading": "Recarregando...",
+    "line": "Linha"
+  },
+  "loading": {
+    "connecting": "Conectando ao Backend...",
+    "loadingItems": "Carregando lista de Itens...",
+    "loadingMonsters": "Carregando lista de monstros...",
+    "loadingSkills": "Carregando banco de habilidades...",
+    "waitingInit": "Aguardando inicialização...",
+    "readingFile": "Lendo arquivo: {{filename}}...",
+    "readingMonstersFile": "Lendo arquivo de monstros: {{filename}}...",
+    "entriesRead": "{{count}} registros lidos",
+    "file": "Carregando arquivo: {{file}}",
+    "progress": "{{value}}% concluído",
+    "readingFiles": "Lendo arquivos...",
+    "connectionFailed": "Falha na conexão! Verifique se o servidor Backend está em execução."
+  },
+  "settings": {
+    "title": "Configurações do Sistema",
+    "subtitle": "Configure as pastas do servidor, arquivos do cliente, codificações de texto e arquivos GRF.",
+    "save_settings": "Salvar Configurações",
+    "reload_cache": "Recarregar Cache do Servidor",
+    "reload_cache_subtitle": "Força o backend a recarregar todos os arquivos LUA e YAML das pastas.",
+    "tabs": {
+      "server": "Servidor",
+      "client": "Cliente",
+      "grf": "GRFs",
+      "advanced": "Avançado"
+    },
+    "database": {
+      "title": "Banco de Dados do Servidor",
+      "subtitle_card": "Arquivos .yml e .txt do rAthena",
+      "label": "Pasta Base de DB",
+      "sublabel": "Diretório base do banco de dados (ex: rathena/db). Contém as pastas /re/ e /import/.",
+      "placeholder": "Caminho completo do diretório...",
+      "found": "Pasta encontrada",
+      "not_found": "Pasta não encontrada"
+    },
+    "client": {
+      "title": "Arquivos do Cliente",
+      "subtitle_card": "Arquivos do client do jogador",
+      "iteminfo_label": "System iteminfo.lua / iteminfo.lub",
+      "iteminfo_sublabel": "Caminho para o iteminfo.lua ou iteminfo.lub dentro da pasta System do cliente.",
+      "grf_override_label": "Pasta de Override do Cliente (data)",
+      "grf_override_sublabel": "Diretório para salvar arquivos customizados extraídos (ex: kRO/data/). Deve ser uma pasta.",
+      "placeholder": "Caminho completo do arquivo...",
+      "achievements_lua_label": "Conquistas LUA (ACHIEVEMENTS_LUA_PATH)",
+      "achievements_lua_sublabel": "Caminho para o achievements.lub ou achievement_list.lub do seu cliente.",
+      "achievements_lua_placeholder": "Deixe em branco para detectar automaticamente relativo ao ItemInfo",
+      "quests_lua_label": "Quests LUA (QUESTS_LUA_PATH)",
+      "quests_lua_sublabel": "Caminho para o OngoingQuests.lub ou OngoingQuestInfoList.lub do seu cliente.",
+      "quests_lua_placeholder": "Deixe em branco para detectar automaticamente relativo ao ItemInfo"
+    },
+    "grf": {
+      "title": "Arquivos GRF",
+      "subtitle": "Configure até 10 arquivos GRF (ordem do DATA.INI). O slot 0 tem prioridade MÁXIMA.",
+      "add": "Adicionar GRF ({count}/{max})",
+      "max_reached": "Limite máximo de slots atingido",
+      "priority_max": "Máx",
+      "priority_min": "Mín",
+      "legend_max": "Prioridade 0 (máxima)",
+      "legend_min": "Prioridade 9 (mínima)",
+      "legend_accepted": "Aceita: arquivo .grf ou pasta data\\",
+      "placeholder": "GRF {priority}: caminho para o arquivo .grf ou pasta...",
+      "empty": "Nenhuma GRF configurada. Clique em \"Adicionar GRF\" para começar.",
+      "limit_reached": "Limite máximo de {max} GRFs atingido (igual ao cliente oficial do RO)",
+      "override_label": "Override Path (GRF_OVERRIDE_PATH)",
+      "override_sublabel": "Pasta onde o editor salva sprites e ícones customizados. Necessário ao usar .grf binários.",
+      "override_placeholder": "Ex: C:\\kRO\\data\\",
+      "validation": {
+        "ok": "OK",
+        "empty": "Vazio",
+        "not_found": "Não encontrado"
+      }
+    },
+    "language": {
+      "title": "Idioma",
+      "subtitle": "Selecione o idioma da interface visual.",
+      "pt": "Português (PT-BR)",
+      "en": "English (EN-US)"
+    },
+    "advanced": {
+      "title": "Configurações Avançadas",
+      "server_encoding": "Codificação do Servidor",
+      "server_encoding_sublabel": "Codificação utilizada para ler/gravar os arquivos YAML do servidor (padrão: UTF-8).",
+      "client_encoding": "Codificação do Cliente",
+      "client_encoding_sublabel": "Codificação utilizada para ler os arquivos LUB do cliente (kRO CP949 ou CP1252).",
+      "cors_label": "Origens CORS Permitidas",
+      "cors_sublabel": "Origens CORS permitidas no servidor de API (separadas por vírgula).",
+      "encoding_title": "Configuração de Codificação",
+      "encoding_subtitle": "Define o encoding de texto para leitura dos arquivos do servidor e do cliente.",
+      "server_encoding_desc": "Usado para ler mob_skill_db.txt e outros arquivos de texto.",
+      "client_encoding_desc": "Usado para ler itemInfo.lua e nomes de arquivos dentro da GRF.",
+      "encoding_options": {
+        "utf8": "UTF-8 (padrão)",
+        "euckr": "EUC-KR / CP949 (clientes coreanos kRO)",
+        "cp1252": "Windows-1252 / CP1252 (servidores ocidentais)",
+        "latin1": "Latin-1 (transparente / ignorar erros de decodificação)"
+      }
+    },
+    "browse": "Selecionar",
+    "validate_btn": "Validar Caminhos",
+    "reload_success_message": "✓ Servidor recarregado — {count} GRF(s) ativa(s)"
+  },
+  "item_detail": {
+    "unnamed": "Item Sem Nome",
+    "unsaved_changes": "Alterações não salvas",
+    "save_changes": "Salvar Alterações",
+    "basic_stats": "Atributos Básicos",
+    "combat_equip": "Combate & Equipamento",
+    "restrictions": "Restrições de Equipamento",
+    "scripts": "Scripts & Lógica",
+    "main_script": "Script Principal",
+    "dropped_by": "Dropado Por (Monstros)",
+    "sold_by": "Vendido Por (Lojas)",
+    "loading_drops": "Buscando drops no servidor...",
+    "no_drops": "Nenhum monstro dropa este item nativamente.",
+    "loading_shops": "Buscando lojas pelo mundo...",
+    "no_shops": "Este item não é vendido em nenhuma loja padrão.",
+    "table": {
+      "mob_id": "Mob ID",
+      "name": "Nome Original (kRO)",
+      "aegis_name": "AegisName",
+      "rate": "Taxa de Drop"
+    },
+    "save_modal": {
+      "title": "Salvar Alterações",
+      "body": "O item {id} ({name}) pertence ao banco original do rAthena. Deseja criar uma cópia customizada na pasta import/item_db.yml ou sobrescrever o arquivo original?",
+      "create_copy": "✨ Criar Cópia em db/import/ (Recomendado)",
+      "overwrite": "⚠️ Sobrescrever Arquivo Original no rAthena"
+    }
+  },
+  "layout": {
+    "collapse": "Recolher menu",
+    "expand": "Expandir menu",
+    "coming_soon": "em breve",
+    "settings": "Configurações",
+    "groups": {
+      "server": "Servidor",
+      "client": "Cliente",
+      "misc": "Outros"
+    },
+    "modules": {
+      "items": "Itens",
+      "mobs": "Monstros",
+      "skills": "Habilidades",
+      "server_quests": "Quests",
+      "server_achievements": "Conquistas",
+      "item_combos": "Combos de Itens",
+      "mob_skills": "Skills de Mobs",
+      "pets": "Mascotes",
+      "client_items": "Itens (Cliente)",
+      "client_quests": "Quests (Cliente)",
+      "constants": "Constantes",
+      "random_options": "Opções Aleatórias",
+      "job_database": "Classes & Atributos",
+      "exp_tables": "Tabelas de Experiência",
+      "skill_tree": "Árvore de Habilidades",
+      "map_engine": "Map Engine",
+      "size_fix_editor": "Penalidades de Tamanho"
+    }
+  },
+  "app": {
+    "under_development": "Em desenvolvimento",
+    "coming_soon_details": "Este módulo estará disponível em breve."
+  },
+  "item_editor": {
+    "lint_npc_error": "Comando de NPC inválido para scripts de item. Utilize apenas instruções do ecossistema de itens (ex: bônus).",
+    "title": "Itens",
+    "new_item": "Novo Item",
+    "search_placeholder": "Pesquisar itens...",
+    "search_btn": "Buscar",
+    "search_target": {
+      "name": "Nome / ID do Item",
+      "script": "Conteúdo do Script"
+    },
+    "search_type": {
+      "all": "Todos os Tipos",
+      "weapon": "Arma (Weapon)",
+      "armor": "Armadura (Armor)",
+      "consumable": "Consumível (Consumable)",
+      "healing": "Cura (Healing)",
+      "usable": "Usável (Usable)",
+      "card": "Carta (Card)",
+      "ammo": "Munição (Ammo)",
+      "etc": "Outros (Etc)",
+      "petegg": "Ovo de Pet (PetEgg)",
+      "petarmor": "Armadura de Pet (PetArmor)"
+    },
+    "results": "Resultados: {count}",
+    "total": "Total: {count}",
+    "unknown": "Desconhecido",
+    "no_selection": {
+      "title": "Nenhum Item Selecionado",
+      "subtitle": "Selecione um item na lista ao lado para ver os detalhes e editá-lo."
+    },
+    "status": {
+      "connecting": "Conectando ao Backend...",
+      "loading_list": "Carregando lista de Itens...",
+      "error_final_array": "Erro ao receber os itens finais.",
+      "offline": "Servidor offline. Tentando reconectar...",
+      "loading_title": "Carregando Banco de Itens",
+      "entries_read": "entradas lidas",
+      "save_error": "Erro de conexão ao salvar a alteração no YAML."
+    }
+  },
+  "monster_editor": {
+    "title": "Monstros",
+    "new_monster": "Novo Monstro",
+    "search_placeholder": "Buscar por ID, Nome...",
+    "results": "Resultados: {count}",
+    "total": "Total: {count}",
+    "unknown": "Desconhecido",
+    "no_selection": {
+      "title": "Nenhum Monstro Selecionado",
+      "subtitle": "Selecione um monstro na lista ao lado para ver os detalhes e editá-lo."
+    },
+    "no_monsters_found": "Nenhum monstro encontrado",
+    "status": {
+      "connecting": "Conectando ao Backend...",
+      "loading_list": "Carregando lista de monstros...",
+      "error_fetching": "Erro ao baixar monstros:",
+      "error_final_array": "Erro ao receber os monstros.",
+      "offline": "Servidor offline. Reconectando...",
+      "loading_title": "Carregando Banco de Monstros",
+      "entries_read": "entradas lidas",
+      "save_error": "Erro de conexão ao salvar a alteração no YAML."
+    }
+  },
+  "monster_detail": {
+    "unsaved": "Não salvo",
+    "unnamed": "Sem Nome",
+    "save_modal": {
+      "title": "Salvar Alterações",
+      "body": "Este monstro faz parte do banco original do rAthena. Como deseja salvar?",
+      "create_copy": "Salvar em db/import/ (Recomendado)",
+      "overwrite": "Sobrescrever arquivo original"
+    },
+    "tabs": {
+      "status": "Status & Atributos",
+      "drops": "Tabela de Drops",
+      "ai": "IA / Modos",
+      "skills": "Skills"
+    },
+    "sprite": {
+      "error_select_both": "Selecione ambos os arquivos: .spr e .act",
+      "hover_title": "Trocar Sprite (ACT + SPR)",
+      "change": "Trocar Sprite",
+      "upload_modal": {
+        "title": "Trocar Sprite do Monstro",
+        "subtitle": "Selecione os arquivos .spr e .act do monstro. Eles serão salvos no override path do GRF com o nome {name}.",
+        "select_spr": "Selecionar arquivo .spr",
+        "select_act": "Selecionar arquivo .act",
+        "upload_button": "Fazer Upload"
+      }
+    },
+    "sections": {
+      "identity": "Identidade",
+      "combat": "Combate",
+      "attributes": "Atributos",
+      "ranges_speed": "Alcance & Velocidade",
+      "experience": "Experiência",
+      "normal_drops": "Drops Normais",
+      "mvp_drops": "Drops MVP"
+    },
+    "fields": {
+      "name": "Nome (EN)",
+      "race": "Raça",
+      "size": "Tamanho",
+      "element": "Elemento",
+      "element_level": "Nível do Elemento",
+      "class": "Classe (AI)",
+      "res_phys": "Resistência Física",
+      "res_magic": "Resistência Mágica",
+      "atk_range": "Alcance de Ataque",
+      "skill_range": "Alcance de Skill",
+      "chase_range": "Alcance de Perseguição",
+      "walk_speed": "Velocidade de Caminhada"
+    },
+    "drops": {
+      "item": "Item (AegisName)",
+      "rate": "Taxa (%)",
+      "no_drops": "Nenhum drop cadastrado.",
+      "no_mvp_drops": "Nenhum drop MVP cadastrado.",
+      "placeholder_item": "AegisName do Item",
+      "add_drop": "Adicionar Drop",
+      "add_mvp_drop": "Adicionar Drop MVP"
+    },
+    "ai": {
+      "title": "Configurações de IA e Comportamento",
+      "base_title": "IA Base (Aegis Mobtype)",
+      "base_subtitle": "Selecione o modelo base de comportamento da IA na engine para este monstro.",
+      "modes_title": "Modos Adicionais de Comportamento (Flags)",
+      "modes_subtitle": "Ative/desative flags individuais de comportamento sobre a IA base.",
+      "subtitle": "Clique nos botões para ativar/desativar os flags de comportamento do monstro.",
+      "types": {
+        "01": "Passivo",
+        "02": "Passivo, Saqueador (Looter)",
+        "03": "Passivo, Assistência e Mudança de Alvo Melee",
+        "04": "Irritável (Angry), Mudança de Alvo Melee/Perseguição",
+        "05": "Agressivo, Mudança de Alvo na Perseguição",
+        "06": "Passivo, Imóvel, Não Pode Atacar [Plantas]",
+        "07": "Passivo, Saqueador, Assistência, Mudança de Alvo Melee",
+        "08": "Agressivo, Mudança de Alvo Melee/Perseguição, Ataca Inimigos Fracos",
+        "09": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado [Guardião]",
+        "10": "Agressivo, Imóvel",
+        "11": "Agressivo, Imóvel [Guardião]",
+        "12": "Agressivo, Mudança de Alvo na Perseguição [Guardião]",
+        "13": "Agressivo, Mudança de Alvo Melee/Perseguição, Assistência",
+        "17": "Passivo, Sensor de Conjuração Parado",
+        "19": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado",
+        "20": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado/Perseguindo",
+        "21": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado/Perseguindo, Perseguindo-Mudança de Alvo",
+        "24": "Passivo, Não anda aleatoriamente [Escravo]",
+        "25": "Passivo, Não Pode Atacar [Mascote]",
+        "26": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado/Perseguindo, Perseguindo-Mudança de Alvo, Alvo Aleatório",
+        "27": "Agressivo, Imóvel, Alvo Aleatório"
+      },
+      "aegisTypes": {
+        "01": "Passivo",
+        "02": "Passivo, Saqueador (Looter)",
+        "03": "Passivo, Assistência e Mudança de Alvo Melee",
+        "04": "Irritável (Angry), Mudança de Alvo Melee/Perseguição",
+        "05": "Agressivo, Mudança de Alvo na Perseguição",
+        "06": "Passivo, Imóvel, Não Pode Atacar [Plantas]",
+        "07": "Passivo, Saqueador, Assistência, Mudança de Alvo Melee",
+        "08": "Agressivo, Mudança de Alvo Melee/Perseguição, Ataca Inimigos Fracos",
+        "09": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado [Guardião]",
+        "10": "Agressivo, Imóvel",
+        "11": "Agressivo, Imóvel [Guardião]",
+        "12": "Agressivo, Mudança de Alvo na Perseguição [Guardião]",
+        "13": "Agressivo, Mudança de Alvo Melee/Perseguição, Assistência",
+        "17": "Passivo, Sensor de Conjuração Parado",
+        "19": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado",
+        "20": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado/Perseguindo",
+        "21": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado/Perseguindo, Perseguindo-Mudança de Alvo",
+        "24": "Passivo, Não anda aleatoriamente [Escravo]",
+        "25": "Passivo, Não Pode Atacar [Mascote]",
+        "26": "Agressivo, Mudança de Alvo Melee/Perseguição, Sensor de Conjuração Parado/Perseguindo, Perseguindo-Mudança de Alvo, Alvo Aleatório",
+        "27": "Agressivo, Imóvel, Alvo Aleatório"
+      }
+    },
+    "skills": {
+      "title": "Skills do Monstro",
+      "loading": "Carregando skills...",
+      "no_skills": "Nenhuma skill cadastrada para este monstro.",
+      "condition": "Condição",
+      "skill_id": "ID",
+      "skill_name": "Habilidade",
+      "state": "Estado",
+      "level": "Nível",
+      "rate": "Taxa (%)",
+      "add_skill": "Adicionar Habilidade",
+      "delete_skill": "Excluir",
+      "modal_title": "Adicionar Habilidade ao Monstro",
+      "select_skill": "Selecionar Habilidade",
+      "search_placeholder": "Buscar habilidade por nome ou ID...",
+      "cast_time": "Conjuração (ms)",
+      "delay": "Atraso (ms)",
+      "cancelable": "Cancelável",
+      "target": "Alvo",
+      "condition_type": "Tipo de Condição",
+      "condition_value": "Valor da Condição",
+      "confirm_add": "Adicionar à Lista",
+      "cancel": "Cancelar",
+      "footer_tip": "Adicione, remova e configure as habilidades de combate e comportamento do monstro direto nesta tela."
+    }
+  },
+  "monster_animator": {
+    "animation_not_found": "Animação não encontrada",
+    "error_spritesheet": "Erro ao carregar spritesheet",
+    "no_sprite_kro": "Sem sprite no kRO",
+    "frames_count": "{count} frames"
+  },
+  "combo_editor": {
+    "status": {
+      "loading_list": "Carregando banco de combos...",
+      "error_fetching": "Erro ao carregar combos."
+    },
+    "save_success": "Combo de itens salvo com sucesso em db/import/item_combos.yml!",
+    "save_error": "Erro ao salvar combo.",
+    "create_error": "Erro ao criar novo combo.",
+    "no_script": "Sem script",
+    "sidebar": {
+      "title": "Combos de Itens",
+      "new_combo": "Novo Combo",
+      "search_placeholder": "Buscar por item ou script..."
+    },
+    "detail": {
+      "title": "Combo de Itens",
+      "index": "Índice Posicional: {index}",
+      "save_button": "Salvar em db/import/item_combos.yml"
+    },
+    "source": {
+      "custom": "Custom Import",
+      "rathena": "rAthena Original"
+    },
+    "variants": {
+      "title": "Variantes de Combinações de Itens",
+      "variant_header": "Variante #{index} (mínimo 2 itens)",
+      "add_item": "Adicionar Item ao Combo",
+      "add_variant": "Adicionar Variante",
+      "select_placeholder": "Selecione no mínimo 2 itens...",
+      "no_options": "Item não encontrado",
+      "min_items_error": "⚠ Um combo requer no mínimo 2 itens."
+    },
+    "script": {
+      "label": "Bônus do Combo (Script)"
+    },
+    "no_selection": {
+      "title": "Nenhum Combo Selecionado",
+      "subtitle": "Selecione uma combinação de itens na lista ao lado para editar."
+    },
+    "validation": {
+      "min_groups": "O combo deve ter ao menos 1 variante.",
+      "min_items": "Todas as variantes devem ter pelo menos 2 itens (Regra rAthena)."
+    },
+    "live_preview": {
+      "title": "Live Preview (YAML)",
+      "error": "Erro ao renderizar YAML."
+    }
+  },
+  "client_item_editor": {
+    "loading_title": "Carregando Itens",
+    "save_error": "Erro ao salvar as alterações no ItemInfo.lua.",
+    "sidebar": {
+      "title": "Client Items (ItemInfo)",
+      "items_count": "{count} itens"
+    },
+    "no_selection": {
+      "title": "Nenhum Item Selecionado",
+      "subtitle": "Selecione um item da lista ao lado para editar suas informações de client."
+    },
+    "tabs": {
+      "basic": "Informações Básicas",
+      "visual": "Configuração Visual"
+    },
+    "new_item_btn": "Novo Item",
+    "draft_mode_title": "Criando Novo Item",
+    "draft_item_id_label": "ID do Item (ItemInfo ID)",
+    "draft_item_id_placeholder": "Ex: 20001",
+    "visual_disabled_hint": "Salve o item primeiro para configurar o Visual Equipment.",
+    "create_btn": "Criar no ItemInfo.lua",
+    "create_success": "Item #{id} criado com sucesso!",
+    "create_error": "Erro ao criar o item no ItemInfo.lua.",
+    "create_duplicate_error": "Este ID já existe no ItemInfo.lua. Use a edição em vez disso."
+  },
+  "visual_equipment": {
+    "title": "Configuração Visual de Equipamento",
+    "invalid_view_id": "View ID inválido.",
+    "missing_fields": "Campos Identity e Sprite Name são obrigatórios.",
+    "save_success": "Configuração visual salva com sucesso!",
+    "save_error": "Falha ao salvar a configuração visual."
+  },
+  "client_item_detail": {
+    "description_placeholder": "Uma linha por entrada da descrição.\nUse \\n para quebra de linha no jogo.",
+    "upload_error": "Erro no upload: {error}",
+    "sending": "Enviando...",
+    "picker_default_title": "Escolher da GRF",
+    "reload_icon": "Recarregar Ícone",
+    "no_client_name": "Sem Nome no Client",
+    "status": {
+      "in_lua": "● No ItemInfo.lua",
+      "missing_in_lua": "● Faltando no ItemInfo.lua",
+      "fetching": "Carregando...",
+      "exists": "Presente",
+      "missing": "Ausente"
+    },
+    "unsaved_changes": "Alterações não salvas",
+    "sections": {
+      "identified": "Identificado",
+      "unidentified": "Não Identificado",
+      "extra_fields": "Campos Extras",
+      "grf_assets": "Assets da GRF",
+      "card_preview": "Visualização do Card"
+    },
+    "labels": {
+      "inventory_icon": "Ícone do Inventário",
+      "collection_illustration": "Ilustração de Coleção",
+      "drop_sprite": "Sprite de Drop (.spr / .act)"
+    },
+    "buttons": {
+      "upload_icon": "Upload de Ícone (.bmp)",
+      "upload_collection": "Upload de Coleção (.bmp)",
+      "upload_drop_spr": "Upload Sprite (.spr)",
+      "upload_drop_act": "Upload Ação (.act)",
+      "select_grf": "Selecionar da GRF"
+    },
+    "picker": {
+      "select_icon": "Selecionar Ícone do Item na GRF",
+      "select_collection": "Selecionar Sprite de Coleção na GRF",
+      "select_sprite": "Selecionar Sprite de Drop do Item na GRF"
+    },
+    "previews": {
+      "identified": "Identificado",
+      "unidentified": "Não Identificado"
+    }
+  },
+  "skill_editor": {
+    "status": {
+      "connecting": "Conectando ao Backend...",
+      "error_fetching": "Erro ao carregar banco de habilidades.",
+      "checking": "Verificando servidor...",
+      "loading_list": "Carregando banco de habilidades..."
+    },
+    "save_success": "Habilidade salva com sucesso em db/import/skill_db.yml!",
+    "save_error": "Erro ao salvar habilidade.",
+    "sidebar": {
+      "title": "Habilidades",
+      "search_placeholder": "Buscar por ID ou AegisName..."
+    },
+    "detail": {
+      "save_button": "Salvar em db/import/skill_db.yml"
+    },
+    "source": {
+      "custom": "Custom Import",
+      "rathena": "rAthena Original"
+    },
+    "tabs": {
+      "general": "Identificação e Geral",
+      "combat": "Dano e Combate",
+      "timing": "Cast, Delay e Cooldown",
+      "requirements": "Requisitos e Custos",
+      "unit": "Efeitos no Solo (Unit)"
+    },
+    "fields": {
+      "aegis_name": "AegisName (Código interno)",
+      "description": "Descrição Exibida",
+      "max_level": "Nível Máximo (MaxLevel)",
+      "type": "Tipo da Habilidade (Type)",
+      "target_type": "Alvo (TargetType)",
+      "range": "Alcance (Range)",
+      "range_cells": "Alcance (Células)",
+      "hit_count": "Contagem de Acertos (HitCount)",
+      "splash_area": "Área de Splash (SplashArea)",
+      "knockback": "Empurrão — Knockback (Células)",
+      "hit": "Tipo de Acerto (Hit)",
+      "cast_time": "Tempo de Conjuração — CastTime (ms)",
+      "fixed_cast": "Cast Fixo — FixedCastTime (ms)",
+      "animation_delay": "Pós-conjuração (Animação) — AfterCastActDelay (ms)",
+      "cooldown": "Tempo de Recarga — Cooldown (ms)",
+      "duration1": "Duração 1 (ms)",
+      "duration2": "Duração 2 (ms)",
+      "sp_cost": "Custo de SP (SpCost)",
+      "hp_cost": "Custo de HP (HpCost)",
+      "zeny_cost": "Custo de Zeny (ZenyCost)",
+      "unit_title": "Configuração de Efeito no Solo (Unit / Splash / Area)",
+      "unit_subtitle": "Defina propriedades de magias ou habilidades que permanecem no chão após conjuradas (ex: Barreira de Fogo, Santuário).",
+      "active_instance": "Instâncias Ativas Máximas (ActiveInstance)",
+      "max_unit_instances": "Max Instâncias no Solo",
+      "ap_cost": "Custo de AP (ApCost)",
+      "hp_rate_cost": "Custo Percentual de HP (HpRateCost) (%)",
+      "sp_rate_cost": "Custo Percentual de SP (SpRateCost) (%)",
+      "ap_rate_cost": "Custo Percentual de AP (ApRateCost) (%)",
+      "max_hp_trigger": "HP Máximo para Ativar (MaxHpTrigger) (%)",
+      "spheres": "Esferas Espirituais Exigidas (SpiritSphereCost)",
+      "state": "Estado Exigido (State)",
+      "status": "Efeito de Status Necessário (Status)",
+      "equipment": "Equipamento Necessário (Equipment)",
+      "weapons": "Armas Permitidas (Weapon)",
+      "ammo": "Munição Exigida (Ammo)",
+      "ammo_amount": "Quantidade de Munição (AmmoAmount)",
+      "consumables": "Consumíveis (ItemCost)",
+      "no_requirements": "Nenhum requisito ou custo configurado para esta habilidade.",
+      "add_consumable": "Adicionar Item Consumível"
+    },
+    "requirements_panel": {
+      "base_costs_title": "Custos de Recursos Básicos (HP / SP / AP / Zeny)",
+      "combat_title": "Requisitos de Combate (Armas e Munição)",
+      "any_weapon": "Qualquer Arma (All)",
+      "special_title": "Estados e Condições Especiais",
+      "consumables_desc": "Itens de inventário consumidos ou exigidos para conjurar a habilidade",
+      "no_consumables": "Nenhum item consumível exigido para esta habilidade.",
+      "quantity": "Qtd:",
+      "level": "Lv:",
+      "all": "Todos",
+      "status_placeholder": "Ex: Poisoned, Stunned (Nome do status)",
+      "equipment_placeholder": "Ex: AegisName do item"
+    },
+    "no_selection": {
+      "title": "Nenhuma Habilidade Selecionada",
+      "subtitle": "Selecione uma habilidade na lista ao lado para ver e editar seus parâmetros."
+    }
+  },
+  "mob_skill_editor": {
+    "status": {
+      "loading": "Carregando habilidades de monstros...",
+      "error_fetching": "Erro ao carregar habilidades de monstros."
+    },
+    "save_success": "Salvo com sucesso!",
+    "save_error": "Erro ao salvar.",
+    "create_error": "Erro ao criar nova habilidade.",
+    "delete_confirm": "Deseja remover esta habilidade do monstro?",
+    "delete_error": "Erro ao deletar habilidade.",
+    "sidebar": {
+      "title": "Habilidade de Monstros",
+      "search_placeholder": "Buscar monstro...",
+      "add_mob": "Adicionar Novo Monstro",
+      "monster_number": "Monstro #{id}"
+    },
+    "list": {
+      "title": "Skills do Monstro",
+      "select_mob": "Selecione um monstro.",
+      "no_skills": "Sem habilidades cadastradas."
+    },
+    "detail": {
+      "title": "Editar Habilidade",
+      "sections": {
+        "identification": "Identificação",
+        "behavior": "Comportamento",
+        "condition": "Condição",
+        "additional_params": "Parâmetros Adicionais (Val1 – Val5)",
+        "expression": "Expressão & Chat"
+      }
+    },
+    "fields": {
+      "skill_id": "Skill ID",
+      "skill_id_hint": "ID da habilidade do servidor.",
+      "skill_lv": "Skill Level",
+      "skill_lv_hint": "Nível da habilidade (1-10).",
+      "state": "State",
+      "state_hint": "Estado em que o monstro deve estar para usar a skill.",
+      "rate": "Taxa (%)",
+      "target": "Target",
+      "target_hint": "Alvo da habilidade.",
+      "cancelable": "Cancelable",
+      "cancelable_hint": "Se o cast pode ser interrompido.",
+      "cast_time": "CastTime (ms)",
+      "cast_time_hint": "Tempo de conjuração em milissegundos.",
+      "delay": "Delay (ms)",
+      "delay_hint": "Intervalo em ms antes de tentar usar a skill novamente.",
+      "condition_type": "ConditionType",
+      "condition_type_hint": "Tipo de condição para ativar a skill.",
+      "condition_val": "ConditionValue",
+      "condition_val_hint": "Valor numérico da condição (HP%, ID de skill, contagem, etc.)",
+      "valid_status": "Status válidos para o campo ConditionValue:",
+      "hp_condition_warning": "⚠ Para esta condição: val1 = limite superior de HP% (ex: 50 para 50%)",
+      "emotion": "Emotion",
+      "emotion_hint": "Emoção exibida ao usar a skill. -1 = nenhuma.",
+      "chat": "Chat",
+      "chat_hint": "Mensagem NPC emitida ao usar a skill (opcional).",
+      "chat_placeholder": "(vazio)"
+    },
+    "conditions": {
+      "always": "Sem condição. ConditionValue ignorado.",
+      "onspawn": "Ao invocar/renascer. ConditionValue ignorado.",
+      "myhpltmaxrate": "Quando o HP cai abaixo de ConditionValue%.",
+      "myhpinrate": "Quando o HP está entre ConditionValue% (mínimo) e val1% (máximo).",
+      "mystatuson": "Se o monstro possuir o status em ConditionValue (use os nomes de status acima).",
+      "mystatusoff": "Se o monstro perder o status em ConditionValue.",
+      "friendhpltmaxrate": "Quando o HP de um aliado cai abaixo de ConditionValue%.",
+      "friendhpinrate": "HP do aliado entre ConditionValue% e val1%.",
+      "friendstatuson": "Se o aliado possuir o status.",
+      "friendstatusoff": "Se o aliado perder o status.",
+      "attackpcgt": "Quando atacantes > ConditionValue.",
+      "attackpcge": "Quando atacantes >= ConditionValue.",
+      "slavelt": "Quando escravos (slaves) < ConditionValue.",
+      "slavele": "Quando escravos (slaves) <= ConditionValue.",
+      "closedattacked": "Ao receber ataque físico corpo-a-corpo. ConditionValue ignorado.",
+      "longrangeattacked": "Ao receber ataque físico à distância. ConditionValue ignorado.",
+      "skillused": "Quando a skill ID em ConditionValue é usada no monstro.",
+      "afterskill": "Após o monstro usar a skill ID em ConditionValue.",
+      "casttargeted": "O alvo entra na distância de cast. ConditionValue ignorado.",
+      "rudeattacked": "Ao ser atacado rudemente. ConditionValue ignorado.",
+      "mobnearbygt": "Quando monstros na área > ConditionValue.",
+      "groundattacked": "Ao ser atingido por magia de solo. ConditionValue ignorado.",
+      "damagedgt": "Quando o dano de um único golpe > ConditionValue.",
+      "alchemist": "IA especial de Alquimista, ferido. ConditionValue ignorado.",
+      "trickcasting": "Uma vez que o monstro inicia NPC_RANDOMMOVE até ser desativado. ConditionValue ignorado."
+    },
+    "no_selection": {
+      "title": "Nenhuma Habilidade Selecionada",
+      "subtitle": "Selecione uma skill na coluna do meio para editar."
+    }
+  },
+  "quest_editor": {
+    "status": {
+      "loading": "Carregando banco de missões...",
+      "error_fetching": "Erro ao carregar quests."
+    },
+    "badges": {
+      "ok": "Sincronizado",
+      "divergent": "Divergente",
+      "server_only": "Apenas Servidor",
+      "client_only": "Apenas Cliente"
+    },
+    "save_success": "Missão salva com sucesso em db/import/quest_db.yml!",
+    "save_error": "Erro ao salvar quest.",
+    "create_default_title": "Nova Missão Customizada",
+    "create_error": "Erro ao criar nova missão.",
+    "sidebar": {
+      "title": "Missões (Quests)",
+      "add_quest": "Nova Missão",
+      "search_placeholder": "Buscar por ID ou Título...",
+      "quest_number": "Quest #{id}",
+      "targets_count": "{count} Alvos"
+    },
+    "source": {
+      "custom": "Custom Import",
+      "rathena": "rAthena Original"
+    },
+    "detail": {
+      "quest_id_line": "ID da Missão: #{id}",
+      "save_button": "Salvar em db/import/quest_db.yml"
+    },
+    "fields": {
+      "quest_id": "ID da Missão",
+      "title": "Título da Missão (Title)",
+      "time_limit": "Limite de Tempo (Segundos — TimeLimit)"
+    },
+    "targets": {
+      "title": "Monstros Alvo (Targets)",
+      "mob_id": "Mob ID",
+      "search_mob": "🔍 Buscar Mob",
+      "count": "Quantidade (Count)",
+      "race": "Raça (Race)",
+      "race_placeholder": "Ex: Formless"
+    },
+    "drops": {
+      "title": "Itens de Drop de Missão (Drops)",
+      "mob_id": "Mob ID",
+      "item_id": "Item ID",
+      "search_mob": "🔍 Mob",
+      "search_item": "🔍 Item",
+      "rate": "Rate (10000 = 100%)"
+    },
+    "no_selection": {
+      "title": "Nenhuma Missão Selecionada",
+      "subtitle": "Selecione uma missão na lista ao lado para ver e editar seus alvos e drops."
+    }
+  },
+  "pet_editor": {
+    "status": {
+      "loading": "Carregando banco de mascotes...",
+      "error_fetching": "Erro ao carregar pets."
+    },
+    "save_success": "Mascote (Pet) salvo com sucesso em db/import/pet_db.yml!",
+    "save_error": "Erro ao salvar mascote.",
+    "create_error": "Erro ao criar novo mascote.",
+    "sidebar": {
+      "title": "Mascotes (Pets)",
+      "add_pet": "Novo Mascote",
+      "search_placeholder": "Buscar por nome do monstro (Mob)...",
+      "egg_item": "Ovo: {egg}"
+    },
+    "detail": {
+      "subtitle": "Mascote (AegisName do Monstro)",
+      "save_button": "Salvar em db/import/pet_db.yml"
+    },
+    "source": {
+      "custom": "Custom Import",
+      "rathena": "rAthena Original"
+    },
+    "tabs": {
+      "general": "Itens & Identificação",
+      "hunger": "Fome & Intimidade",
+      "combat": "Combate & Captura",
+      "scripts": "Scripts de Bônus"
+    },
+    "fields": {
+      "mob": "Monstro Alvo (Mob — AegisName)",
+      "tame_item": "Item de Domar (TameItem)",
+      "egg_item": "Ovo do Mascote (EggItem)",
+      "equip_item": "Acessório de Pet (EquipItem)",
+      "food_item": "Comida do Mascote (FoodItem)",
+      "fullness": "Saciedade Inicial (Fullness)",
+      "hungry_delay": "Intervalo de Fome (HungryDelay — seg)",
+      "hunger_increase": "Aumento ao Alimentar (HungerIncrease)",
+      "intimacy_start": "Intimidade Inicial (IntimacyStart)",
+      "intimacy_fed": "Bônus ao Alimentar (IntimacyFed)",
+      "intimacy_hungry": "Penalidade de Fome (IntimacyHungry)",
+      "capture_rate": "Taxa de Captura (CaptureRate)",
+      "attack_rate": "Taxa de Ataque (AttackRate)",
+      "retaliate_rate": "Taxa de Retaliação (RetaliateRate)",
+      "change_target_rate": "Troca de Alvo (ChangeTargetRate)",
+      "script": "Script Principal do Mascote (Script)",
+      "support_script": "Script de Suporte (SupportScript)"
+    },
+    "no_selection": {
+      "title": "Nenhum Mascote Selecionado",
+      "subtitle": "Selecione um mascote na lista ao lado para ver e editar detalhes."
+    }
+  },
+  "achievement_editor": {
+    "status": {
+      "loading": "Carregando conquistas...",
+      "error_fetching": "Erro ao carregar conquistas."
+    },
+    "save_success": "Conquista salva com sucesso!",
+    "save_error": "Erro ao salvar conquista: {error}",
+    "create_fill_fields": "Preencha ID e Nome.",
+    "create_success": "Conquista criada com sucesso!",
+    "create_error": "Erro ao criar conquista: {error}",
+    "badges": {
+      "ok": "Ok",
+      "divergent": "Divergente",
+      "server_only": "Só YML",
+      "client_only": "Só Lua"
+    },
+    "sidebar": {
+      "title": "Conquistas",
+      "create_btn": "Criar Conquista",
+      "search_placeholder": "Buscar ID, nome ou título...",
+      "filter_sync_all": "Sincronia: Todos",
+      "filter_group_all": "Grupo: Todos",
+      "no_achievements": "Nenhuma conquista encontrada."
+    },
+    "detail": {
+      "not_exists": "não existente",
+      "generate_lua": "Gerar Lua do Cliente",
+      "save_changes": "Salvar Alterações",
+      "loading_btn": "Salvando..."
+    },
+    "visual_texts": {
+      "title": "Visualização & Textos (achievements.lub)",
+      "display_title": "Título Exibido no Jogo",
+      "display_title_placeholder": "Título traduzido...",
+      "summary": "Sumário (Resumo Curto)",
+      "summary_placeholder": "Resumo curto da missão...",
+      "detailed_desc": "Descrição Detalhada",
+      "detailed_desc_placeholder": "Instruções completas para completar a conquista...",
+      "checklist_label": "Checklist do Cliente (resource)",
+      "add_line": "+ Adicionar Linha",
+      "new_objective": "Novo objetivo..."
+    },
+    "server_yml": {
+      "title": "Lógica & Condições do Servidor (YML)",
+      "group": "Grupo",
+      "group_placeholder": "Ex: Adventure, Quest, Eat...",
+      "score": "Pontos (Score)",
+      "condition_expr": "Expressão de Condição",
+      "condition_expr_hint": "(Código Script rAthena)",
+      "condition_expr_placeholder": "Ex: \" BaseLevel >= 99 \" ou \" Class == JOB_NOVICE \"",
+      "targets": "Monstros Alvos (Targets)",
+      "add_target": "+ Adicionar Alvo",
+      "mob_placeholder": "Nome do mob...",
+      "search_btn": "Buscar",
+      "qty": "Qtd",
+      "map": "Mapa (AG_CHATTING / AG_MAP)",
+      "map_placeholder": "Ex: prontera, payon..."
+    },
+    "rewards": {
+      "title": "Premiações & Recompensas ao Completar",
+      "item": "Item da Recompensa",
+      "item_placeholder": "Nome do item (Aegis)...",
+      "search_btn": "Buscar",
+      "client_id": "ID no cliente (LUA):",
+      "none": "nenhuma",
+      "qty": "Quantidade do Item",
+      "title_reward": "Título da Recompensa (Title ID)",
+      "bonus_script": "Script de Bônus (Server Script)",
+      "bonus_script_placeholder": "Ex: getexp 500,0; specialeffect 100;"
+    },
+    "no_selection": "Selecione uma conquista na lista para editar",
+    "create_modal": {
+      "title": "Criar Nova Conquista",
+      "subtitle": "Cria o registro sincronizado no YML do servidor e na Lua do cliente.",
+      "unique_id": "ID Único",
+      "initial_group": "Grupo Inicial",
+      "server_name": "Nome do Servidor (Aegis)",
+      "client_title": "Título no Cliente (Lua)",
+      "create_btn": "Criar Registro",
+      "cancel": "Cancelar"
+    }
+  },
+  "components": {
+    "script_cell_editor": {
+      "title": "Editor de Script",
+      "item": "Item:",
+      "cancel": "Cancelar",
+      "save": "Salvar",
+      "save_script": "Salvar Script"
+    },
+    "repeatable_group": {
+      "empty": "Nenhum item adicionado.",
+      "add": "Adicionar",
+      "remove": "Remover item"
+    },
+    "reference_picker": {
+      "select": "Selecionar {type}",
+      "search_placeholder": "Buscar por ID ou Nome...",
+      "custom_tag": "[Custom]",
+      "loading": "Carregando catálogo...",
+      "no_results": "Nenhum resultado encontrado para \"{query}\".",
+      "select_btn": "Selecionar",
+      "types": {
+        "item": "Item",
+        "mob": "Monstro",
+        "skill": "Habilidade"
+      }
+    },
+    "modals": {
+      "new_mob": {
+        "title": "Criar Monstro Customizado",
+        "error_id": "ID deve ser maior que 0.",
+        "error_required": "AegisName e Name são obrigatórios.",
+        "error_create": "Erro ao criar monstro.",
+        "fields": {
+          "id": "ID do Monstro",
+          "id_tip": "Recomendado > 4000 para customizados.",
+          "level": "Level",
+          "aegis_name": "AegisName",
+          "aegis_name_tip": "Nome de referência do sistema (sem espaços).",
+          "name": "Nome (EN)",
+          "hp": "HP",
+          "race": "Raça",
+          "size": "Tamanho",
+          "element": "Elemento",
+          "element_level": "Nível do Elemento"
+        },
+        "create_btn": "Criar Monstro",
+        "creating": "Criando..."
+      },
+      "new_item": {
+        "title": "Criar Item Customizado",
+        "error_id": "ID deve ser maior que 0.",
+        "error_required": "AegisName e Name são obrigatórios.",
+        "error_create": "Erro ao criar item.",
+        "fields": {
+          "id": "ID do Item",
+          "id_tip": "Recomendado > 20000 para evitar conflitos com itens oficiais.",
+          "aegis_name": "AegisName",
+          "aegis_name_tip": "Nome de referência do sistema (sem espaços).",
+          "name": "Nome",
+          "name_tip": "Nome de exibição em inglês.",
+          "type": "Tipo",
+          "subtype": "Subtipo (Opcional)",
+          "atk": "Ataque (ATK)",
+          "def": "Defesa (DEF)",
+          "equip_level": "Nível Mínimo Equip"
+        },
+        "create_btn": "Criar Item",
+        "creating": "Criando..."
+      },
+      "npc_shop": {
+        "title": "NPC de Loja",
+        "copy_success": "Copiado!",
+        "copy_tooltip": "Copiar /navi",
+        "copy_btn_title": "Clique para copiar o comando /navi",
+        "inventory": "Inventário da Loja",
+        "default_price": "Preço Padrão (item_db)"
+      }
+    },
+    "encoding_mismatch": {
+      "title": "Incompatibilidade de Codificação (Encoding Mismatch)",
+      "description": "A aplicação falhou ao ler um arquivo de banco de dados por incompatibilidade de codificação.",
+      "suggestion": "Você deve verificar as suas configurações de codificação de texto (Encoding do Servidor / Cliente).",
+      "go_to_settings": "Ir para Configurações"
+    },
+    "random_options_editor": {
+      "title": "Opções Aleatórias",
+      "search_placeholder": "Buscar grupos...",
+      "new_group": "Novo Grupo",
+      "group_id": "ID do Grupo",
+      "group_name": "Constante do Grupo",
+      "options_list": "Lista de Bônus / Opções",
+      "add_option": "Adicionar Bônus",
+      "no_options": "Nenhum bônus adicionado a este grupo ainda.",
+      "option_header": "Opção",
+      "chance_header": "Chance",
+      "select_group": "Selecione um Grupo de Opções",
+      "select_group_desc": "Escolha um grupo na lista da esquerda ou clique no botão + para criar um novo.",
+      "save_btn": "Salvar Alterações",
+      "saved_toast": "✓ Salvo com sucesso!"
+    },
+    "size_fix_editor": {
+      "title": "Penalidades de Tamanho",
+      "subtitle": "Configure os multiplicadores de dano das classes de armas contra tamanhos de monstros.",
+      "save_btn": "Salvar Alterações",
+      "saved_toast": "✓ Modificações salvas com sucesso!",
+      "weapon_header": "Tipo de Arma",
+      "small_header": "Pequeno (Small)",
+      "medium_header": "Médio (Medium)",
+      "large_header": "Grande (Large)"
+    },
+    "client_item_audit": {
+      "tab_editor": "Editor de Itens",
+      "tab_audit": "Auditoria de Assets",
+      "scan_btn": "Escanear Assets Faltando",
+      "scanning": "Escaneando GRF e diretórios físicos...",
+      "id": "ID do Item",
+      "name": "Nome de Exibição",
+      "res_name": "Nome do Recurso",
+      "missing": "Arquivos Faltando",
+      "actions": "Ações",
+      "edit_tooltip": "Abrir no Editor",
+      "clean": "✓ Todos os assets estão presentes! Nenhum arquivo faltando detectado.",
+      "results_count": "Encontrados {count} itens com assets faltando",
+      "badge_icon": "Ícone (BMP)",
+      "badge_collection": "Coleção (BMP)",
+      "badge_spr": "Sprite (SPR)",
+      "badge_act": "Ação (ACT)"
+    }
+  },
+  "api_errors": {
+    "ERROR_DATABASE_LOADING": "O banco de dados ainda está carregando. Por favor, aguarde.",
+    "ERROR_NOT_FOUND": "Recurso não encontrado.",
+    "ERROR_ITEM_NOT_FOUND": "Item não encontrado.",
+    "ERROR_QUEST_NOT_FOUND": "Quest não encontrada.",
+    "ERROR_ACHIEVEMENT_NOT_FOUND": "Conquista não encontrada.",
+    "ERROR_PET_NOT_FOUND": "Mascote não encontrado.",
+    "ERROR_MOB_NOT_FOUND": "Monstro não encontrado.",
+    "ERROR_SKILL_NOT_FOUND": "Habilidade não encontrada.",
+    "ERROR_MOB_SKILL_NOT_FOUND": "Habilidade de monstro não encontrada.",
+    "ERROR_DUPLICATE_ID": "Um registro com este ID já existe.",
+    "ERROR_ID_REQUIRED": "O ID é obrigatório.",
+    "ERROR_INVALID_FILE_TYPE": "Tipo de arquivo inválido."
+  },
+  "constants_editor": {
+    "title": "Script Constantes",
+    "subtitle": "Gerencie as variáveis globais e constantes do emulador. Edições serão salvas em",
+    "loading": "Carregando constantes...",
+    "loading_error": "Erro ao carregar constantes do emulador.",
+    "unsaved_changes": "Alterações não salvas",
+    "save_btn": "Salvar Alterações",
+    "saving_btn": "Salvando...",
+    "search_placeholder": "Buscar pelo nome da constante...",
+    "new_constant_btn": "Nova Constante",
+    "th_name": "Nome da Constante",
+    "th_value": "Valor",
+    "th_parameter": "Parâmetro",
+    "th_source": "Origem",
+    "th_actions": "Ações",
+    "badge_new": "Novo",
+    "badge_custom": "Custom",
+    "badge_core": "Core",
+    "delete_tooltip": "Deletar constante",
+    "delete_core_disabled": "Constantes originais não podem ser deletadas",
+    "alert_delete_core": "Constantes originais do rAthena não podem ser removidas de db/const.yml. Remova apenas constantes customizadas.",
+    "alert_name_empty": "O nome da constante não pode ser vazio.",
+    "alert_name_invalid": "Nome de constante inválido. Deve começar com letra maiúscula e conter apenas letras maiúsculas, números ou sublinhados (_) sem espaços.",
+    "alert_duplicate": "Erro de duplicidade: A constante \"{name}\" está definida mais de uma vez.",
+    "save_success": "Constantes salvas com sucesso!",
+    "save_error": "Erro ao salvar constantes: {error}",
+    "no_constants": "Nenhuma constante encontrada.",
+    "clear_search_hint": "Limpe o filtro de busca para ver todas."
+  },
+  "quest_editor_extra": {
+    "tab_server": "Lógica do Servidor",
+    "tab_client": "Textos do Cliente",
+    "title_client_texts": "Textos Visuais do Cliente",
+    "label_quest_title": "Título da Missão (Title)",
+    "placeholder_quest_title": "Título exibido no Diário de Missões",
+    "label_quest_summary": "Progresso / Resumo (Summary)",
+    "placeholder_quest_summary": "Resumo de progresso atual. Ex: Fale com o Oficial",
+    "label_quest_info": "Instruções / Detalhes (Info)",
+    "placeholder_quest_info": "Escreva a descrição detalhada da missão. Pressione Enter para novas linhas.",
+    "quick_info_title": "Objetivos Rápidos de Caça (QuickInfo)",
+    "add_line": "+ Adicionar Linha",
+    "new_objective": "Novo objetivo",
+    "alert_create_error": "Erro ao criar quest: {error}",
+    "alert_save_success": "Quest salva com sucesso!"
+  },
+  "jobs_editor": {
+    "title": "Editor de Classes & Atributos",
+    "subtitle": "Gerencie atributos básicos, peso, modificadores de HP/SP e pontos base de cada classe.",
+    "search_placeholder": "Buscar classe...",
+    "cat_all": "Todas",
+    "cat_non_transcendent": "Não Transcendental",
+    "cat_transcendent": "Transcendental",
+    "cat_baby": "Baby",
+    "has_alternate_sprite": "Possui Traje Alternativo / Sprite Secundário",
+    "tab_stats": "Atributos Básicos",
+    "tab_basepoints": "Pontos de Evolução",
+    "tab_aspd": "Velocidade de Ataque (ASPD)",
+    "tab_outfits": "Trajes Alternativos",
+    "max_weight": "Peso Máximo",
+    "hp_factor": "Fator HP (%)",
+    "hp_increase": "Aumento Linear HP",
+    "sp_factor": "Fator SP (%)",
+    "sp_increase": "Aumento Linear SP",
+    "ap_factor": "Fator AP (%)",
+    "ap_increase": "Aumento Linear AP",
+    "bonus_stats": "Bônus de Atributos por Nível de Classe",
+    "base_hp_table": "Tabela de HP Base por Nível",
+    "base_sp_table": "Tabela de SP Base por Nível",
+    "base_ap_table": "Tabela de AP Base por Nível",
+    "level": "Nível",
+    "save_btn": "Salvar Alterações",
+    "save_success": "Atributos de classe salvos com sucesso!",
+    "save_error": "Erro ao salvar atributos: {error}"
+  },
+  "exp_table_editor": {
+    "title": "Editor de Curvas de Experiência",
+    "subtitle": "Edite as tabelas de experiência Base e Job com pré-visualização gráfica em tempo real.",
+    "select_table": "Selecione a Classe / Tabela",
+    "chart_title": "Comparativo de Curvas de Experiência (Base vs Job)",
+    "level": "Nível",
+    "col_level": "Nível",
+    "col_base_exp": "Base EXP",
+    "col_job_exp": "Job EXP",
+    "base_curve": "Curva Base EXP",
+    "job_curve": "Curva Job EXP",
+    "exp_required": "EXP Necessária",
+    "delta": "Diferença (Anterior)",
+    "scale_btn": "Ajustar Curva (%)",
+    "scale_prompt": "Informe a porcentagem de ajuste (ex: 110 para +10%, 90 para -10%):",
+    "save_btn": "Salvar Tabelas de EXP",
+    "save_success": "Tabelas de experiência salvas com sucesso!",
+    "save_error": "Erro ao salvar tabela de experiência: {error}"
+  },
+  "skill_tree_editor": {
+    "title": "Árvore Visual de Habilidades",
+    "subtitle": "Crie e organize pré-requisitos de habilidades de forma visual arrastando e conectando nós.",
+    "select_job": "Selecione a Classe",
+    "cat_non_transcendent": "Não Transcendental (Normal & Baby)",
+    "cat_transcendent": "Transcendental",
+    "add_skill_btn": "Adicionar Habilidade",
+    "auto_layout_btn": "Organizar Árvore",
+    "max_level": "Nv. Máx: {level}",
+    "required_level": "Nv. Necessário",
+    "modal_add_title": "Adicionar Habilidade à Árvore",
+    "modal_search_placeholder": "Buscar habilidade por nome ou ID...",
+    "btn_add": "Adicionar",
+    "save_btn": "Salvar Árvore",
+    "save_success": "Árvore de habilidades salva com sucesso!",
+    "save_error": "Erro ao salvar árvore de habilidades: {error}"
+  },
+  "global_loading": {
+    "title": "Carregando Bancos de Dados do rAthena",
+    "subtitle": "Aguarde enquanto os arquivos YAML são cacheados na memória...",
+    "database": "Lendo banco: {{db}}",
+    "progress": "{{value}}% concluído",
+    "completed": "Carregamento concluído com sucesso!",
+    "connecting": "Conectando ao servidor...",
+    "readingFiles": "Lendo arquivos...",
+    "connectionFailed": "Falha na conexão! Verifique se o servidor Backend está em execução."
+  },
+  "pagination": {
+    "loading_more": "Carregando mais itens...",
+    "showing": "Exibindo {{loaded}} de {{total}} registros"
+  },
+  "divinepride": {
+    "settings_title": "Integração DivinePride",
+    "settings_subtitle": "Configure sua chave de API para importação automática de dados do divine-pride.net",
+    "api_key_label": "DivinePride API Key",
+    "api_key_placeholder": "Insira sua chave de API do DivinePride...",
+    "import_button": "Importar do DivinePride",
+    "importing": "Importando...",
+    "missing_key_alert": "API Key do DivinePride não configurada. Configure na tela de Configurações do Sistema.",
+    "import_success": "Dados importados do DivinePride com sucesso! Verifique e salve as alterações.",
+    "import_error": "Falha ao importar do DivinePride: {{message}}",
+    "panel_title": "Importar do Divine Pride",
+    "panel_subtitle": "Busque os dados brutos, valide o preview e então salve.",
+    "panel_id_label": "ID do Divine Pride",
+    "panel_id_placeholder": "Ex: 501",
+    "panel_fetch": "Buscar",
+    "panel_fetching": "Buscando...",
+    "panel_preview_title": "Preview YAML (o que será salvo)",
+    "panel_preview_empty": "Busque um ID para visualizar o preview aqui.",
+    "panel_save": "Aprovar e Salvar",
+    "panel_saving": "Salvando...",
+    "panel_cancel": "Cancelar",
+    "panel_save_success": "Item importado e salvo com sucesso!",
+    "panel_save_error": "Erro ao salvar: {{message}}",
+    "panel_fetch_error": "Erro ao buscar: {{message}}",
+    "panel_resource_item": "Item",
+    "panel_resource_monster": "Monstro"
+  },
+  "random_options_manager": {
+    "title": "Gerenciador Unificado de Opções Aleatórias",
+    "subtitle": "Edite regras de grupo (item_randomopt_group.yml) e a aplicação nos itens (laphine_upgrade.yml) em uma única interface relacional.",
+    "search_placeholder": "Buscar grupo por ID ou nome...",
+    "new_group": "Novo Grupo",
+    "tab_rules": "Regras do Grupo",
+    "tab_laphine": "Aplicação & Alvos (Laphine)",
+    "group_id": "ID do Grupo",
+    "group_name": "Nome do Grupo (Foreign Key)",
+    "max_random": "Máximo de Opções Aleatórias (MaxRandom)",
+    "slots_section": "Slots Garantidos",
+    "random_section": "Pool Aleatória (Random)",
+    "add_slot": "Adicionar Slot",
+    "add_option": "Adicionar Opção",
+    "option_name": "Opção",
+    "min_val": "Mín",
+    "max_val": "Máx",
+    "param_val": "Param",
+    "chance_val": "Chance (10000 = 100%)",
+    "applicator_section": "Item Consumível Aplicador",
+    "applicator_desc": "Qual item consumível aciona este grupo de opções ao ser utilizado.",
+    "select_applicator": "Selecione o Item Aplicador...",
+    "req_opts": "Opções Aleatórias Requeridas",
+    "result_refine": "Refino Resultante",
+    "target_items_section": "Itens Alvo (Equipamentos Compatíveis)",
+    "target_items_desc": "Equipamentos que podem receber este grupo de opções via Laphine Upgrade.",
+    "add_target": "Adicionar Item Alvo",
+    "select_target": "Selecione um Item Alvo...",
+    "target_item": "Item Alvo",
+    "remove": "Remover",
+    "save_success": "Grupo e ligações relacionais salvos com sucesso!",
+    "save_error": "Erro ao salvar grupo relacional."
+  },
+  "map_engine": {
+    "title": "Map Engine",
+    "subtitle": "Gerencie drops por mapa e gere spawns customizados de monstros.",
+    "tab_map_drops": "Map Drops Database",
+    "tab_custom_spawns": "Custom Spawns",
+    "absolute_drops_banner": "Atenção: Drops configurados neste módulo são absolutos. Eles ignoram bônus de servidor, Gomas de Mascar e penalidades de nível. O Rate definido aqui é o Rate final (n/100000).",
+    "search_map_placeholder": "Buscar mapa...",
+    "new_map_entry": "Novo Mapa",
+    "save_map_drops": "Salvar map_drops.yml",
+    "save_map_drops_success": "map_drops.yml salvo com sucesso!",
+    "save_map_drops_error": "Erro ao salvar map_drops.yml.",
+    "map_name": "Nome do Mapa",
+    "global_drops_section": "Global Drops (todos os monstros do mapa)",
+    "global_drops_desc": "Drops aplicados a TODOS os monstros do mapa, independente do tipo.",
+    "add_global_drop": "Adicionar Drop Global",
+    "specific_drops_section": "Specific Monster Drops (por monstro)",
+    "specific_drops_desc": "Drops exclusivos de monstros específicos neste mapa.",
+    "add_mob_group": "Adicionar Grupo de Monstro",
+    "add_drop": "Adicionar Drop",
+    "mob_aegis": "Monstro (AegisName)",
+    "item_aegis": "Item (AegisName)",
+    "rate": "Rate (n/100000)",
+    "random_opt_group": "Random Option Group (opcional)",
+    "raw_code_panel": "Raw Code (Preview YAML)",
+    "raw_code_refresh": "Atualizar Preview",
+    "no_map_selected": "Selecione ou crie uma entrada de mapa para editar.",
+    "select_item": "Selecionar Item...",
+    "select_mob": "Selecionar Monstro...",
+    "spawns_title": "Gerador de Custom Spawns",
+    "spawns_subtitle": "Gera snippets de spawn e injeta no arquivo npc/custom/ui_spawns.txt.",
+    "spawn_map": "Mapa",
+    "spawn_x": "X",
+    "spawn_y": "Y",
+    "spawn_rx": "Raio X",
+    "spawn_ry": "Raio Y",
+    "spawn_monster": "Monstro",
+    "spawn_amount": "Quantidade",
+    "spawn_delay1": "Delay 1 (ms)",
+    "spawn_delay2": "Delay 2 (variação)",
+    "spawn_event": "Evento (Opcional)",
+    "spawn_select_monster": "Selecionar Monstro...",
+    "live_snippet_panel": "Live Snippet",
+    "inject_button": "Injetar no Script Customizado",
+    "inject_success": "Spawn injetado em ui_spawns.txt com sucesso!",
+    "inject_error": "Erro ao injetar spawn.",
+    "spawns_viewer_title": "Conteúdo Atual de ui_spawns.txt",
+    "spawns_viewer_empty": "O arquivo está vazio. Adicione seu primeiro spawn!",
+    "file_path_label": "Arquivo:",
+    "spawn_live_preview_title": "Live Preview (Raw Code)",
+    "spawn_live_preview_desc": "Esta linha separada por TABs será adicionada ao arquivo npc/custom/ui_spawns.txt.",
+    "spawn_location_section": "1. Localização",
+    "spawn_entity_section": "2. Entidade & Regras",
+    "remove": "Remover",
+    "inject_button": "Injetar no Script Customizado",
+    "inject_success": "Spawn injetado em ui_spawns.txt com sucesso!",
+    "inject_error": "Erro ao injetar spawn.",
+    "delete_spawn_confirm": "Excluir este spawn do ui_spawns.txt?",
+    "delete_spawn_success": "Spawn removido com sucesso!",
+    "delete_spawn_error": "Erro ao remover o spawn."
+  },
+  "delete_modal": {
+    "title": "Confirmar Exclusão",
+    "irreversible_warning": "Esta ação não pode ser desfeita.",
+    "confirm_message": "Tem certeza que deseja excluir",
+    "file_warning": "O arquivo será modificado permanentemente no disco. Backups não são criados automaticamente.",
+    "confirm_btn": "Sim, Excluir",
+    "deleting": "Excluindo…"
+  },
+  "item_editor_delete": {
+    "btn_label": "Excluir Item",
+    "success": "Item #{id} excluído com sucesso!",
+    "error_403": "Não é possível excluir itens do banco oficial do rAthena.",
+    "error_generic": "Erro ao excluir o item."
+  },
+  "mob_editor_delete": {
+    "btn_label": "Excluir Monstro",
+    "success": "Monstro #{id} excluído com sucesso!",
+    "error_403": "Não é possível excluir monstros do banco oficial do rAthena.",
+    "error_generic": "Erro ao excluir o monstro."
+  },
+  "client_item_delete": {
+    "btn_label": "Excluir do ItemInfo",
+    "success": "Item #{id} removido do iteminfo.lua com sucesso!",
+    "error_generic": "Erro ao remover o item do iteminfo.lua."
+  }
+}

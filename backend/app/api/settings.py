@@ -90,6 +90,7 @@ class SettingsPayload(BaseModel):
     server_encoding: Optional[str] = "utf-8"
     client_encoding: Optional[str] = "euc-kr"
     achievements_lua_path: Optional[str] = ""
+    quests_lua_path: Optional[str] = ""
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
@@ -121,6 +122,7 @@ async def get_settings():
         "server_encoding": env.get("SERVER_ENCODING", "utf-8") or "utf-8",
         "client_encoding": env.get("CLIENT_ENCODING", "euc-kr") or "euc-kr",
         "achievements_lua_path": env.get("ACHIEVEMENTS_LUA_PATH", ""),
+        "quests_lua_path": env.get("QUESTS_LUA_PATH", ""),
         "encoding_options": ENCODING_OPTIONS,
     }
 
@@ -134,6 +136,18 @@ async def save_settings(payload: SettingsPayload):
             detail=f"Maximum {MAX_GRF_SLOTS} GRF files allowed (matching the official RO client DATA.INI limit)."
         )
 
+    # Validate client encoding
+    if payload.iteminfo_path and os.path.exists(payload.iteminfo_path):
+        from app.core.utils import read_file_safely
+        read_file_safely(payload.iteminfo_path, payload.client_encoding or "euc-kr")
+
+    # Validate server encoding
+    db_base = payload.server_db_base_path or ""
+    mob_skill_path = os.path.join(db_base, "re/mob_skill_db.txt").replace("\\", "/") if db_base else ""
+    if mob_skill_path and os.path.exists(mob_skill_path):
+        from app.core.utils import read_file_safely
+        read_file_safely(mob_skill_path, payload.server_encoding or "utf-8")
+
     updates: dict = {
         "SERVER_DB_BASE_PATH": payload.server_db_base_path or "",
         "ITEMINFO_PATH": payload.iteminfo_path or "",
@@ -142,6 +156,7 @@ async def save_settings(payload: SettingsPayload):
         "SERVER_ENCODING": payload.server_encoding or "utf-8",
         "CLIENT_ENCODING": payload.client_encoding or "euc-kr",
         "ACHIEVEMENTS_LUA_PATH": payload.achievements_lua_path or "",
+        "QUESTS_LUA_PATH": payload.quests_lua_path or "",
     }
 
     # Clear all GRF slots first, then write only the ones provided
@@ -176,6 +191,18 @@ async def reload_settings():
     This re-initialises the GRF reader, DB parsers and iteminfo.
     """
     env = _read_env()
+    from app.core.utils import read_file_safely
+
+    # Validate client encoding
+    iteminfo_path = env.get("ITEMINFO_PATH", "").strip()
+    if iteminfo_path and os.path.exists(iteminfo_path):
+        read_file_safely(iteminfo_path, env.get("CLIENT_ENCODING", "euc-kr") or "euc-kr")
+
+    # Validate server encoding
+    db_base = env.get("SERVER_DB_BASE_PATH", "").strip()
+    mob_skill_path = os.path.join(db_base, "re/mob_skill_db.txt").replace("\\", "/") if db_base else ""
+    if mob_skill_path and os.path.exists(mob_skill_path):
+        read_file_safely(mob_skill_path, env.get("SERVER_ENCODING", "utf-8") or "utf-8")
 
     # Apply to os.environ
     for key, val in env.items():
@@ -215,49 +242,71 @@ async def reload_settings():
     item_path = _path("ITEM_DB_PATH", "re/item_db.yml")
     if item_path:
         yaml_db.load_db_async(item_path)
-        reloaded.append(f"item_db → {item_path}")
+        reloaded.append(f"item_db -> {item_path}")
 
     from app.services.mob_parser import mob_db
     mob_path = _path("MOB_DB_PATH", "re/mob_db.yml")
     if mob_path:
         mob_db.load_db_async(mob_path)
-        reloaded.append(f"mob_db → {mob_path}")
+        reloaded.append(f"mob_db -> {mob_path}")
 
     from app.services.skill_parser import skill_db
     skill_path = _path("SKILL_DB_PATH", "re/skill_db.yml")
     if skill_path:
         skill_db.load_db_async(skill_path)
-        reloaded.append(f"skill_db → {skill_path}")
+        reloaded.append(f"skill_db -> {skill_path}")
 
     from app.services.mob_skill_parser import mob_skill_db
     mob_skill_path = _path("MOB_SKILL_DB_PATH", "re/mob_skill_db.txt")
     if mob_skill_path:
         mob_skill_db.load_db_async(mob_skill_path)
-        reloaded.append(f"mob_skill_db → {mob_skill_path}")
+        reloaded.append(f"mob_skill_db -> {mob_skill_path}")
 
     from app.services.combo_parser import combo_db
     combo_path = _path("COMBO_DB_PATH", "re/item_combos.yml")
     if combo_path:
         combo_db.load_db_async(combo_path)
-        reloaded.append(f"combo_db → {combo_path}")
+        reloaded.append(f"combo_db -> {combo_path}")
 
     from app.services.quest_parser import quest_db
     quest_path = _path("QUEST_DB_PATH", "re/quest_db.yml")
     if quest_path:
+        quest_db.client_loaded = False
         quest_db.load_db_async(quest_path)
-        reloaded.append(f"quest_db → {quest_path}")
+        reloaded.append(f"quest_db -> {quest_path}")
 
     from app.services.pet_parser import pet_db
     pet_path = _path("PET_DB_PATH", "re/pet_db.yml")
     if pet_path:
         pet_db.load_db_async(pet_path)
-        reloaded.append(f"pet_db → {pet_path}")
+        reloaded.append(f"pet_db -> {pet_path}")
+
+    from app.services.achievement_parser import achievement_db
+    achievement_path = _path("ACHIEVEMENT_DB_PATH", "re/achievement_db.yml")
+    if achievement_path:
+        achievement_db.client_loaded = False
+        achievement_db.load_db_async(achievement_path)
+        reloaded.append(f"achievement_db -> {achievement_path}")
+
+    from app.services.const_parser import const_db
+    const_path = _path("CONST_DB_PATH", "const.yml")
+    if const_path:
+        const_db.load_db_async(const_path)
+        reloaded.append(f"const_db -> {const_path}")
 
     from app.services.iteminfo_parser import iteminfo_db
     iteminfo_path = env.get("ITEMINFO_PATH", "").strip()
     if iteminfo_path:
         iteminfo_db.load_background(iteminfo_path)
-        reloaded.append(f"iteminfo → {iteminfo_path}")
+        reloaded.append(f"iteminfo -> {iteminfo_path}")
+
+    from app.services.randomopt_parser import randomopt_db
+    randomopt_db.initialize()
+    reloaded.append("randomopt_db")
+
+    from app.services.sizefix_parser import sizefix_db
+    sizefix_db.initialize()
+    reloaded.append("sizefix_db")
 
     return {
         "status": "reloaded",
@@ -284,6 +333,7 @@ async def validate_settings():
     _check("ITEMINFO_PATH", env.get("ITEMINFO_PATH", ""))
     _check("GRF_OVERRIDE_PATH", env.get("GRF_OVERRIDE_PATH", ""))
     _check("ACHIEVEMENTS_LUA_PATH", env.get("ACHIEVEMENTS_LUA_PATH", ""))
+    _check("QUESTS_LUA_PATH", env.get("QUESTS_LUA_PATH", ""))
 
     for i in range(MAX_GRF_SLOTS):
         val = env.get(f"GRF_{i}", "").strip()
@@ -296,3 +346,46 @@ async def validate_settings():
         _check("GRF_PATH (legacy)", old_grf)
 
     return results
+
+
+@router.post("/browse")
+def browse_path(payload: dict):
+    """
+    Open a native directory/file chooser dialog on the host OS.
+    Runs synchronously on a thread pool so it does not block the async event loop.
+    """
+    import tkinter as tk
+    from tkinter import filedialog
+    
+    # Hide root window
+    root = tk.Tk()
+    root.withdraw()
+    root.wm_attributes("-topmost", True)
+    
+    dialog_type = payload.get("type", "dir")
+    initial_dir = payload.get("initial", "")
+    if initial_dir and not os.path.exists(initial_dir):
+        initial_dir = ""
+        
+    selected_path = ""
+    if dialog_type == "dir":
+        selected_path = filedialog.askdirectory(
+            initialdir=initial_dir,
+            title="Select Folder / Selecionar Pasta"
+        )
+    elif dialog_type == "file":
+        ext = payload.get("ext", "")
+        filetypes = [("All Files", "*.*")]
+        if ext == "lua":
+            filetypes = [("Lua Files", "*.lua;*.lub"), ("All Files", "*.*")]
+        elif ext == "grf":
+            filetypes = [("GRF Files", "*.grf"), ("All Files", "*.*")]
+        selected_path = filedialog.askopenfilename(
+            initialdir=initial_dir,
+            filetypes=filetypes,
+            title="Select File / Selecionar Arquivo"
+        )
+        
+    root.destroy()
+    return {"path": selected_path.replace("\\", "/")}
+

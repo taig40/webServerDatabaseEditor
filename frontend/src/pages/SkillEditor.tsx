@@ -2,23 +2,41 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { Virtuoso } from 'react-virtuoso';
 import { API_URL } from '../config/env';
-import { Search, Zap, Database, Sparkles, Save, Shield, Clock, Sliders, Box, Layers } from 'lucide-react';
+import { Search, Zap, Database, Sparkles, Save, Shield, Clock, Sliders, Box, Layers, Plus, Trash2, Coins, Activity, ShieldAlert, Award, Sword } from 'lucide-react';
 import { LevelArrayEditor } from '../components/LevelArrayEditor';
 import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
+import { useLanguageStore } from '../store/useLanguageStore';
+import { localizeLoadingStatus } from '../utils/i18nHelpers';
+import { DivinePrideImportButton } from '../components/DivinePrideImportButton';
 
 type SourceTab = 'rathena' | 'custom';
 
 export const SkillEditor: React.FC = () => {
+  const t = useLanguageStore(state => state.t);
   const [skills, setSkills] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingStatus, setLoadingStatus] = useState("Conectando ao Backend...");
+  const [loadingStatus, setLoadingStatus] = useState(t('skill_editor.status.connecting'));
   const [searchText, setSearchText] = useState("");
   const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
   const [selectedSkillId, setSelectedSkillId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'geral' | 'dano' | 'tempo' | 'requisitos' | 'unidade'>('geral');
   const [isSaving, setIsSaving] = useState(false);
   const [pickerConfig, setPickerConfig] = useState<{ open: boolean; type: 'item' | 'mob' | 'skill'; targetKey?: string }>({ open: false, type: 'item' });
+  const [itemsMap, setItemsMap] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    axios.get(`${API_URL}/api/items/references?t=${Date.now()}`)
+      .then(res => {
+        const map: Record<string, any> = {};
+        (res.data.items || []).forEach((item: any) => {
+          const aegisName = item.AegisName || String(item.Id);
+          map[aegisName.toLowerCase()] = item;
+        });
+        setItemsMap(map);
+      })
+      .catch(err => console.error("Erro ao carregar mapa de itens:", err));
+  }, []);
 
   useEffect(() => {
     let intervalId: any;
@@ -29,27 +47,27 @@ export const SkillEditor: React.FC = () => {
         setIsLoading(false);
       } catch (err) {
         console.error("Erro ao carregar skills:", err);
-        setLoadingStatus("Erro ao carregar banco de habilidades.");
+        setLoadingStatus(t('skill_editor.status.error_fetching'));
       }
     };
 
     const checkStatus = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/skills/status`);
-        setLoadingStatus(res.data.message);
+        setLoadingStatus(localizeLoadingStatus(res.data.message, t));
         if (!res.data.is_loading && res.data.message !== "Aguardando inicialização...") {
           if (intervalId) clearInterval(intervalId);
           fetchSkills();
         }
       } catch (err) {
-        setLoadingStatus("Verificando servidor...");
+        setLoadingStatus(t('skill_editor.status.checking'));
       }
     };
 
     checkStatus();
     intervalId = setInterval(checkStatus, 1500);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [t]);
 
   const rathenaSkills = useMemo(() => skills.filter(s => s._source === 'rathena'), [skills]);
   const customSkills = useMemo(() => skills.filter(s => s._source === 'custom'), [skills]);
@@ -68,6 +86,17 @@ export const SkillEditor: React.FC = () => {
   const selectedSkill = useMemo(() => {
     return skills.find(s => s.Id === selectedSkillId) || null;
   }, [skills, selectedSkillId]);
+
+  const handleDPImportSuccess = (mappedData: any) => {
+    if (!selectedSkill) return;
+    setSkills(prev => prev.map(s => {
+      if (s.Id === selectedSkill.Id) {
+        return { ...s, ...mappedData, Id: selectedSkill.Id };
+      }
+      return s;
+    }));
+  };
+
 
   const handleUpdateField = (fieldKey: string, value: any) => {
     if (!selectedSkill) return;
@@ -101,10 +130,10 @@ export const SkillEditor: React.FC = () => {
       const saved = res.data;
       setSkills(prev => prev.map(s => s.Id === saved.Id ? { ...saved, _source: 'custom' } : s));
       setSourceTab('custom');
-      alert("Habilidade salva com sucesso em db/import/skill_db.yml!");
+      alert(t('skill_editor.save_success'));
     } catch (err) {
       console.error("Erro ao salvar skill:", err);
-      alert("Erro ao salvar habilidade.");
+      alert(t('skill_editor.save_error'));
     } finally {
       setIsSaving(false);
     }
@@ -117,7 +146,7 @@ export const SkillEditor: React.FC = () => {
         <div className="p-4 border-b border-white/5 bg-gradient-to-b from-[#1a1a24] to-[#12121a]">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-gray-200 font-semibold text-lg flex items-center gap-2">
-              <Zap size={18} className="text-amber-500" /> Habilidades
+              <Zap size={18} className="text-amber-500" /> {t('skill_editor.sidebar.title')}
             </h2>
           </div>
 
@@ -155,7 +184,7 @@ export const SkillEditor: React.FC = () => {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
               type="text"
-              placeholder="Buscar por ID ou AegisName..."
+              placeholder={t('skill_editor.sidebar.search_placeholder')}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="w-full bg-dark-900 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-amber-500/50"
@@ -190,7 +219,7 @@ export const SkillEditor: React.FC = () => {
                   >
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className={`text-sm truncate font-medium ${isSelected ? 'text-white font-semibold' : 'text-gray-300'}`}>
-                        {skill.Description || skill.Name || `Skill #${skill.Id}`}
+                        {skill.Description || skill.Name || `${t('skill_editor.sidebar.title')} #${skill.Id}`}
                       </span>
                       <span className={`text-[11px] truncate font-mono ${isSelected ? (isCustom ? 'text-emerald-300' : 'text-amber-300') : 'text-gray-500'}`}>
                         #{skill.Id} — {skill.Name}
@@ -218,8 +247,13 @@ export const SkillEditor: React.FC = () => {
                   <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded">
                     ID: {selectedSkill.Id}
                   </span>
+                  <DivinePrideImportButton
+                    resourceType="skill"
+                    resourceId={selectedSkill.Id}
+                    onImportSuccess={handleDPImportSuccess}
+                  />
                   <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${selectedSkill._source === 'custom' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-dark-800 text-gray-400'}`}>
-                    {selectedSkill._source === 'custom' ? 'Custom Import' : 'rAthena Original'}
+                    {selectedSkill._source === 'custom' ? t('skill_editor.source.custom') : t('skill_editor.source.rathena')}
                   </span>
                 </div>
                 <h1 className="text-xl font-bold text-white mt-1">
@@ -234,18 +268,18 @@ export const SkillEditor: React.FC = () => {
                 className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-amber-900/30 transition-all disabled:opacity-50"
               >
                 <Save size={16} />
-                <span>{isSaving ? "Salvar em db/import/..." : "Salvar em db/import/..."}</span>
+                <span>{isSaving ? t('common.saving') : t('skill_editor.detail.save_button')}</span>
               </button>
             </div>
 
             {/* Sub-tabs */}
             <div className="flex border-b border-dark-800 bg-dark-900/40 px-4 gap-4">
               {[
-                { id: 'geral', label: 'Identificação e Geral', icon: Sliders },
-                { id: 'dano', label: 'Dano e Combate', icon: Shield },
-                { id: 'tempo', label: 'Cast, Delay e Cooldown', icon: Clock },
-                { id: 'requisitos', label: 'Requisitos e Custos', icon: Layers },
-                { id: 'unidade', label: 'Efeitos no Solo (Unit)', icon: Box },
+                { id: 'geral', label: t('skill_editor.tabs.general'), icon: Sliders },
+                { id: 'dano', label: t('skill_editor.tabs.combat'), icon: Shield },
+                { id: 'tempo', label: t('skill_editor.tabs.timing'), icon: Clock },
+                { id: 'requisitos', label: t('skill_editor.tabs.requirements'), icon: Layers },
+                { id: 'unidade', label: t('skill_editor.tabs.unit'), icon: Box },
               ].map(tab => {
                 const Icon = tab.icon;
                 return (
@@ -270,7 +304,7 @@ export const SkillEditor: React.FC = () => {
               {activeTab === 'geral' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">AegisName (Código interno)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.aegis_name')}</label>
                     <input
                       type="text"
                       value={selectedSkill.Name || ''}
@@ -279,7 +313,7 @@ export const SkillEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Descrição Exibida</label>
+                    <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.description')}</label>
                     <input
                       type="text"
                       value={selectedSkill.Description || ''}
@@ -288,7 +322,7 @@ export const SkillEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Nível Máximo (MaxLevel)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.max_level')}</label>
                     <input
                       type="number"
                       value={selectedSkill.MaxLevel || 1}
@@ -297,7 +331,7 @@ export const SkillEditor: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Tipo da Habilidade (Type)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.type')}</label>
                     <select
                       value={selectedSkill.Type || 'None'}
                       onChange={(e) => handleUpdateField('Type', e.target.value)}
@@ -307,7 +341,7 @@ export const SkillEditor: React.FC = () => {
                     </select>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Alvo (TargetType)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.target_type')}</label>
                     <select
                       value={selectedSkill.TargetType || 'Passive'}
                       onChange={(e) => handleUpdateField('TargetType', e.target.value)}
@@ -317,9 +351,9 @@ export const SkillEditor: React.FC = () => {
                     </select>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-400">Alcance (Range)</label>
+                    <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.range')}</label>
                     <LevelArrayEditor
-                      label="Alcance (Células)"
+                      label={t('skill_editor.fields.range_cells')}
                       value={selectedSkill.Range}
                       maxLevel={selectedSkill.MaxLevel || 10}
                       valueKey="Size"
@@ -333,28 +367,28 @@ export const SkillEditor: React.FC = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <LevelArrayEditor
-                      label="Contagem de Acertos (HitCount)"
+                      label={t('skill_editor.fields.hit_count')}
                       value={selectedSkill.HitCount}
                       maxLevel={selectedSkill.MaxLevel || 10}
                       valueKey="Count"
                       onChange={(val) => handleUpdateField('HitCount', val)}
                     />
                     <LevelArrayEditor
-                      label="Área de Splash (SplashArea)"
+                      label={t('skill_editor.fields.splash_area')}
                       value={selectedSkill.SplashArea}
                       maxLevel={selectedSkill.MaxLevel || 10}
                       valueKey="Area"
                       onChange={(val) => handleUpdateField('SplashArea', val)}
                     />
                     <LevelArrayEditor
-                      label="Empurrão — Knockback (Células)"
+                      label={t('skill_editor.fields.knockback')}
                       value={selectedSkill.Knockback}
                       maxLevel={selectedSkill.MaxLevel || 10}
                       valueKey="Amount"
                       onChange={(val) => handleUpdateField('Knockback', val)}
                     />
                     <div className="flex flex-col gap-1 bg-dark-900/50 p-3 rounded border border-dark-800">
-                      <label className="text-xs font-medium text-gray-300 mb-1">Tipo de Acerto (Hit)</label>
+                      <label className="text-xs font-medium text-gray-300 mb-1">{t('skill_editor.fields.hit')}</label>
                       <select
                         value={selectedSkill.Hit || 'Normal'}
                         onChange={(e) => handleUpdateField('Hit', e.target.value)}
@@ -370,42 +404,42 @@ export const SkillEditor: React.FC = () => {
               {activeTab === 'tempo' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <LevelArrayEditor
-                    label="Tempo de Conjuração — CastTime (ms)"
+                    label={t('skill_editor.fields.cast_time')}
                     value={selectedSkill.CastTime}
                     maxLevel={selectedSkill.MaxLevel || 10}
                     valueKey="Time"
                     onChange={(val) => handleUpdateField('CastTime', val)}
                   />
                   <LevelArrayEditor
-                    label="Cast Fixo — FixedCastTime (ms)"
+                    label={t('skill_editor.fields.fixed_cast')}
                     value={selectedSkill.FixedCastTime}
                     maxLevel={selectedSkill.MaxLevel || 10}
                     valueKey="Time"
                     onChange={(val) => handleUpdateField('FixedCastTime', val)}
                   />
                   <LevelArrayEditor
-                    label="Pós-conjuração (Animação) — AfterCastActDelay (ms)"
+                    label={t('skill_editor.fields.animation_delay')}
                     value={selectedSkill.AfterCastActDelay}
                     maxLevel={selectedSkill.MaxLevel || 10}
                     valueKey="Time"
                     onChange={(val) => handleUpdateField('AfterCastActDelay', val)}
                   />
                   <LevelArrayEditor
-                    label="Tempo de Recarga — Cooldown (ms)"
+                    label={t('skill_editor.fields.cooldown')}
                     value={selectedSkill.Cooldown}
                     maxLevel={selectedSkill.MaxLevel || 10}
                     valueKey="Time"
                     onChange={(val) => handleUpdateField('Cooldown', val)}
                   />
                   <LevelArrayEditor
-                    label="Duração 1 (ms)"
+                    label={t('skill_editor.fields.duration1')}
                     value={selectedSkill.Duration1}
                     maxLevel={selectedSkill.MaxLevel || 10}
                     valueKey="Time"
                     onChange={(val) => handleUpdateField('Duration1', val)}
                   />
                   <LevelArrayEditor
-                    label="Duração 2 (ms)"
+                    label={t('skill_editor.fields.duration2')}
                     value={selectedSkill.Duration2}
                     maxLevel={selectedSkill.MaxLevel || 10}
                     valueKey="Time"
@@ -415,44 +449,360 @@ export const SkillEditor: React.FC = () => {
               )}
 
               {activeTab === 'requisitos' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <LevelArrayEditor
-                      label="Custo de SP (SpCost)"
-                      value={selectedSkill.Requires?.SpCost}
-                      maxLevel={selectedSkill.MaxLevel || 10}
-                      valueKey="Amount"
-                      onChange={(val) => handleUpdateNestedField('Requires', 'SpCost', val)}
-                    />
-                    <LevelArrayEditor
-                      label="Custo de HP (HpCost)"
-                      value={selectedSkill.Requires?.HpCost}
-                      maxLevel={selectedSkill.MaxLevel || 10}
-                      valueKey="Amount"
-                      onChange={(val) => handleUpdateNestedField('Requires', 'HpCost', val)}
-                    />
-                    <LevelArrayEditor
-                      label="Custo de Zeny (ZenyCost)"
-                      value={selectedSkill.Requires?.ZenyCost}
-                      maxLevel={selectedSkill.MaxLevel || 10}
-                      valueKey="Amount"
-                      onChange={(val) => handleUpdateNestedField('Requires', 'ZenyCost', val)}
-                    />
+                <div className="space-y-6">
+                  {/* --- CostPanel: Base Resource Costs --- */}
+                  <div className="bg-[#12121a] border border-white/5 rounded-xl p-5 shadow-lg space-y-4">
+                    <h3 className="text-gray-200 font-semibold text-sm flex items-center gap-2">
+                      <Activity size={16} className="text-rose-500" />
+                      {t('skill_editor.requirements_panel.base_costs_title')}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <LevelArrayEditor
+                        label={t('skill_editor.fields.sp_cost')}
+                        value={selectedSkill.Requires?.SpCost}
+                        maxLevel={selectedSkill.MaxLevel || 10}
+                        valueKey="Amount"
+                        onChange={(val) => handleUpdateNestedField('Requires', 'SpCost', val)}
+                      />
+                      <LevelArrayEditor
+                        label={t('skill_editor.fields.hp_cost')}
+                        value={selectedSkill.Requires?.HpCost}
+                        maxLevel={selectedSkill.MaxLevel || 10}
+                        valueKey="Amount"
+                        onChange={(val) => handleUpdateNestedField('Requires', 'HpCost', val)}
+                      />
+                      <LevelArrayEditor
+                        label={t('skill_editor.fields.ap_cost')}
+                        value={selectedSkill.Requires?.ApCost}
+                        maxLevel={selectedSkill.MaxLevel || 10}
+                        valueKey="Amount"
+                        onChange={(val) => handleUpdateNestedField('Requires', 'ApCost', val)}
+                      />
+                      <LevelArrayEditor
+                        label={t('skill_editor.fields.zeny_cost')}
+                        value={selectedSkill.Requires?.ZenyCost}
+                        maxLevel={selectedSkill.MaxLevel || 10}
+                        valueKey="Amount"
+                        onChange={(val) => handleUpdateNestedField('Requires', 'ZenyCost', val)}
+                      />
+                      <LevelArrayEditor
+                        label={t('skill_editor.fields.hp_rate_cost')}
+                        value={selectedSkill.Requires?.HpRateCost}
+                        maxLevel={selectedSkill.MaxLevel || 10}
+                        valueKey="Amount"
+                        onChange={(val) => handleUpdateNestedField('Requires', 'HpRateCost', val)}
+                      />
+                      <LevelArrayEditor
+                        label={t('skill_editor.fields.sp_rate_cost')}
+                        value={selectedSkill.Requires?.SpRateCost}
+                        maxLevel={selectedSkill.MaxLevel || 10}
+                        valueKey="Amount"
+                        onChange={(val) => handleUpdateNestedField('Requires', 'SpRateCost', val)}
+                      />
+                      <LevelArrayEditor
+                        label={t('skill_editor.fields.ap_rate_cost')}
+                        value={selectedSkill.Requires?.ApRateCost}
+                        maxLevel={selectedSkill.MaxLevel || 10}
+                        valueKey="Amount"
+                        onChange={(val) => handleUpdateNestedField('Requires', 'ApRateCost', val)}
+                      />
+                      <LevelArrayEditor
+                        label={t('skill_editor.fields.max_hp_trigger')}
+                        value={selectedSkill.Requires?.MaxHpTrigger}
+                        maxLevel={selectedSkill.MaxLevel || 10}
+                        valueKey="Amount"
+                        onChange={(val) => handleUpdateNestedField('Requires', 'MaxHpTrigger', val)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* --- RequirementPanel: Weapon & Ammo --- */}
+                  <div className="bg-[#12121a] border border-white/5 rounded-xl p-5 shadow-lg space-y-4">
+                    <h3 className="text-gray-200 font-semibold text-sm flex items-center gap-2">
+                      <Sword size={16} className="text-blue-500" />
+                      {t('skill_editor.requirements_panel.combat_title')}
+                    </h3>
+                    
+                    {/* Weapons Multi-Select Tag Layout */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-semibold text-gray-400">
+                          {t('skill_editor.fields.weapons')}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateNestedField('Requires', 'Weapon', undefined)}
+                          className="text-[10px] bg-dark-800 hover:bg-dark-700 text-gray-400 px-2 py-0.5 rounded transition-colors"
+                        >
+                          {t('skill_editor.requirements_panel.any_weapon')}
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 p-3 bg-dark-900/40 rounded-lg border border-white/5">
+                        {[
+                          'Fist', 'Dagger', '1hSword', '2hSword', '1hSpear', '2hSpear',
+                          '1hAxe', '2hAxe', 'Mace', '2hMace', 'Staff', 'Knuckle',
+                          'Musical', 'Whip', 'Book', 'Katar', 'Revolver', 'Rifle',
+                          'Gatling', 'Shotgun', 'Grenade', 'Huuma'
+                        ].map(wp => {
+                          const isRequired = selectedSkill.Requires?.Weapon?.[wp] === true;
+                          return (
+                            <button
+                              key={wp}
+                              type="button"
+                              onClick={() => {
+                                const current = { ...(selectedSkill.Requires?.Weapon || {}) };
+                                if (current[wp]) {
+                                  delete current[wp];
+                                } else {
+                                  current[wp] = true;
+                                }
+                                handleUpdateNestedField('Requires', 'Weapon', Object.keys(current).length > 0 ? current : undefined);
+                              }}
+                              className={`px-2.5 py-1 rounded text-xs font-semibold font-mono border transition-all ${
+                                isRequired
+                                  ? 'bg-blue-600/20 border-blue-500 text-blue-300'
+                                  : 'bg-dark-900 border-white/5 text-gray-500 hover:text-gray-300'
+                              }`}
+                            >
+                              {wp}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Ammo Toggle List */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-gray-400 block">
+                          {t('skill_editor.fields.ammo')}
+                        </label>
+                        <div className="flex flex-wrap gap-1.5 p-3 bg-dark-900/40 rounded-lg border border-white/5">
+                          {['Arrow', 'Dagger', 'Bullet', 'Shell', 'Grenade', 'Shuriken', 'Kunai', 'Cannonball'].map(am => {
+                            const isRequired = selectedSkill.Requires?.Ammo?.[am] === true;
+                            return (
+                              <button
+                                key={am}
+                                type="button"
+                                onClick={() => {
+                                  const current = { ...(selectedSkill.Requires?.Ammo || {}) };
+                                  if (current[am]) {
+                                    delete current[am];
+                                  } else {
+                                    current[am] = true;
+                                  }
+                                  handleUpdateNestedField('Requires', 'Ammo', Object.keys(current).length > 0 ? current : undefined);
+                                }}
+                                className={`px-2.5 py-1 rounded text-xs font-semibold font-mono border transition-all ${
+                                  isRequired
+                                    ? 'bg-amber-600/20 border-amber-500 text-amber-300'
+                                    : 'bg-dark-900 border-white/5 text-gray-500 hover:text-gray-300'
+                                }`}
+                              >
+                                {am}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <LevelArrayEditor
+                        label={t('skill_editor.fields.ammo_amount')}
+                        value={selectedSkill.Requires?.AmmoAmount}
+                        maxLevel={selectedSkill.MaxLevel || 10}
+                        valueKey="Amount"
+                        onChange={(val) => handleUpdateNestedField('Requires', 'AmmoAmount', val)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* --- RequirementPanel: States, Status & Monk Fury --- */}
+                  <div className="bg-[#12121a] border border-white/5 rounded-xl p-5 shadow-lg space-y-4">
+                    <h3 className="text-gray-200 font-semibold text-sm flex items-center gap-2">
+                      <ShieldAlert size={16} className="text-violet-500" />
+                      {t('skill_editor.requirements_panel.special_title')}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.state')}</label>
+                        <select
+                          value={selectedSkill.Requires?.State || 'None'}
+                          onChange={(e) => handleUpdateNestedField('Requires', 'State', e.target.value === 'None' ? undefined : e.target.value)}
+                          className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm text-white"
+                        >
+                          {['None', 'Water', 'Riding', 'Falcon', 'Cart', 'Shield', 'Hiding', 'Cloaking', 'ExplosionSpirits', 'Mado', 'Dragon', 'Warg'].map(st => (
+                            <option key={st} value={st}>{st}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.status')}</label>
+                        <input
+                          type="text"
+                          value={selectedSkill.Requires?.Status || ''}
+                          placeholder={t('skill_editor.requirements_panel.status_placeholder')}
+                          onChange={(e) => handleUpdateNestedField('Requires', 'Status', e.target.value.trim() || undefined)}
+                          className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm text-white font-mono"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.equipment')}</label>
+                        <input
+                          type="text"
+                          value={selectedSkill.Requires?.Equipment || ''}
+                          placeholder={t('skill_editor.requirements_panel.equipment_placeholder')}
+                          onChange={(e) => handleUpdateNestedField('Requires', 'Equipment', e.target.value.trim() || undefined)}
+                          className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm text-white font-mono"
+                        />
+                      </div>
+
+                      <LevelArrayEditor
+                        label={t('skill_editor.fields.spheres')}
+                        value={selectedSkill.Requires?.SpiritSphereCost}
+                        maxLevel={selectedSkill.MaxLevel || 10}
+                        valueKey="Amount"
+                        onChange={(val) => handleUpdateNestedField('Requires', 'SpiritSphereCost', val)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* --- ConsumablesPanel: Required Consumables --- */}
+                  <div className="bg-[#12121a] border border-white/5 rounded-xl p-5 shadow-lg space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-gray-200 font-semibold text-sm flex items-center gap-2">
+                          <Layers size={16} className="text-amber-500" />
+                          {t('skill_editor.fields.consumables')}
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                          {t('skill_editor.requirements_panel.consumables_desc')}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPickerConfig({ open: true, type: 'item' })}
+                        className="flex items-center gap-1 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/30 text-amber-400 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                      >
+                        <Plus size={13} />
+                        {t('skill_editor.fields.add_consumable')}
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {!(selectedSkill.Requires?.ItemCost) || selectedSkill.Requires.ItemCost.length === 0 ? (
+                        <div className="p-8 text-center text-xs text-gray-600 font-mono bg-dark-950 border border-white/5 rounded-lg">
+                          {t('skill_editor.requirements_panel.no_consumables')}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-2">
+                          {selectedSkill.Requires.ItemCost.map((itReq: any, index: number) => {
+                            const cachedItem = itemsMap[itReq.Item.toLowerCase()];
+                            const itemId = cachedItem?.Id;
+                            const displayName = cachedItem?.Name || itReq.Item;
+
+                            return (
+                              <div
+                                key={index}
+                                className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-dark-950 border border-white/5 rounded-lg gap-3"
+                              >
+                                <div className="flex items-center gap-3">
+                                  {/* Inventory Sprite Icon loaded from GRF */}
+                                  <div className="w-10 h-10 bg-dark-900 border border-white/5 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+                                    {itemId ? (
+                                      <img
+                                        src={`${API_URL}/api/grf/sprite?type=item&id=${itemId}`}
+                                        className="w-8 h-8 object-contain"
+                                        alt=""
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      <span className="text-xs text-gray-600">?</span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="text-xs font-semibold text-gray-200">
+                                      {displayName}
+                                    </div>
+                                    <div className="text-[10px] text-gray-500 font-mono mt-0.5">
+                                      {itReq.Item} {itemId ? `(#${itemId})` : ''}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                  <div className="flex items-center gap-1 text-xs">
+                                    <span className="text-gray-500">{t('skill_editor.requirements_panel.quantity')}</span>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={itReq.Amount}
+                                      onChange={(e) => {
+                                        const updatedList = [...selectedSkill.Requires.ItemCost];
+                                        updatedList[index] = { ...updatedList[index], Amount: parseInt(e.target.value) || 1 };
+                                        handleUpdateNestedField('Requires', 'ItemCost', updatedList);
+                                      }}
+                                      className="w-16 bg-dark-900 border border-dark-700 rounded px-2 py-0.5 font-mono text-white text-center text-xs"
+                                    />
+                                  </div>
+
+                                  <div className="flex items-center gap-1 text-xs">
+                                    <span className="text-gray-500">{t('skill_editor.requirements_panel.level')}</span>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={itReq.Level || ''}
+                                      placeholder={t('skill_editor.requirements_panel.all')}
+                                      onChange={(e) => {
+                                        const updatedList = [...selectedSkill.Requires.ItemCost];
+                                        const lv = parseInt(e.target.value);
+                                        if (isNaN(lv) || lv <= 0) {
+                                          delete updatedList[index].Level;
+                                        } else {
+                                          updatedList[index].Level = lv;
+                                        }
+                                        handleUpdateNestedField('Requires', 'ItemCost', updatedList);
+                                      }}
+                                      className="w-16 bg-dark-900 border border-dark-700 rounded px-2 py-0.5 font-mono text-white text-center text-xs"
+                                    />
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updatedList = selectedSkill.Requires.ItemCost.filter((_: any, idx: number) => idx !== index);
+                                      handleUpdateNestedField('Requires', 'ItemCost', updatedList.length > 0 ? updatedList : undefined);
+                                    }}
+                                    className="p-1.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 hover:text-red-300 rounded border border-red-500/10 transition-colors ml-auto sm:ml-0"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
 
               {activeTab === 'unidade' && (
                 <div className="bg-dark-900/40 p-4 rounded-lg border border-dark-800 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-300">Configuração de Efeito no Solo (Unit / Splash / Area)</h3>
+                  <h3 className="text-sm font-semibold text-gray-300">{t('skill_editor.fields.unit_title')}</h3>
                   <p className="text-xs text-gray-500">
-                    Defina propriedades de magias ou habilidades que permanecem no chão após conjuradas (ex: Barreira de Fogo, Santuário).
+                    {t('skill_editor.fields.unit_subtitle')}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-gray-400">Instâncias Ativas Máximas (ActiveInstance)</label>
+                      <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.active_instance')}</label>
                       <LevelArrayEditor
-                        label="Max Instâncias no Solo"
+                        label={t('skill_editor.fields.max_unit_instances')}
                         value={selectedSkill.ActiveInstance}
                         maxLevel={selectedSkill.MaxLevel || 10}
                         valueKey="Max"
@@ -467,8 +817,8 @@ export const SkillEditor: React.FC = () => {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <Zap size={64} className="mb-4 opacity-20 text-amber-500" />
-            <h3 className="text-xl font-medium text-gray-400">Nenhuma Habilidade Selecionada</h3>
-            <p className="text-sm mt-2">Selecione uma habilidade na lista ao lado para ver e editar seus parâmetros.</p>
+            <h3 className="text-xl font-medium text-gray-400">{t('skill_editor.no_selection.title')}</h3>
+            <p className="text-sm mt-2">{t('skill_editor.no_selection.subtitle')}</p>
           </div>
         )}
       </div>
@@ -478,7 +828,16 @@ export const SkillEditor: React.FC = () => {
         onClose={() => setPickerConfig({ ...pickerConfig, open: false })}
         type={pickerConfig.type}
         onSelect={(id, name) => {
-          // Can be used to inject item requirements
+          if (pickerConfig.type === 'item') {
+            const selectedItemObj = Object.values(itemsMap).find((item: any) => item.Id === Number(id));
+            const aegisName = selectedItemObj ? selectedItemObj.AegisName : String(name);
+            const currentItemCost = [...(selectedSkill.Requires?.ItemCost || [])];
+            if (!currentItemCost.some(c => c.Item.toLowerCase() === aegisName.toLowerCase())) {
+              currentItemCost.push({ Item: aegisName, Amount: 1 });
+              handleUpdateNestedField('Requires', 'ItemCost', currentItemCost);
+            }
+          }
+          setPickerConfig({ ...pickerConfig, open: false });
         }}
       />
     </div>

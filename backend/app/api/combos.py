@@ -4,16 +4,17 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Any, Optional
 from app.services.combo_parser import combo_db
+from app.models.combo import ItemComboDBModel, ItemComboDBModelUpdate
 
 router = APIRouter()
 
 
 class ComboUpdate(BaseModel):
-    data: dict[str, Any]
+    data: ItemComboDBModelUpdate
 
 
 class ComboCreate(BaseModel):
-    data: dict[str, Any]
+    data: ItemComboDBModel
 
 
 @router.get("/status")
@@ -45,7 +46,11 @@ async def get_combos(
 async def update_combo(index: str, body: ComboUpdate):
     if combo_db.is_loading:
         raise HTTPException(status_code=503, detail="Combo DB ainda carregando.")
-    result = combo_db.update_combo(index, body.data)
+    
+    # Validação estrita: descarta chaves inválidas vindas do front-end e ignora campos nulos
+    validated_data = body.data.model_dump(exclude_none=True)
+    
+    result = combo_db.update_combo(index, validated_data)
     if result is None:
         raise HTTPException(status_code=404, detail="Combo não encontrado.")
     return result
@@ -55,5 +60,9 @@ async def update_combo(index: str, body: ComboUpdate):
 async def create_combo(body: ComboCreate):
     if combo_db.is_loading:
         raise HTTPException(status_code=503, detail="Combo DB ainda carregando.")
-    result = combo_db.add_combo(body.data)
+    
+    # Validação estrita: descarta chaves inválidas e ignora campos nulos
+    validated_data = body.data.model_dump(exclude_none=True)
+    
+    result = combo_db.add_combo(validated_data)
     return result

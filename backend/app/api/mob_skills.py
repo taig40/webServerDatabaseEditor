@@ -30,7 +30,7 @@ async def get_mob_skills(
     mob_id: Optional[int] = Query(None, description="Filter skills by mob ID"),
 ):
     if mob_skill_db.is_loading:
-        raise HTTPException(status_code=503, detail="Mob Skill DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     if mob_id is not None:
         skills = mob_skill_db.get_by_mob(mob_id)
     else:
@@ -44,17 +44,17 @@ async def get_mob_skills(
 @router.put("/{line_index}")
 async def update_mob_skill(line_index: int, body: MobSkillUpdate):
     if mob_skill_db.is_loading:
-        raise HTTPException(status_code=503, detail="Mob Skill DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     result = mob_skill_db.update_entry(line_index, body.data)
     if result is None:
-        raise HTTPException(status_code=404, detail="Habilidade de monstro não encontrada.")
+        raise HTTPException(status_code=404, detail="ERROR_MOB_SKILL_NOT_FOUND")
     return result
 
 
 @router.post("/")
 async def create_mob_skill(body: MobSkillCreate):
     if mob_skill_db.is_loading:
-        raise HTTPException(status_code=503, detail="Mob Skill DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     result = mob_skill_db.add_entry(body.data)
     return result
 
@@ -65,8 +65,8 @@ async def delete_mob_skill(
     source: str = Query("custom", description="Source of the entry: 'rathena' or 'custom'"),
 ):
     if mob_skill_db.is_loading:
-        raise HTTPException(status_code=503, detail="Mob Skill DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     success = mob_skill_db.delete_entry(line_index, source)
     if not success:
-        raise HTTPException(status_code=404, detail="Não foi possível deletar a habilidade.")
+        raise HTTPException(status_code=404, detail="ERROR_NOT_FOUND")
     return {"status": "ok", "deleted_index": line_index}

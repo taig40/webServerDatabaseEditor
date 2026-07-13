@@ -1,9 +1,10 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config/env';
 import { Search, Plus, Trash2, ShieldAlert, Save, Info } from 'lucide-react';
 import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 const STATES = ['any','idle','walk','dead','loot','attack','angry','chase','follow','anytarget'];
 const TARGETS = [
@@ -24,33 +25,7 @@ const STATUS_ABNORM = [
   'anybad','stone','freeze','stun','sleep','poison',
   'curse','silence','confusion','blind','hiding','sight',
 ];
-const CONDITION_HELP: Record<string, string> = {
-  always: 'No condition. ConditionValue ignored.',
-  onspawn: 'On spawn/respawn. ConditionValue ignored.',
-  myhpltmaxrate: 'When HP drops below ConditionValue%.',
-  myhpinrate: 'When HP is between ConditionValue% (lower) and val1% (upper).',
-  mystatuson: 'If mob has status in ConditionValue (use status name above).',
-  mystatusoff: 'If mob lost status in ConditionValue.',
-  friendhpltmaxrate: 'When ally HP drops below ConditionValue%.',
-  friendhpinrate: 'Ally HP between ConditionValue% and val1%.',
-  friendstatuson: 'If ally has status.',
-  friendstatusoff: 'If ally lost status.',
-  attackpcgt: 'When attackers > ConditionValue.',
-  attackpcge: 'When attackers >= ConditionValue.',
-  slavelt: 'When slaves < ConditionValue.',
-  slavele: 'When slaves <= ConditionValue.',
-  closedattacked: 'On melee hit. ConditionValue ignored.',
-  longrangeattacked: 'On ranged hit (bow/gun). ConditionValue ignored.',
-  skillused: 'When skill ID in ConditionValue is used on mob.',
-  afterskill: 'After mob uses skill ID in ConditionValue.',
-  casttargeted: 'Target enters cast range. ConditionValue ignored.',
-  rudeattacked: 'On rude attack. ConditionValue ignored.',
-  mobnearbygt: 'When monsters in range > ConditionValue.',
-  groundattacked: 'On ground-targeted skill hit. ConditionValue ignored.',
-  damagedgt: 'When single attack damage > ConditionValue.',
-  alchemist: 'Special AI, not trickcasting, wounded. ConditionValue ignored.',
-  trickcasting: 'Once mob starts NPC_RANDOMMOVE until disabled. ConditionValue ignored.',
-};
+// Removed static CONDITION_HELP since it is now loaded dynamically from i18n store.
 
 const EMOTIONS = [
   { v: -1, label: 'None (-1)' },
@@ -100,9 +75,10 @@ const inputCls = "bg-dark-900 border border-dark-700 rounded px-3 py-1.5 text-sm
 const selectCls = inputCls;
 
 export const MobSkillEditor: React.FC = () => {
+  const t = useLanguageStore(state => state.t);
   const [mobSkills, setMobSkills] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingStatus, setLoadingStatus] = useState("Carregando habilidades de monstros...");
+  const [loadingStatus, setLoadingStatus] = useState(t('mob_skill_editor.status.loading'));
   const [selectedMobId, setSelectedMobId] = useState<number | null>(null);
   const [selectedMobName, setSelectedMobName] = useState<string>("");
   const [selectedSkillIndex, setSelectedSkillIndex] = useState<number | null>(null);
@@ -121,7 +97,7 @@ export const MobSkillEditor: React.FC = () => {
       setMobSkills(res.data.skills || []);
     } catch (err) {
       console.error("Erro ao carregar mob skills:", err);
-      setLoadingStatus("Erro ao carregar habilidades de monstros.");
+      setLoadingStatus(t('mob_skill_editor.status.error_fetching'));
     } finally {
       setIsLoading(false);
     }
@@ -131,12 +107,12 @@ export const MobSkillEditor: React.FC = () => {
     const map = new Map<number, string>();
     mobSkills.forEach(s => {
       const id = s.mob_id || 0;
-      if (!map.has(id)) map.set(id, s.dummy_name || `Monstro #${id}`);
+      if (!map.has(id)) map.set(id, s.dummy_name || t('mob_skill_editor.sidebar.monster_number', { id }));
     });
     if (selectedMobId !== null && !map.has(selectedMobId))
-      map.set(selectedMobId, selectedMobName || `Monstro #${selectedMobId}`);
+      map.set(selectedMobId, selectedMobName || t('mob_skill_editor.sidebar.monster_number', { id: selectedMobId }));
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [mobSkills, selectedMobId, selectedMobName]);
+  }, [mobSkills, selectedMobId, selectedMobName, t]);
 
   const filteredMobs = useMemo(() => {
     if (!mobSearchText.trim()) return uniqueMobs;
@@ -173,11 +149,11 @@ export const MobSkillEditor: React.FC = () => {
           s._line_index === selectedSkillEntry._line_index ? { ...res.data } : s
         ));
       }
-      setSaveMsg({ ok: true, text: 'Salvo com sucesso!' });
+      setSaveMsg({ ok: true, text: t('mob_skill_editor.save_success') });
       setTimeout(() => setSaveMsg(null), 3000);
     } catch (err) {
       console.error("Erro ao salvar habilidade:", err);
-      setSaveMsg({ ok: false, text: 'Erro ao salvar.' });
+      setSaveMsg({ ok: false, text: t('mob_skill_editor.save_error') });
     } finally {
       setIsSaving(false);
     }
@@ -188,7 +164,7 @@ export const MobSkillEditor: React.FC = () => {
     try {
       const newEntry = {
         mob_id: selectedMobId,
-        dummy_name: uniqueMobs.find(m => m.id === selectedMobId)?.name || selectedMobName || `Monstro #${selectedMobId}`,
+        dummy_name: uniqueMobs.find(m => m.id === selectedMobId)?.name || selectedMobName || t('mob_skill_editor.sidebar.monster_number', { id: selectedMobId }),
         state: 'idle', skill_id: 1, skill_lv: 1,
         rate: 1000, cast_time: 0, delay: 5000, cancelable: false,
         target: 'target', condition_type: 'always', condition_value: 0,
@@ -199,24 +175,24 @@ export const MobSkillEditor: React.FC = () => {
       setSelectedSkillIndex(res.data._line_index);
     } catch (err) {
       console.error("Erro ao criar habilidade:", err);
-      alert("Erro ao criar nova habilidade.");
+      alert(t('mob_skill_editor.create_error'));
     }
   };
 
   const handleDeleteSkill = async (index: number, source: string) => {
-    if (!confirm("Deseja remover esta habilidade do monstro?")) return;
+    if (!confirm(t('mob_skill_editor.delete_confirm'))) return;
     try {
       await axios.delete(`${API_URL}/api/mob_skills/${index}?source=${source}`);
       setMobSkills(prev => prev.filter(s => s._line_index !== index));
       if (selectedSkillIndex === index) setSelectedSkillIndex(null);
     } catch (err) {
       console.error("Erro ao deletar habilidade:", err);
-      alert("Erro ao deletar habilidade.");
+      alert(t('mob_skill_editor.delete_error'));
     }
   };
 
   const s = selectedSkillEntry;
-  const condHint = s ? CONDITION_HELP[s.condition_type] : undefined;
+  const condHint = s ? t('mob_skill_editor.conditions.' + s.condition_type as any) : undefined;
 
   return (
     <div className="flex h-full w-full bg-[#0d0d12] text-gray-200 overflow-hidden select-none font-sans">
@@ -224,17 +200,17 @@ export const MobSkillEditor: React.FC = () => {
       <div className="w-[280px] flex-shrink-0 flex flex-col bg-[#12121a] border-r border-white/5 shadow-xl">
         <div className="p-4 border-b border-white/5 bg-gradient-to-b from-[#1a1a24] to-[#12121a]">
           <h2 className="text-gray-200 font-semibold text-sm flex items-center gap-2 mb-3">
-            <ShieldAlert size={16} className="text-red-500" /> Habilidade de Monstros
+            <ShieldAlert size={16} className="text-red-500" /> {t('mob_skill_editor.sidebar.title')}
           </h2>
           <div className="relative mb-2">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-            <input type="text" placeholder="Buscar monstro..." value={mobSearchText}
+            <input type="text" placeholder={t('mob_skill_editor.sidebar.search_placeholder')} value={mobSearchText}
               onChange={e => setMobSearchText(e.target.value)}
               className="w-full bg-dark-900 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-red-500/50" />
           </div>
           <button onClick={() => { setPickerTarget('mob'); setPickerOpen(true); }}
             className="w-full py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
-            <Plus size={13} /> Adicionar Novo Monstro
+            <Plus size={13} /> {t('mob_skill_editor.sidebar.add_mob')}
           </button>
         </div>
         <div className="flex-1 overflow-y-auto divide-y divide-white/5">
@@ -255,7 +231,7 @@ export const MobSkillEditor: React.FC = () => {
       {/* Middle: Skills List */}
       <div className="w-[320px] flex-shrink-0 flex flex-col bg-[#15151f] border-r border-white/5">
         <div className="p-3 border-b border-white/5 flex items-center justify-between bg-[#181824]">
-          <span className="text-sm font-bold text-gray-200">Skills do Monstro</span>
+          <span className="text-sm font-bold text-gray-200">{t('mob_skill_editor.list.title')}</span>
           {selectedMobId !== null && (
             <button onClick={handleAddNewSkillToMob} title="Adicionar skill"
               className="p-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded transition-colors">
@@ -265,9 +241,9 @@ export const MobSkillEditor: React.FC = () => {
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           {selectedMobId === null ? (
-            <p className="text-center py-10 text-gray-500 text-xs italic">Selecione um monstro.</p>
+            <p className="text-center py-10 text-gray-500 text-xs italic">{t('mob_skill_editor.list.select_mob')}</p>
           ) : skillsForSelectedMob.length === 0 ? (
-            <p className="text-center py-10 text-gray-500 text-xs italic">Sem habilidades cadastradas.</p>
+            <p className="text-center py-10 text-gray-500 text-xs italic">{t('mob_skill_editor.list.no_skills')}</p>
           ) : skillsForSelectedMob.map((sk, idx) => {
             const sel = selectedSkillIndex === sk._line_index;
             const isCustom = sk._source === 'custom';
@@ -284,7 +260,7 @@ export const MobSkillEditor: React.FC = () => {
                 </div>
                 <div className="text-[11px] text-gray-400 flex justify-between">
                   <span>{sk.state}</span>
-                  <span>{((sk.rate ?? 0) / 100).toFixed(0)}%</span>
+                  <span>{Number(((sk.rate ?? 0) / 100).toFixed(2))}%</span>
                 </div>
                 <div className="text-[10px] text-gray-500 mt-0.5">{sk.condition_type}</div>
               </div>
@@ -300,9 +276,9 @@ export const MobSkillEditor: React.FC = () => {
             {/* Header */}
             <div className="flex justify-between items-start pb-4 border-b border-dark-800">
               <div>
-                <h1 className="text-base font-bold text-white">Editar Habilidade</h1>
+                <h1 className="text-base font-bold text-white">{t('mob_skill_editor.detail.title')}</h1>
                 <p className="text-xs font-mono text-gray-500 mt-0.5">
-                  Mob #{s.mob_id} ({s.dummy_name}) · linha {s._line_index} · {s._source === 'custom' ? 'import' : 'rAthena'}
+                  Mob #{s.mob_id} ({s.dummy_name}) · {t('common.line')} {s._line_index} · {s._source === 'custom' ? 'import' : 'rAthena'}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -313,20 +289,20 @@ export const MobSkillEditor: React.FC = () => {
                 )}
                 <button onClick={() => handleDeleteSkill(s._line_index, s._source)}
                   className="text-xs px-3 py-1.5 rounded border border-red-500/30 text-red-400 hover:bg-red-600/20 flex items-center gap-1.5 transition-colors">
-                  <Trash2 size={13} /> Deletar
+                  <Trash2 size={13} /> {t('common.delete')}
                 </button>
                 <button onClick={handleSaveSkill} disabled={isSaving}
                   className="text-xs px-4 py-1.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold flex items-center gap-1.5 shadow-lg shadow-red-900/30 transition-all disabled:opacity-50">
-                  <Save size={13} /> {isSaving ? 'Salvando...' : 'Salvar'}
+                  <Save size={13} /> {isSaving ? t('common.saving') : t('common.save')}
                 </button>
               </div>
             </div>
 
             {/* Core fields */}
             <div>
-              <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-3">Identificação</p>
+              <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-3">{t('mob_skill_editor.detail.sections.identification')}</p>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Skill ID" hint="ID da habilidade do servidor.">
+                <Field label={t('mob_skill_editor.fields.skill_id')} hint={t('mob_skill_editor.fields.skill_id_hint')}>
                   <div className="flex gap-1">
                     <input type="number" value={s.skill_id ?? 0}
                       onChange={e => upd('skill_id', parseInt(e.target.value) || 0)}
@@ -337,7 +313,7 @@ export const MobSkillEditor: React.FC = () => {
                     </button>
                   </div>
                 </Field>
-                <Field label="Skill Level" hint="Nível da habilidade (1-10).">
+                <Field label={t('mob_skill_editor.fields.skill_lv')} hint={t('mob_skill_editor.fields.skill_lv_hint')}>
                   <input type="number" min={1} max={10} value={s.skill_lv ?? 1}
                     onChange={e => upd('skill_lv', parseInt(e.target.value) || 1)}
                     className={inputCls} />
@@ -347,33 +323,33 @@ export const MobSkillEditor: React.FC = () => {
 
             {/* Behavior */}
             <div>
-              <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-3">Comportamento</p>
+              <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-3">{t('mob_skill_editor.detail.sections.behavior')}</p>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="State" hint="Estado em que o monstro deve estar para usar a skill.">
+                <Field label={t('mob_skill_editor.fields.state')} hint={t('mob_skill_editor.fields.state_hint')}>
                   <select value={s.state ?? 'idle'} onChange={e => upd('state', e.target.value)} className={selectCls}>
                     {STATES.map(st => <option key={st} value={st}>{st}</option>)}
                   </select>
                 </Field>
-                <Field label="Target" hint="Alvo da habilidade.">
+                <Field label={t('mob_skill_editor.fields.target')} hint={t('mob_skill_editor.fields.target_hint')}>
                   <select value={s.target ?? 'target'} onChange={e => upd('target', e.target.value)} className={selectCls}>
                     {TARGETS.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </Field>
-                <PercentBadge label="Rate (Chance)" value={s.rate ?? 1000}
+                <PercentBadge label={t('mob_skill_editor.fields.rate')} value={s.rate ?? 1000}
                   onChange={v => upd('rate', v)} scale={100} max={10000} />
-                <Field label="Cancelable" hint="Se o cast pode ser interrompido.">
+                <Field label={t('mob_skill_editor.fields.cancelable')} hint={t('mob_skill_editor.fields.cancelable_hint')}>
                   <select value={s.cancelable ? 'yes' : 'no'}
                     onChange={e => upd('cancelable', e.target.value === 'yes')} className={selectCls}>
                     <option value="no">no</option>
                     <option value="yes">yes</option>
                   </select>
                 </Field>
-                <Field label="CastTime (ms)" hint="Tempo de conjuração em milissegundos.">
+                <Field label={t('mob_skill_editor.fields.cast_time')} hint={t('mob_skill_editor.fields.cast_time_hint')}>
                   <input type="number" min={0} value={s.cast_time ?? 0}
                     onChange={e => upd('cast_time', parseInt(e.target.value) || 0)}
                     className={inputCls} />
                 </Field>
-                <Field label="Delay (ms)" hint="Intervalo em ms antes de tentar usar a skill novamente.">
+                <Field label={t('mob_skill_editor.fields.delay')} hint={t('mob_skill_editor.fields.delay_hint')}>
                   <input type="number" min={0} value={s.delay ?? 5000}
                     onChange={e => upd('delay', parseInt(e.target.value) || 0)}
                     className={inputCls} />
@@ -383,7 +359,7 @@ export const MobSkillEditor: React.FC = () => {
 
             {/* Condition */}
             <div>
-              <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-3">Condição</p>
+              <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-3">{t('mob_skill_editor.detail.sections.condition')}</p>
               {condHint && (
                 <div className="mb-3 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2 text-[11px] text-blue-300 flex items-start gap-2">
                   <Info size={12} className="mt-0.5 flex-shrink-0" />
@@ -391,12 +367,12 @@ export const MobSkillEditor: React.FC = () => {
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
-                <Field label="ConditionType" hint="Tipo de condição para ativar a skill.">
+                <Field label={t('mob_skill_editor.fields.condition_type')} hint={t('mob_skill_editor.fields.condition_type_hint')}>
                   <select value={s.condition_type ?? 'always'} onChange={e => upd('condition_type', e.target.value)} className={selectCls}>
                     {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </Field>
-                <Field label="ConditionValue" hint="Valor numérico da condição (HP%, ID de skill, contagem, etc.)">
+                <Field label={t('mob_skill_editor.fields.condition_val')} hint={t('mob_skill_editor.fields.condition_val_hint')}>
                   <input type="number" value={s.condition_value ?? 0}
                     onChange={e => upd('condition_value', parseInt(e.target.value) || 0)}
                     className={inputCls} />
@@ -406,7 +382,7 @@ export const MobSkillEditor: React.FC = () => {
               {(s.condition_type === 'mystatuson' || s.condition_type === 'mystatusoff' ||
                 s.condition_type === 'friendstatuson' || s.condition_type === 'friendstatusoff') && (
                 <div className="mt-2">
-                  <p className="text-[10px] text-gray-500 mb-1">Status válidos para o campo ConditionValue:</p>
+                  <p className="text-[10px] text-gray-500 mb-1">{t('mob_skill_editor.fields.valid_status')}</p>
                   <div className="flex flex-wrap gap-1">
                     {STATUS_ABNORM.map(ab => (
                       <span key={ab} className="text-[10px] font-mono bg-dark-800 text-gray-400 px-1.5 py-0.5 rounded cursor-pointer hover:bg-dark-700 hover:text-white transition-colors"
@@ -422,11 +398,11 @@ export const MobSkillEditor: React.FC = () => {
             {/* Val1-Val5 */}
             <div>
               <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-3">
-                Parâmetros Adicionais (Val1 – Val5)
+                {t('mob_skill_editor.detail.sections.additional_params')}
               </p>
               {s.condition_type === 'myhpinrate' || s.condition_type === 'friendhpinrate' ? (
                 <p className="text-[11px] text-amber-400/80 bg-amber-500/10 border border-amber-500/20 rounded p-2 mb-2">
-                  ⚠ Para esta condição: <b>val1</b> = limite superior de HP% (ex: 50 para 50%)
+                  {t('mob_skill_editor.fields.hp_condition_warning')}
                 </p>
               ) : null}
               <div className="grid grid-cols-5 gap-2">
@@ -442,18 +418,18 @@ export const MobSkillEditor: React.FC = () => {
 
             {/* Emotion & Chat */}
             <div>
-              <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-3">Expressão & Chat</p>
+              <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-3">{t('mob_skill_editor.detail.sections.expression')}</p>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Emotion" hint="Emoção exibida ao usar a skill. -1 = nenhuma.">
+                <Field label={t('mob_skill_editor.fields.emotion')} hint={t('mob_skill_editor.fields.emotion_hint')}>
                   <select value={s.emotion ?? -1}
                     onChange={e => upd('emotion', parseInt(e.target.value))} className={selectCls}>
                     {EMOTIONS.map(em => <option key={em.v} value={em.v}>{em.label}</option>)}
                   </select>
                 </Field>
-                <Field label="Chat" hint="Mensagem NPC emitida ao usar a skill (opcional).">
+                <Field label={t('mob_skill_editor.fields.chat')} hint={t('mob_skill_editor.fields.chat_hint')}>
                   <input type="text" value={s.chat ?? ''}
                     onChange={e => upd('chat', e.target.value)}
-                    placeholder="(vazio)"
+                    placeholder={t('mob_skill_editor.fields.chat_placeholder')}
                     className={inputCls} />
                 </Field>
               </div>
@@ -462,8 +438,8 @@ export const MobSkillEditor: React.FC = () => {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <ShieldAlert size={56} className="mb-4 opacity-15 text-red-500" />
-            <h3 className="text-lg font-medium text-gray-400">Nenhuma Habilidade Selecionada</h3>
-            <p className="text-sm mt-2 text-gray-500">Selecione uma skill na coluna do meio para editar.</p>
+            <h3 className="text-lg font-medium text-gray-400">{t('mob_skill_editor.no_selection.title')}</h3>
+            <p className="text-sm mt-2 text-gray-500">{t('mob_skill_editor.no_selection.subtitle')}</p>
           </div>
         )}
       </div>

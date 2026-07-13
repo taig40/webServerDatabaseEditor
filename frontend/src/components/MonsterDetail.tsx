@@ -2,10 +2,14 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
   Save, Upload, Shield, Heart, Sword, Star, Award, Zap,
-  ChevronRight, AlertCircle, Plus, Trash2, RefreshCw, Loader2, Brain
+  ChevronRight, AlertCircle, Plus, Trash2, RefreshCw, Loader2, Brain,
+  Search, X, DownloadCloud
 } from 'lucide-react';
 import { API_URL } from '../config/env';
 import MonsterAnimator from './MonsterAnimator';
+import { useLanguageStore } from '../store/useLanguageStore';
+import { DivinePrideImporterPanel } from './DivinePrideImporterPanel';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 // ─── Element & Race definitions ───────────────────────────────────────────────
 
@@ -26,11 +30,19 @@ const RACES = ['Formless', 'Undead', 'Brute', 'Plant', 'Insect', 'Fish', 'Demon'
 const SIZES = ['Small', 'Medium', 'Large'];
 
 const AI_MODES = [
-  'CanMove', 'CastSensor', 'Detector', 'ChangeTargetMelee',
-  'Looter', 'Boss', 'ChangeTarget', 'ChangeTargetChase',
-  'Aggressive', 'Plant', 'ChangeChase', 'TargetWeak',
-  'Assist', 'CanAttack', 'Angry', 'RandomTarget',
-  'NoCast',
+  'CanMove', 'Looter', 'Aggressive', 'Assist',
+  'CastSensorIdle', 'NoRandomWalk', 'NoCast', 'CanAttack',
+  'CastSensorChase', 'ChangeChase', 'Angry', 'ChangeTargetMelee',
+  'ChangeTargetChase', 'TargetWeak', 'RandomTarget', 'IgnoreMelee',
+  'IgnoreMagic', 'IgnoreRanged', 'Mvp', 'IgnoreMisc',
+  'KnockBackImmune', 'TeleportBlock', 'FixedItemDrop', 'Detector',
+  'StatusImmune', 'SkillImmune',
+];
+
+const AI_BASE_TYPES = [
+  '01', '02', '03', '04', '05', '06', '07', '08',
+  '09', '10', '11', '12', '13', '17', '19', '20',
+  '21', '24', '25', '26', '27'
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -86,19 +98,41 @@ function SectionCard({ icon: Icon, title, iconClass = 'text-violet-400', childre
   );
 }
 
+const getStateBadgeClass = (state: string) => {
+  const s = String(state || '').toLowerCase();
+  if (s === 'attack') return 'bg-red-500/15 border border-red-500/30 text-red-300';
+  if (s === 'chase') return 'bg-amber-500/15 border border-amber-500/30 text-amber-300';
+  if (s === 'idle') return 'bg-blue-500/15 border border-blue-500/30 text-blue-300';
+  if (s === 'any') return 'bg-purple-500/15 border border-purple-500/30 text-purple-300';
+  return 'bg-dark-800 border border-white/10 text-gray-300';
+};
+
+const getConditionBadgeClass = (cond: string) => {
+  const c = String(cond || '').toLowerCase();
+  if (c === 'always') return 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300';
+  if (c.includes('hp')) return 'bg-rose-500/15 border border-rose-500/30 text-rose-300';
+  if (c.includes('cast')) return 'bg-cyan-500/15 border border-cyan-500/30 text-cyan-300';
+  return 'bg-slate-700/40 border border-white/10 text-gray-300';
+};
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface MonsterDetailProps {
   mob: any;
   onUpdate: (mobId: number, data: any, saveMode?: 'import' | 'overwrite') => Promise<boolean | void>;
+  onDelete?: (mobId: number) => Promise<boolean>;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
+const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }) => {
+  const t = useLanguageStore(state => state.t);
   const [local, setLocal] = useState<any>(mob);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDPPanel, setShowDPPanel] = useState(false);
   const [spriteKey, setSpriteKey] = useState(0);
   const [skills, setSkills] = useState<any[]>([]);
   const [skillsLoading, setSkillsLoading] = useState(false);
@@ -111,23 +145,70 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
   const sprInputRef = useRef<HTMLInputElement>(null);
   const actInputRef = useRef<HTMLInputElement>(null);
 
+  // Skill lookup cache & Add Modal State
+  const [allSkillsMap, setAllSkillsMap] = useState<Record<number, { Name: string; Description?: string }>>({});
+  const [allSkillsList, setAllSkillsList] = useState<any[]>([]);
+  const [showAddSkillModal, setShowAddSkillModal] = useState(false);
+  const [skillSearchQuery, setSkillSearchQuery] = useState('');
+  const [newSkillForm, setNewSkillForm] = useState({
+    skill_id: 1,
+    skill_lv: 1,
+    rate: 100,
+    state: 'idle',
+    condition_type: 'always',
+    condition_value: 0,
+    cast_time: 0,
+    delay: 5000,
+    cancelable: false,
+    target: 'target',
+  });
+
+  const [dpMessage, setDpMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleDPImportSuccess = (mappedData: any) => {
+    setLocal(prev => ({
+      ...prev,
+      ...mappedData,
+      Id: mob.Id
+    }));
+    if (mappedData.MobSkills && Array.isArray(mappedData.MobSkills)) {
+      setSkills(mappedData.MobSkills);
+    }
+    setDpMessage({ type: 'success', text: t('divinepride.import_success') });
+    setTimeout(() => setDpMessage(null), 6000);
+  };
+
   // Sync when mob changes
   useEffect(() => {
     setLocal(mob);
     setSpriteKey(k => k + 1);
-    setSkills([]);
+    setSkills(mob.MobSkills || []);
     setActiveTab('status');
-  }, [mob.Id]);
+  }, [mob.Id, mob]);
 
-  // Load skills on tab switch
+  // Load skills on tab switch if needed + load global skills cache
   useEffect(() => {
     if (activeTab !== 'skills') return;
-    if (skills.length > 0) return;
-    setSkillsLoading(true);
-    axios.get(`${API_URL}/api/mobs/${mob.Id}/skills`)
-      .then(r => setSkills(r.data.skills || []))
-      .catch(() => setSkills([]))
-      .finally(() => setSkillsLoading(false));
+    if (!local.MobSkills && skills.length === 0) {
+      setSkillsLoading(true);
+      axios.get(`${API_URL}/api/mobs/${mob.Id}/skills`)
+        .then(r => setSkills(r.data.skills || []))
+        .catch(() => setSkills([]))
+        .finally(() => setSkillsLoading(false));
+    }
+    if (Object.keys(allSkillsMap).length === 0) {
+      axios.get(`${API_URL}/api/skills/?limit=50000`)
+        .then(r => {
+          const list = r.data.skills || [];
+          setAllSkillsList(list);
+          const map: Record<number, { Name: string; Description?: string }> = {};
+          list.forEach((s: any) => {
+            map[s.Id] = { Name: s.Name || s.Description || `Skill #${s.Id}` };
+          });
+          setAllSkillsMap(map);
+        })
+        .catch(() => {});
+    }
   }, [activeTab, mob.Id]);
 
   const set = (field: string, val: any) =>
@@ -138,6 +219,37 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
       ...prev,
       Modes: { ...(prev.Modes || {}), [key]: val }
     }));
+
+  const activeMobSkills = local.MobSkills || skills || [];
+
+  const handleAddSkill = () => {
+    const updated = [
+      ...activeMobSkills,
+      {
+        mob_id: mob.Id,
+        dummy_name: local.AegisName || local.Name || String(mob.Id),
+        skill_id: Number(newSkillForm.skill_id),
+        skill_lv: Number(newSkillForm.skill_lv),
+        rate: Math.min(10000, Math.max(0, Math.round(Number(newSkillForm.rate) * 100))),
+        state: newSkillForm.state,
+        condition_type: newSkillForm.condition_type,
+        condition_value: Number(newSkillForm.condition_value),
+        cast_time: Number(newSkillForm.cast_time),
+        delay: Number(newSkillForm.delay),
+        cancelable: Boolean(newSkillForm.cancelable),
+        target: newSkillForm.target,
+      }
+    ];
+    set('MobSkills', updated);
+    setSkills(updated);
+    setShowAddSkillModal(false);
+  };
+
+  const handleDeleteSkill = (index: number) => {
+    const updated = activeMobSkills.filter((_: any, idx: number) => idx !== index);
+    set('MobSkills', updated);
+    setSkills(updated);
+  };
 
   const isModified = JSON.stringify(local) !== JSON.stringify(mob);
 
@@ -163,9 +275,20 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(mob.Id);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+    }
+  };
+
   const handleSpriteUpload = async () => {
     if (!sprFile || !actFile) {
-      setUploadError('Selecione ambos os arquivos: .spr e .act');
+      setUploadError(t('monster_detail.sprite.error_select_both'));
       return;
     }
     setIsUploadingSprite(true);
@@ -182,7 +305,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
       setSprFile(null);
       setActFile(null);
     } catch (err: any) {
-      setUploadError(err?.response?.data?.detail || err.message || 'Erro desconhecido');
+      setUploadError(err?.response?.data?.detail || err.message || t('common.error'));
     } finally {
       setIsUploadingSprite(false);
     }
@@ -219,28 +342,28 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
       {showSaveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="text-white font-bold text-lg mb-2">Salvar Alterações</h3>
+            <h3 className="text-white font-bold text-lg mb-2">{t('monster_detail.save_modal.title')}</h3>
             <p className="text-gray-400 text-sm mb-5">
-              Este monstro faz parte do banco original do rAthena. Como deseja salvar?
+              {t('monster_detail.save_modal.body')}
             </p>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => executeSave('import')}
                 className="px-4 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm transition-colors"
               >
-                Salvar em db/import/ (Recomendado)
+                {t('monster_detail.save_modal.create_copy')}
               </button>
               <button
                 onClick={() => executeSave('overwrite')}
                 className="px-4 py-2.5 rounded-lg bg-red-900/60 hover:bg-red-900 border border-red-700/40 text-red-300 font-semibold text-sm transition-colors"
               >
-                Sobrescrever arquivo original
+                {t('monster_detail.save_modal.overwrite')}
               </button>
               <button
                 onClick={() => setShowSaveModal(false)}
                 className="px-4 py-2 text-gray-500 hover:text-gray-300 text-sm transition-colors"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -263,10 +386,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
             <button
               onClick={() => { setShowSpriteModal(true); setUploadError(null); }}
               className="absolute inset-0 bg-black/70 rounded-lg flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer backdrop-blur-[1px]"
-              title="Trocar Sprite (ACT + SPR)"
+              title={t('monster_detail.sprite.hover_title')}
             >
               <Upload size={22} className="text-white drop-shadow" />
-              <span className="text-white text-[10px] font-bold tracking-wide">Trocar Sprite</span>
+              <span className="text-white text-[10px] font-bold tracking-wide">{t('monster_detail.sprite.change')}</span>
               <span className="text-white/60 text-[9px]">ACT + SPR</span>
             </button>
           </div>
@@ -277,12 +400,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
               <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 w-[420px] shadow-2xl">
                 <h3 className="text-white font-bold text-base mb-1 flex items-center gap-2">
                   <Upload size={16} className="text-violet-400" />
-                  Trocar Sprite do Monstro
+                  {t('monster_detail.sprite.upload_modal.title')}
                 </h3>
                 <p className="text-gray-500 text-xs mb-5">
-                  Selecione os arquivos <span className="text-violet-300 font-mono">.spr</span> e{' '}
-                  <span className="text-violet-300 font-mono">.act</span> do monstro. Eles serão salvos
-                  no override path do GRF com o nome <span className="text-blue-300 font-mono">{local.AegisName}</span>.
+                  {t('monster_detail.sprite.upload_modal.subtitle', { name: local.AegisName })}
                 </p>
 
                 {/* SPR file picker */}
@@ -301,7 +422,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold text-gray-300">
-                      {sprFile ? sprFile.name : 'Selecionar arquivo .spr'}
+                      {sprFile ? sprFile.name : t('monster_detail.sprite.upload_modal.select_spr')}
                     </div>
                     {sprFile && (
                       <div className="text-[10px] text-gray-500">{(sprFile.size / 1024).toFixed(1)} KB</div>
@@ -336,7 +457,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold text-gray-300">
-                      {actFile ? actFile.name : 'Selecionar arquivo .act'}
+                      {actFile ? actFile.name : t('monster_detail.sprite.upload_modal.select_act')}
                     </div>
                     {actFile && (
                       <div className="text-[10px] text-gray-500">{(actFile.size / 1024).toFixed(1)} KB</div>
@@ -368,14 +489,14 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isUploadingSprite
-                      ? <><Loader2 size={14} className="animate-spin" /> Salvando...</>
-                      : <><Upload size={14} /> Fazer Upload</>}
+                      ? <><Loader2 size={14} className="animate-spin" /> {t('common.saving')}</>
+                      : <><Upload size={14} /> {t('monster_detail.sprite.upload_modal.upload_button')}</>}
                   </button>
                   <button
                     onClick={() => { setShowSpriteModal(false); setSprFile(null); setActFile(null); setUploadError(null); }}
                     className="px-4 py-2.5 text-gray-400 hover:text-white bg-dark-900/60 border border-white/5 rounded-xl text-sm transition-colors"
                   >
-                    Cancelar
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>
@@ -385,7 +506,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
           {/* Name / meta */}
           <div className="flex flex-col min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <h2 className="text-2xl font-bold text-white truncate">{local.Name || 'Unnamed'}</h2>
+              <h2 className="text-2xl font-bold text-white truncate">{local.Name || t('monster_detail.unnamed')}</h2>
               {isMvp && (
                 <span className="text-[10px] bg-red-950/80 border border-red-800 text-red-400 px-2 py-0.5 rounded-full font-bold shrink-0">
                   MVP
@@ -393,11 +514,30 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-gray-400">
-              <span className="bg-dark-800 px-2 py-0.5 rounded border border-white/10">
-                ID: <span className="text-violet-400">{mob.Id}</span>
+              <span className="bg-dark-800 px-2 py-0.5 rounded border border-white/10 flex items-center gap-2">
+                <span>ID: <span className="text-violet-400">{mob.Id}</span></span>
+                <button
+                  type="button"
+                  onClick={() => setShowDPPanel(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all shadow-sm"
+                  title={t('divinepride.import_button')}
+                >
+                  <DownloadCloud size={13} />
+                  <span>{t('divinepride.import_button')}</span>
+                </button>
               </span>
-              <span className="bg-dark-800 px-2 py-0.5 rounded border border-white/10 truncate max-w-[200px]">
-                Aegis: <span className="text-blue-400">{local.AegisName}</span>
+              <span className="bg-dark-800 px-2 py-0.5 rounded border border-white/10 flex items-center gap-1">
+                Aegis: 
+                <input
+                  type="text"
+                  value={local.AegisName || local.SpriteName || ''}
+                  onChange={e => {
+                    set('AegisName', e.target.value);
+                    set('SpriteName', e.target.value);
+                  }}
+                  className="bg-transparent text-blue-400 font-mono focus:outline-none focus:border-b focus:border-blue-500/50 w-32"
+                  placeholder="AegisName"
+                />
               </span>
               <span className={`px-2 py-0.5 rounded border border-white/10 font-semibold ${ELEMENT_BG[element]} ${ELEMENT_COLORS[element]}`}>
                 Lv{elementLevel} {element}
@@ -409,6 +549,16 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                 {local.Size}
               </span>
             </div>
+            {dpMessage && (
+              <div className={`mt-2.5 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
+                dpMessage.type === 'success'
+                  ? 'bg-emerald-950/80 border-emerald-700/60 text-emerald-300'
+                  : 'bg-red-950/80 border-red-700/60 text-red-300'
+              }`}>
+                <AlertCircle size={14} />
+                <span>{dpMessage.text}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -416,8 +566,18 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
         <div className="flex items-center gap-3 shrink-0">
           {isModified && (
             <span className="text-amber-400 text-xs font-mono bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20 animate-pulse">
-              ● Não salvo
+              ● {t('monster_detail.unsaved')}
             </span>
+          )}
+          {onDelete && mob._source === 'custom' && (
+            <button
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 transition-all"
+              title={t('mob_editor_delete.btn_label' as any) || 'Excluir Monstro'}
+            >
+              <Trash2 size={14} />
+              {t('mob_editor_delete.btn_label' as any) || 'Excluir'}
+            </button>
           )}
           <button
             onClick={handleSave}
@@ -429,10 +589,19 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
             }`}
           >
             <Save size={15} />
-            {isSaving ? 'Salvando...' : 'Salvar'}
+            {isSaving ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </div>
+
+      {/* Delete Confirm Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        entityLabel={`Mob #${mob.Id} — ${mob.Name || mob.AegisName || String(mob.Id)}`}
+        isDeleting={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
 
       {/* ── Tabs ── */}
       <div className="flex border-b border-white/5 px-4 pt-2 gap-1 text-xs shrink-0">
@@ -446,10 +615,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                 : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
             }`}
           >
-            {tab === 'status' && 'Status'}
-            {tab === 'drops' && 'Drops'}
-            {tab === 'ai' && 'IA / Modos'}
-            {tab === 'skills' && 'Skills'}
+            {tab === 'status' && t('monster_detail.tabs.status')}
+            {tab === 'drops' && t('monster_detail.tabs.drops')}
+            {tab === 'ai' && t('monster_detail.tabs.ai')}
+            {tab === 'skills' && t('monster_detail.tabs.skills')}
           </button>
         ))}
       </div>
@@ -462,9 +631,9 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
 
             {/* Identity */}
-            <SectionCard icon={Star} title="Identidade" iconClass="text-yellow-400">
+            <SectionCard icon={Star} title={t('monster_detail.sections.identity')} iconClass="text-yellow-400">
               <div className="grid grid-cols-2 gap-3">
-                <FieldRow label="Nome (EN)">
+                <FieldRow label={t('monster_detail.fields.name')}>
                   <input
                     type="text"
                     value={local.Name || ''}
@@ -480,19 +649,19 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                     className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-violet-500 focus:outline-none transition-colors"
                   />
                 </FieldRow>
-                <FieldRow label="Raça">
+                <FieldRow label={t('monster_detail.fields.race')}>
                   <Select value={local.Race || 'Formless'} onChange={v => set('Race', v)} options={RACES} />
                 </FieldRow>
-                <FieldRow label="Tamanho">
+                <FieldRow label={t('monster_detail.fields.size')}>
                   <Select value={local.Size || 'Medium'} onChange={v => set('Size', v)} options={SIZES} />
                 </FieldRow>
-                <FieldRow label="Elemento">
+                <FieldRow label={t('monster_detail.fields.element')}>
                   <Select value={local.Element || 'Neutral'} onChange={v => set('Element', v)} options={ELEMENTS} />
                 </FieldRow>
-                <FieldRow label="Nível do Elemento">
+                <FieldRow label={t('monster_detail.fields.element_level')}>
                   <NumInput value={elementLevel} onChange={v => set('ElementLevel', Math.max(1, Math.min(4, v)))} min={1} />
                 </FieldRow>
-                <FieldRow label="Classe (AI)">
+                <FieldRow label={t('monster_detail.fields.class')}>
                   <Select
                     value={local.Class || 'Normal'}
                     onChange={v => set('Class', v)}
@@ -506,7 +675,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
             </SectionCard>
 
             {/* Combat Stats */}
-            <SectionCard icon={Sword} title="Combate" iconClass="text-orange-400">
+            <SectionCard icon={Sword} title={t('monster_detail.sections.combat')} iconClass="text-orange-400">
               <div className="grid grid-cols-2 gap-3">
                 <FieldRow label="HP">
                   <NumInput value={local.Hp} onChange={v => set('Hp', v)} min={0} />
@@ -526,17 +695,17 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                 <FieldRow label="MDEF">
                   <NumInput value={local.MagicDefense} onChange={v => set('MagicDefense', v)} min={0} />
                 </FieldRow>
-                <FieldRow label="Resistência Física">
+                <FieldRow label={t('monster_detail.fields.res_phys')}>
                   <NumInput value={local.Resistance} onChange={v => set('Resistance', v)} />
                 </FieldRow>
-                <FieldRow label="Resistência Mágica">
+                <FieldRow label={t('monster_detail.fields.res_magic')}>
                   <NumInput value={local.MagicResistance} onChange={v => set('MagicResistance', v)} />
                 </FieldRow>
               </div>
             </SectionCard>
 
             {/* Attributes */}
-            <SectionCard icon={Shield} title="Atributos" iconClass="text-blue-400">
+            <SectionCard icon={Shield} title={t('monster_detail.sections.attributes')} iconClass="text-blue-400">
               <div className="grid grid-cols-3 gap-3">
                 {['Str', 'Agi', 'Vit', 'Int', 'Dex', 'Luk'].map(attr => (
                   <div key={attr} className="bg-dark-900/80 rounded-lg border border-white/5 p-2 text-center">
@@ -553,18 +722,18 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
             </SectionCard>
 
             {/* Ranges & Speed */}
-            <SectionCard icon={Zap} title="Alcance & Velocidade" iconClass="text-cyan-400">
+            <SectionCard icon={Zap} title={t('monster_detail.sections.ranges_speed')} iconClass="text-cyan-400">
               <div className="grid grid-cols-2 gap-3">
-                <FieldRow label="Alcance de Ataque">
+                <FieldRow label={t('monster_detail.fields.atk_range')}>
                   <NumInput value={local.AttackRange} onChange={v => set('AttackRange', v)} min={0} />
                 </FieldRow>
-                <FieldRow label="Alcance de Skill">
+                <FieldRow label={t('monster_detail.fields.skill_range')}>
                   <NumInput value={local.SkillRange} onChange={v => set('SkillRange', v)} min={0} />
                 </FieldRow>
-                <FieldRow label="Alcance de Perseguição">
+                <FieldRow label={t('monster_detail.fields.chase_range')}>
                   <NumInput value={local.ChaseRange} onChange={v => set('ChaseRange', v)} min={0} />
                 </FieldRow>
-                <FieldRow label="Velocidade de Caminhada">
+                <FieldRow label={t('monster_detail.fields.walk_speed')}>
                   <NumInput value={local.WalkSpeed} onChange={v => set('WalkSpeed', v)} min={0} />
                 </FieldRow>
                 <FieldRow label="Attack Delay">
@@ -583,7 +752,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
             </SectionCard>
 
             {/* Experience */}
-            <SectionCard icon={Award} title="Experiência" iconClass="text-emerald-400">
+            <SectionCard icon={Award} title={t('monster_detail.sections.experience')} iconClass="text-emerald-400">
               <div className="grid grid-cols-3 gap-3">
                 <FieldRow label="Base EXP">
                   <NumInput value={local.BaseExp} onChange={v => set('BaseExp', v)} min={0} />
@@ -605,17 +774,17 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
           <div className="flex flex-col gap-4">
 
             {/* Normal Drops */}
-            <SectionCard icon={Sword} title="Drops Normais" iconClass="text-green-400">
+            <SectionCard icon={Sword} title={t('monster_detail.sections.normal_drops')} iconClass="text-green-400">
               <div className="flex flex-col gap-1.5">
                 {/* Header */}
                 <div className="grid grid-cols-[1fr_120px_32px] gap-2 text-[10px] text-gray-500 uppercase tracking-widest px-1 mb-1">
-                  <span>Item (AegisName)</span>
-                  <span className="text-right">Taxa (%)</span>
+                  <span>{t('monster_detail.drops.item')}</span>
+                  <span className="text-right">{t('monster_detail.drops.rate')}</span>
                   <span />
                 </div>
                 {(local.Drops || []).length === 0 && (
                   <div className="text-xs text-gray-600 italic text-center py-4 bg-dark-900/30 rounded-lg border border-white/5">
-                    Nenhum drop cadastrado.
+                    {t('monster_detail.drops.no_drops')}
                   </div>
                 )}
                 {(local.Drops || []).map((drop: any, idx: number) => (
@@ -624,7 +793,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                       type="text"
                       value={drop.Item || ''}
                       onChange={e => updateDrop('Drops', idx, 'Item', e.target.value)}
-                      placeholder="AegisName do Item"
+                      placeholder={t('monster_detail.drops.placeholder_item')}
                       className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-violet-500 focus:outline-none font-mono"
                     />
                     <input
@@ -648,22 +817,22 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                   onClick={() => addDrop('Drops')}
                   className="mt-1 flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 py-1.5 px-3 rounded-lg bg-violet-600/10 hover:bg-violet-600/20 border border-violet-600/20 transition-colors self-start"
                 >
-                  <Plus size={13} /> Adicionar Drop
+                  <Plus size={13} /> {t('monster_detail.drops.add_drop')}
                 </button>
               </div>
             </SectionCard>
 
             {/* MVP Drops */}
-            <SectionCard icon={Award} title="Drops MVP" iconClass="text-red-400">
+            <SectionCard icon={Award} title={t('monster_detail.sections.mvp_drops')} iconClass="text-red-400">
               <div className="flex flex-col gap-1.5">
                 <div className="grid grid-cols-[1fr_120px_32px] gap-2 text-[10px] text-gray-500 uppercase tracking-widest px-1 mb-1">
-                  <span>Item (AegisName)</span>
-                  <span className="text-right">Taxa (%)</span>
+                  <span>{t('monster_detail.drops.item')}</span>
+                  <span className="text-right">{t('monster_detail.drops.rate')}</span>
                   <span />
                 </div>
                 {(local.MvpDrops || []).length === 0 && (
                   <div className="text-xs text-gray-600 italic text-center py-4 bg-dark-900/30 rounded-lg border border-white/5">
-                    Nenhum drop MVP cadastrado.
+                    {t('monster_detail.drops.no_mvp_drops')}
                   </div>
                 )}
                 {(local.MvpDrops || []).map((drop: any, idx: number) => (
@@ -672,7 +841,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                       type="text"
                       value={drop.Item || ''}
                       onChange={e => updateDrop('MvpDrops', idx, 'Item', e.target.value)}
-                      placeholder="AegisName do Item"
+                      placeholder={t('monster_detail.drops.placeholder_item')}
                       className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-violet-500 focus:outline-none font-mono"
                     />
                     <input
@@ -696,95 +865,354 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate }) => {
                   onClick={() => addDrop('MvpDrops')}
                   className="mt-1 flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 py-1.5 px-3 rounded-lg bg-red-600/10 hover:bg-red-600/20 border border-red-600/20 transition-colors self-start"
                 >
-                  <Plus size={13} /> Adicionar Drop MVP
+                  <Plus size={13} /> {t('monster_detail.drops.add_mvp_drop')}
                 </button>
               </div>
             </SectionCard>
           </div>
         )}
 
-        {/* ── AI MODES ── */}
+        {/* ── AI / BEHAVIOR SETTINGS ── */}
         {activeTab === 'ai' && (
-          <SectionCard icon={Brain} title="Modos de IA (Behavior Flags)" iconClass="text-fuchsia-400">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {AI_MODES.map(modeKey => {
-                const active = !!(local.Modes?.[modeKey]);
-                return (
-                  <button
-                    key={modeKey}
-                    onClick={() => setModes(modeKey, !active)}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
-                      active
-                        ? 'bg-violet-600/20 border-violet-500/50 text-violet-300 shadow-inner shadow-violet-900/20'
-                        : 'bg-dark-900/60 border-white/5 text-gray-500 hover:border-white/10 hover:text-gray-400'
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${active ? 'bg-violet-400 animate-pulse' : 'bg-gray-700'}`} />
-                    {modeKey}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-[10px] text-gray-600 mt-4 italic">
-              Clique nos botões para ativar/desativar os flags de comportamento do monstro.
-            </p>
-          </SectionCard>
+          <div className="flex flex-col gap-4">
+            {/* Base AI Section */}
+            <SectionCard icon={Brain} title={t('monster_detail.ai.base_title')} iconClass="text-fuchsia-400">
+              <p className="text-xs text-gray-400 mb-3">{t('monster_detail.ai.base_subtitle')}</p>
+              <div className="max-w-md">
+                <select
+                  value={local.Ai || '01'}
+                  onChange={e => set('Ai', e.target.value)}
+                  className="w-full bg-dark-900 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500 transition-all"
+                >
+                  {AI_BASE_TYPES.map(typeCode => (
+                    <option key={typeCode} value={typeCode}>
+                      {`${typeCode} - ${t((`monster_detail.ai.types.${typeCode}`) as any) || 'Engine Default'}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </SectionCard>
+
+            {/* Additional Modes Section */}
+            <SectionCard icon={Brain} title={t('monster_detail.ai.modes_title')} iconClass="text-fuchsia-400">
+              <p className="text-xs text-gray-400 mb-4">{t('monster_detail.ai.modes_subtitle')}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {AI_MODES.map(modeKey => {
+                  const active = Boolean(local.Modes?.[modeKey] || local.Modes?.[modeKey.toLowerCase()]);
+                  return (
+                    <button
+                      key={modeKey}
+                      type="button"
+                      onClick={() => setModes(modeKey, !active)}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                        active
+                          ? 'bg-violet-600/20 border-violet-500/50 text-violet-300 shadow-inner shadow-violet-900/20'
+                          : 'bg-dark-900/60 border-white/5 text-gray-500 hover:border-white/10 hover:text-gray-400'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${active ? 'bg-violet-400 animate-pulse' : 'bg-gray-700'}`} />
+                      {modeKey}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-gray-600 mt-4 italic">
+                {t('monster_detail.ai.subtitle')}
+              </p>
+            </SectionCard>
+          </div>
         )}
 
         {/* ── SKILLS ── */}
         {activeTab === 'skills' && (
-          <SectionCard icon={Zap} title="Skills do Monstro" iconClass="text-cyan-400">
+          <SectionCard icon={Zap} title={t('monster_detail.skills.title')} iconClass="text-cyan-400">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-xs text-gray-400">
+                {activeMobSkills.length} {t('monster_detail.skills.title')}
+              </span>
+              <button
+                onClick={() => setShowAddSkillModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 text-xs font-semibold transition-all shadow-sm"
+              >
+                <Plus size={14} />
+                {t('monster_detail.skills.add_skill')}
+              </button>
+            </div>
+
             {skillsLoading ? (
               <div className="flex items-center justify-center py-8 gap-3 text-gray-500">
                 <Loader2 size={18} className="animate-spin" />
-                <span className="text-sm">Carregando skills...</span>
+                <span className="text-sm">{t('monster_detail.skills.loading')}</span>
               </div>
-            ) : skills.length === 0 ? (
-              <div className="text-center py-8 text-gray-600 text-sm italic">
-                Nenhuma skill cadastrada para este monstro.
+            ) : activeMobSkills.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm italic flex flex-col items-center gap-3">
+                <span>{t('monster_detail.skills.no_skills')}</span>
+                <button
+                  onClick={() => setShowAddSkillModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600/30 border border-violet-500/40 text-violet-300 hover:bg-violet-600/40 text-xs font-semibold"
+                >
+                  <Plus size={14} />
+                  {t('monster_detail.skills.add_skill')}
+                </button>
               </div>
             ) : (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5 overflow-x-auto">
                 {/* Header */}
-                <div className="grid grid-cols-[70px_1fr_70px_80px_1fr] gap-2 text-[10px] text-gray-500 uppercase tracking-widest px-2 mb-1">
-                  <span>Skill ID</span>
-                  <span>State</span>
-                  <span className="text-center">Lv</span>
-                  <span className="text-center">Taxa‰</span>
-                  <span>Condição</span>
+                <div className="grid grid-cols-[60px_1.8fr_60px_80px_100px_1.4fr_36px] gap-2 text-[10px] text-gray-400 uppercase tracking-widest px-3 py-1 font-semibold">
+                  <span>{t('monster_detail.skills.skill_id')}</span>
+                  <span>{t('monster_detail.skills.skill_name')}</span>
+                  <span className="text-center">{t('monster_detail.skills.level')}</span>
+                  <span className="text-center">{t('monster_detail.skills.rate')}</span>
+                  <span>{t('monster_detail.skills.state')}</span>
+                  <span>{t('monster_detail.skills.condition')}</span>
+                  <span />
                 </div>
-                {skills.map((skill: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="grid grid-cols-[70px_1fr_70px_80px_1fr] gap-2 items-center bg-dark-900/60 border border-white/5 rounded-lg px-2 py-2 hover:border-violet-500/20 transition-colors text-sm"
-                  >
-                    <span className="text-violet-400 font-mono font-bold">{skill.skill_id}</span>
-                    <span className="text-gray-300 capitalize truncate">{skill.state}</span>
-                    <span className="text-center text-white font-semibold">{skill.skill_lv}</span>
-                    <div className="text-center">
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
-                        skill.rate >= 5000 ? 'bg-green-900/60 text-green-400' :
-                        skill.rate >= 1000 ? 'bg-blue-900/60 text-blue-400' :
-                        'bg-dark-800 text-gray-400'
-                      }`}>
-                        {skill.rate}‰
-                      </span>
+                {activeMobSkills.map((skill: any, idx: number) => {
+                  const skillInfo = allSkillsMap[skill.skill_id];
+                  const displayName = skillInfo?.Name || `Skill #${skill.skill_id}`;
+                  return (
+                    <div
+                      key={idx}
+                      className="grid grid-cols-[60px_1.8fr_60px_80px_100px_1.4fr_36px] gap-2 items-center bg-dark-900/70 border border-white/5 rounded-xl px-3 py-2.5 hover:border-violet-500/30 transition-all text-xs"
+                    >
+                      <span className="text-violet-400 font-mono font-bold">#{skill.skill_id}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Zap size={13} className="text-cyan-400 flex-shrink-0" />
+                        <span className="text-gray-200 font-medium truncate" title={displayName}>
+                          {displayName}
+                        </span>
+                      </div>
+                      <div className="text-center">
+                        <span className="px-1.5 py-0.5 rounded bg-white/10 text-white font-bold">
+                          Lv.{skill.skill_lv}
+                        </span>
+                      </div>
+                      <div className="text-center">
+                        <span className={`px-1.5 py-0.5 rounded font-bold ${
+                          skill.rate >= 5000 ? 'bg-green-500/20 border border-green-500/30 text-green-300' :
+                          skill.rate >= 1000 ? 'bg-blue-500/20 border border-blue-500/30 text-blue-300' :
+                          'bg-dark-800 border border-white/10 text-gray-400'
+                        }`}>
+                          {Number(((skill.rate ?? 0) / 100).toFixed(2))}%
+                        </span>
+                      </div>
+                      <div>
+                        <span className={`px-2 py-0.5 rounded-full uppercase text-[10px] font-bold ${getStateBadgeClass(skill.state)}`}>
+                          {skill.state}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold truncate ${getConditionBadgeClass(skill.condition_type)}`}>
+                          {skill.condition_type}
+                          {skill.condition_value ? ` (${skill.condition_value})` : ''}
+                        </span>
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => handleDeleteSkill(idx)}
+                          title={t('monster_detail.skills.delete_skill')}
+                          className="p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                    <span className="text-gray-500 text-xs truncate">
-                      {skill.condition_type}
-                      {skill.condition_value ? `: ${skill.condition_value}` : ''}
-                    </span>
-                  </div>
-                ))}
-                <p className="text-[10px] text-gray-600 mt-3 italic">
-                  Para editar skills, acesse o editor de "Mob Skills". As taxas estão em milésimos (‰).
+                  );
+                })}
+                <p className="text-[10px] text-gray-500 mt-3 italic">
+                  {t('monster_detail.skills.footer_tip')}
                 </p>
               </div>
             )}
           </SectionCard>
         )}
 
+        {/* ── ADD SKILL MODAL ── */}
+        {showAddSkillModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-dark-900 border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <Zap size={18} className="text-cyan-400" />
+                  <h3 className="text-sm font-bold text-white">{t('monster_detail.skills.modal_title')}</h3>
+                </div>
+                <button
+                  onClick={() => setShowAddSkillModal(false)}
+                  className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-5 flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
+                {/* Search / Select Skill */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-gray-300">
+                    {t('monster_detail.skills.select_skill')}
+                  </label>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                    <input
+                      type="text"
+                      value={skillSearchQuery}
+                      onChange={e => setSkillSearchQuery(e.target.value)}
+                      placeholder={t('monster_detail.skills.search_placeholder')}
+                      className="w-full pl-9 pr-3 py-2 bg-dark-800 border border-white/10 rounded-xl text-xs text-white placeholder-gray-500 focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                  {skillSearchQuery.trim() && (
+                    <div className="max-h-36 overflow-y-auto bg-dark-800 border border-white/10 rounded-xl divide-y divide-white/5 mt-1 shadow-lg">
+                      {allSkillsList
+                        .filter(s => {
+                          const q = skillSearchQuery.toLowerCase();
+                          return String(s.Id).includes(q) || (s.Name || '').toLowerCase().includes(q) || (s.Description || '').toLowerCase().includes(q);
+                        })
+                        .slice(0, 15)
+                        .map(s => (
+                          <button
+                            key={s.Id}
+                            onClick={() => {
+                              setNewSkillForm(f => ({ ...f, skill_id: s.Id }));
+                              setSkillSearchQuery(`${s.Id} - ${s.Name || s.Description || ''}`);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-white/5 transition-colors"
+                          >
+                            <span className="text-white font-medium truncate">{s.Name || s.Description}</span>
+                            <span className="text-violet-400 font-mono text-[11px]">#{s.Id}</span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[11px] text-gray-400">{t('monster_detail.skills.skill_id')}:</span>
+                    <input
+                      type="number"
+                      value={newSkillForm.skill_id}
+                      onChange={e => setNewSkillForm(f => ({ ...f, skill_id: Number(e.target.value) }))}
+                      className="w-24 px-2 py-1 bg-dark-800 border border-white/10 rounded text-xs text-violet-300 font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Level and Rate */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.level')}</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={newSkillForm.skill_lv}
+                      onChange={e => setNewSkillForm(f => ({ ...f, skill_lv: Number(e.target.value) }))}
+                      className="px-3 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.rate')}</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      max={100}
+                      value={newSkillForm.rate}
+                      onChange={e => setNewSkillForm(f => ({ ...f, rate: Number(e.target.value) }))}
+                      className="px-3 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* State and Condition Type */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.state')}</label>
+                    <select
+                      value={newSkillForm.state}
+                      onChange={e => setNewSkillForm(f => ({ ...f, state: e.target.value }))}
+                      className="px-3 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    >
+                      <option value="idle">idle</option>
+                      <option value="attack">attack</option>
+                      <option value="chase">chase</option>
+                      <option value="any">any</option>
+                      <option value="walk">walk</option>
+                      <option value="dead">dead</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.condition_type')}</label>
+                    <select
+                      value={newSkillForm.condition_type}
+                      onChange={e => setNewSkillForm(f => ({ ...f, condition_type: e.target.value }))}
+                      className="px-3 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    >
+                      <option value="always">always</option>
+                      <option value="myhpltmaxrate">myhpltmaxrate</option>
+                      <option value="myhpgtmaxrate">myhpgtmaxrate</option>
+                      <option value="castsensor">castsensor</option>
+                      <option value="friendhpltmaxrate">friendhpltmaxrate</option>
+                      <option value="statuson">statuson</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Condition Value, Cast Time, Delay */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.condition_value')}</label>
+                    <input
+                      type="number"
+                      value={newSkillForm.condition_value}
+                      onChange={e => setNewSkillForm(f => ({ ...f, condition_value: Number(e.target.value) }))}
+                      className="px-2 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.cast_time')}</label>
+                    <input
+                      type="number"
+                      value={newSkillForm.cast_time}
+                      onChange={e => setNewSkillForm(f => ({ ...f, cast_time: Number(e.target.value) }))}
+                      className="px-2 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-400">{t('monster_detail.skills.delay')}</label>
+                    <input
+                      type="number"
+                      value={newSkillForm.delay}
+                      onChange={e => setNewSkillForm(f => ({ ...f, delay: Number(e.target.value) }))}
+                      className="px-2 py-1.5 bg-dark-800 border border-white/10 rounded-lg text-xs text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 px-5 py-4 border-t border-white/10 bg-dark-800/50">
+                <button
+                  onClick={() => setShowAddSkillModal(false)}
+                  className="px-4 py-2 rounded-xl border border-white/10 text-xs text-gray-400 hover:text-white transition-colors"
+                >
+                  {t('monster_detail.skills.cancel')}
+                </button>
+                <button
+                  onClick={handleAddSkill}
+                  className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-dark-900 font-bold text-xs transition-colors shadow-lg shadow-cyan-500/20"
+                >
+                  {t('monster_detail.skills.confirm_add')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
+
+      <DivinePrideImporterPanel
+        isOpen={showDPPanel}
+        onClose={() => setShowDPPanel(false)}
+        resourceType="monster"
+        onImportSuccess={handleDPImportSuccess}
+      />
     </div>
   );
 };

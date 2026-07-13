@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { X, MapPin } from 'lucide-react';
 import { API_URL } from '../config/env';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 interface NpcShopModalProps {
   shop: any;
@@ -9,6 +10,7 @@ interface NpcShopModalProps {
 }
 
 const NpcShopModal: React.FC<NpcShopModalProps> = ({ shop, onClose }) => {
+  const t = useLanguageStore(state => state.t);
   const [items, setItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -80,16 +82,16 @@ const NpcShopModal: React.FC<NpcShopModalProps> = ({ shop, onClose }) => {
                   navigator.clipboard.writeText(`/navi ${shop.map} ${shop.x}/${shop.y}`);
                   const el = document.getElementById(`tooltip-${shop.map}`);
                   if(el) {
-                      el.innerText = "Copiado!";
+                      el.innerText = t('components.modals.npc_shop.copy_success');
                       el.classList.add("text-green-400");
                       setTimeout(() => {
-                          el.innerText = "Copiar /navi";
+                          el.innerText = t('components.modals.npc_shop.copy_tooltip');
                           el.classList.remove("text-green-400");
                       }, 2000);
                   }
               }}
               className="flex items-center gap-2 text-violet-300 hover:text-white hover:bg-violet-500/20 px-2 py-1 rounded cursor-pointer transition-colors group relative"
-              title="Clique para copiar comando /navi"
+              title={t('components.modals.npc_shop.copy_btn_title')}
            >
               <MapPin size={16} className="group-hover:animate-bounce" />
               <span className="font-semibold">{shop.map}</span>
@@ -97,7 +99,7 @@ const NpcShopModal: React.FC<NpcShopModalProps> = ({ shop, onClose }) => {
               
               {/* Tooltip on Hover */}
               <div id={`tooltip-${shop.map}`} className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-black text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                 Copiar /navi
+                 {t('components.modals.npc_shop.copy_tooltip')}
               </div>
            </button>
            <div className="text-gray-400">
@@ -107,7 +109,7 @@ const NpcShopModal: React.FC<NpcShopModalProps> = ({ shop, onClose }) => {
 
         {/* Content (Items) */}
         <div className="p-6 overflow-y-auto flex-1">
-           <h3 className="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wider">Inventário da Loja</h3>
+           <h3 className="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wider">{t('components.modals.npc_shop.inventory')}</h3>
            
            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {items.map((it, idx) => (
@@ -123,7 +125,7 @@ const NpcShopModal: React.FC<NpcShopModalProps> = ({ shop, onClose }) => {
                       <div className="flex flex-col min-w-0 flex-1">
                          <span className="text-sm text-gray-200 font-medium truncate">{it.id}</span>
                          <span className="text-xs text-yellow-400 font-mono">
-                            {it.price === -1 ? 'Preço Padrão (item_db)' : `${it.price.toLocaleString()} z`}
+                            {it.price === -1 ? t('components.modals.npc_shop.default_price') : `${it.price.toLocaleString()} z`}
                          </span>
                       </div>
                   </div>
