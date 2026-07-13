@@ -1,4 +1,7 @@
 function normalizeApiUrl(raw?: string): string {
+  if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+    return 'http://127.0.0.1:8000';
+  }
   if (!raw) return '';
   const trimmed = raw.trim().replace(/\/$/, '');
   if (trimmed && !trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('/')) {

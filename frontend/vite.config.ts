@@ -70,6 +70,7 @@ if (targetApiUrl && !targetApiUrl.startsWith('http://') && !targetApiUrl.startsW
 }
 
 export default defineConfig({
+  base: './',
   plugins: [react()],
   server: {
     port: 5173,
