@@ -211,7 +211,8 @@
       "offline": "Server offline. Trying to reconnect...",
       "loading_title": "Loading Items Database",
       "entries_read": "entries read",
-      "save_error": "Connection error when saving changes to YAML."
+      "save_error": "Connection error when saving changes to YAML.",
+      "loading_details": "Loading item details..."
     }
   },
   "monster_editor": {

@@ -211,7 +211,8 @@
       "offline": "Servidor offline. Tentando reconectar...",
       "loading_title": "Carregando Banco de Itens",
       "entries_read": "entradas lidas",
-      "save_error": "Erro de conexão ao salvar a alteração no YAML."
+      "save_error": "Erro de conexão ao salvar a alteração no YAML.",
+      "loading_details": "Carregando detalhes do item..."
     }
   },
   "monster_editor": {

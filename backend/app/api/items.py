@@ -105,15 +105,33 @@ async def get_items(
     from app.services.iteminfo_parser import iteminfo_db
     merged_items = []
     for item in paginated_items:
-        it = dict(item)
-        item_id = it.get("Id")
+        item_id = item.get("Id")
+        aegis_name = item.get("AegisName", "")
+        name = item.get("Name", aegis_name)
+        item_type = item.get("Type", "Etc")
+        source_val = item.get("_source", "rathena")
+
+        identified_name = ""
+        identified_res = ""
         if item_id and iteminfo_db.loaded:
             entry = iteminfo_db.item_map.get(item_id)
             if entry:
-                it["identifiedDisplayName"] = entry.get("identifiedDisplayName")
-                it["identifiedResourceName"] = entry.get("identifiedResourceName")
-        it["is_custom"] = (it.get("_source") == "custom")
-        merged_items.append(it)
+                identified_name = entry.get("identifiedDisplayName", "")
+                identified_res = entry.get("identifiedResourceName", "")
+
+        dto = {
+            "Id": item_id,
+            "AegisName": aegis_name,
+            "Name_Aegis": aegis_name,
+            "Name": name,
+            "Name_Eng": name,
+            "Type": item_type,
+            "_source": source_val,
+            "is_custom": (source_val == "custom"),
+            "identifiedDisplayName": identified_name,
+            "identifiedResourceName": identified_res,
+        }
+        merged_items.append(dto)
 
     effective_skip = skip if skip is not None else (page - 1) * limit
 
@@ -126,6 +144,29 @@ async def get_items(
         "has_more": (effective_skip + len(merged_items)) < total_count,
         "items": merged_items
     }
+
+@router.get("/{item_id}")
+async def get_item_detail(item_id: int):
+    """
+    Retorna o objeto completo do item (com todos os scripts, random options, etc.)
+    pelo Id para exibição/edição detalhada no Frontend.
+    """
+    if yaml_db.is_loading:
+        raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando.")
+
+    item = yaml_db.get_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail=f"Item with Id {item_id} not found")
+
+    from app.services.iteminfo_parser import iteminfo_db
+    it = dict(item)
+    if iteminfo_db.loaded:
+        entry = iteminfo_db.item_map.get(item_id)
+        if entry:
+            it["identifiedDisplayName"] = entry.get("identifiedDisplayName")
+            it["identifiedResourceName"] = entry.get("identifiedResourceName")
+    it["is_custom"] = (it.get("_source") == "custom")
+    return it
 
 from app.models.item import ItemDBModel, ItemUpdateModel
 from fastapi import HTTPException

@@ -160,10 +160,49 @@ const ItemEditor: React.FC = () => {
     }
   }, [hasMore, isLoadingMore, isLoading, page, fetchItemsPage]);
 
-  const selectedItem = useMemo(() => {
-    if (selectedItemId === null) return null;
-    return items.find(i => i.Id === selectedItemId) || null;
-  }, [items, selectedItemId]);
+  const [detailedItem, setDetailedItem] = useState<any>(null);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+
+  useEffect(() => {
+    if (selectedItemId === null) {
+      setDetailedItem(null);
+      return;
+    }
+    let cancelled = false;
+    setIsDetailLoading(true);
+    axios.get(`${API_URL}/api/items/${selectedItemId}`)
+      .then((res) => {
+        if (!cancelled) {
+          setDetailedItem(res.data);
+          setIsDetailLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("[ItemEditor] Erro ao buscar detalhes completos do item:", err);
+          const fallbackDto = items.find(i => i.Id === selectedItemId) || null;
+          setDetailedItem(fallbackDto);
+          setIsDetailLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedItemId, items]);
+
+  const displayedItems = useMemo(() => {
+    let filtered = items;
+    if (searchText.trim()) {
+      const q = searchText.trim().toLowerCase();
+      filtered = items.filter(it =>
+        String(it.Id).includes(q) ||
+        String(it.AegisName || '').toLowerCase().includes(q) ||
+        String(it.Name || '').toLowerCase().includes(q) ||
+        String(it.identifiedDisplayName || '').toLowerCase().includes(q)
+      );
+    }
+    return filtered.slice(0, 100);
+  }, [items, searchText]);
 
   const handleUpdateItem = useCallback(async (itemId: number, updatedData: any, saveMode: 'import' | 'overwrite' = 'import') => {
     try {
@@ -174,6 +213,7 @@ const ItemEditor: React.FC = () => {
 
       // Otimisticamente atualiza o estado
       setItems(prev => prev.map(it => it.Id === itemId ? { ...it, ...updatedData } : it));
+      setDetailedItem(prev => (prev && prev.Id === itemId ? { ...prev, ...updatedData } : prev));
       
       // Salva no backend
       const res = await axios.put(`${API_URL}/api/items/${itemId}?save_mode=${saveMode}`, payload);
@@ -181,6 +221,7 @@ const ItemEditor: React.FC = () => {
       // Update item with exact backend response (including new _source if changed)
       if (res.data) {
         setItems(prev => prev.map(it => it.Id === itemId ? { ...it, ...res.data } : it));
+        setDetailedItem(prev => (prev && prev.Id === itemId ? { ...prev, ...res.data } : prev));
       }
       console.log(`[webSDE] Item ${itemId} atualizado com sucesso! (Modo: ${saveMode})`);
       return true;
@@ -189,7 +230,7 @@ const ItemEditor: React.FC = () => {
       alert(t('item_editor.status.save_error'));
       return false;
     }
-  }, []);
+  }, [t]);
 
   const showToast = useCallback((text: string, type: 'success' | 'error') => {
     setToastMessage({ text, type });
@@ -201,6 +242,7 @@ const ItemEditor: React.FC = () => {
       await axios.delete(`${API_URL}/api/items/${itemId}`);
       setItems(prev => prev.filter(it => it.Id !== itemId));
       setSelectedItemId(null);
+      setDetailedItem(null);
       showToast((t('item_editor_delete.success' as any) || 'Item #{id} excluído com sucesso!').replace('#{id}', String(itemId)), 'success');
       return true;
     } catch (error: any) {
@@ -346,7 +388,7 @@ const ItemEditor: React.FC = () => {
           </div>
 
           <div className="text-[11px] text-gray-500 mt-2 font-mono flex justify-between">
-            <span>{t('pagination.showing', { loaded: items.length.toLocaleString(), total: totalCount.toLocaleString() })}</span>
+            <span>{t('pagination.showing', { loaded: displayedItems.length.toLocaleString(), total: totalCount.toLocaleString() })}</span>
           </div>
         </div>
 
@@ -355,7 +397,7 @@ const ItemEditor: React.FC = () => {
           {!isLoading && (
             <Virtuoso
               ref={virtuosoRef}
-              data={items}
+              data={displayedItems}
               endReached={handleEndReached}
               style={{ height: '100%' }}
               components={{
@@ -400,8 +442,13 @@ const ItemEditor: React.FC = () => {
 
       {/* Detail View (Main) */}
       <div className="flex-1 bg-dark-950 flex flex-col overflow-hidden relative">
-        {selectedItem ? (
-          <ItemDetail item={selectedItem} onUpdate={handleUpdateItem} onDelete={handleDeleteItem} />
+        {isDetailLoading ? (
+          <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
+             <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+             <span className="text-xs font-mono">{t('item_editor.status.loading_details' as any) || 'Carregando detalhes do item...'}</span>
+          </div>
+        ) : detailedItem ? (
+          <ItemDetail item={detailedItem} onUpdate={handleUpdateItem} onDelete={handleDeleteItem} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <Package size={64} className="mb-4 opacity-20" />
