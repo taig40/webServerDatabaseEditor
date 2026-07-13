@@ -1,0 +1,36 @@
+{
+  "appId": "com.rathena.webeditor",
+  "productName": "rAthena Web Editor",
+  "directories": {
+    "output": "release",
+    "buildResources": "electron"
+  },
+  "files": [
+    "dist/**/*",
+    "electron/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "../backend/dist/",
+      "to": "backend",
+      "filter": ["rathena-sde-backend*"]
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ]
+  },
+  "linux": {
+    "target": ["AppImage", "deb"],
+    "category": "Development"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true
+  }
+}
