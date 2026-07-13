@@ -58,6 +58,8 @@ from app.services.const_parser import const_db
 from app.core.config import cfg
 cfg.reload_from_env()
 
+APP_STATE = {"setup_required": False, "missing_keys": []}
+
 def setup_and_validate_env():
     # 3. Lê as chaves necessárias do .env-template para validar
     required_keys = []
@@ -71,7 +73,6 @@ def setup_and_validate_env():
                         required_keys.append(key)
                         
     # 4. Verifica se cada variável está preenchida (diferente de vazia)
-    # GRF slots, override path and legacy GRF_PATH are all optional (at least one is enough)
     optional_keys = {
         "GRF_OVERRIDE_PATH", "GRF_PATH",
         *[f"GRF_{i}" for i in range(10)],
@@ -86,20 +87,24 @@ def setup_and_validate_env():
                 continue
             missing_keys.append(key)
 
-    # Warn if no GRF is configured at all (non-fatal)
     has_any_grf = any(os.environ.get(f"GRF_{i}", "").strip() for i in range(10))
     has_legacy_grf = bool(os.environ.get("GRF_PATH", "").strip())
     if not has_any_grf and not has_legacy_grf:
         print("[!] Aviso: Nenhum arquivo GRF configurado (GRF_0..GRF_9). "
               "Sprites e ícones não serão exibidos. Configure na página de Configurações.")
             
-    if missing_keys:
-        print(f"\n[ERRO] Configuração incompleta no arquivo .env do Backend!")
-        print(f"As seguintes variáveis estão vazias ou ausentes e precisam ser preenchidas:")
-        for key in missing_keys:
-            print(f"  - {key}")
-        print(f"Por favor, edite o arquivo '{env_path}' ou use a página de Configurações do site.\n")
-        sys.exit(1)
+    db_base = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
+    item_db = os.environ.get("ITEM_DB_PATH", "").strip()
+    is_db_valid = (db_base and os.path.exists(db_base)) or (item_db and os.path.exists(item_db))
+
+    if missing_keys or not is_db_valid:
+        print(f"\n[!] Aviso: Configuração pendente ou pasta rAthena não configurada ou ausente.")
+        print("    O Backend iniciará em 'Safe Mode' aguardando configuração inicial via /api/setup.\n")
+        APP_STATE["setup_required"] = True
+        APP_STATE["missing_keys"] = missing_keys
+    else:
+        APP_STATE["setup_required"] = False
+        APP_STATE["missing_keys"] = []
 
 # Executa o setup e validação antes de subir a app
 setup_and_validate_env()
@@ -134,9 +139,18 @@ app.add_middleware(
 
 from app.services.iteminfo_parser import iteminfo_db
 from contextlib import asynccontextmanager
+from pydantic import BaseModel
+
+class SetupPayload(BaseModel):
+    SERVER_DB_BASE_PATH: str
+    GRF_0: str = ""
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if APP_STATE["setup_required"]:
+        print("[*] Servidor FastAPI iniciando em Safe Mode (Aguardando First-Time Setup).")
+        yield
+        return
     print("[*] Servidor FastAPI iniciando. Carregando GRFs e ItemInfo em background...")
     import threading
     def _startup_resources():
@@ -184,6 +198,57 @@ app.include_router(system.router,       prefix="/api/system",           tags=["s
 app.include_router(divinepride.router,  prefix="/api/divinepride",      tags=["divinepride"])
 app.include_router(map_drops.router,    prefix="/api/map-drops",          tags=["map-drops"])
 app.include_router(custom_spawns.router, prefix="/api/scripts/custom-spawns", tags=["custom-spawns"])
+
+@app.get("/api/status")
+def get_system_status():
+    db_base = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
+    item_db = os.environ.get("ITEM_DB_PATH", "").strip()
+    is_ready = not APP_STATE["setup_required"] and ((db_base and os.path.exists(db_base)) or (item_db and os.path.exists(item_db)))
+    return {
+        "status": "ok" if is_ready else "setup_required",
+        "missing_keys": APP_STATE["missing_keys"],
+        "db_base_path": db_base
+    }
+
+@app.post("/api/setup")
+def post_system_setup(payload: SetupPayload):
+    from fastapi import HTTPException
+    from app.api.settings import _read_env, _write_env, reload_settings
+    db_base = payload.SERVER_DB_BASE_PATH.strip().replace("\\", "/")
+    if not os.path.exists(db_base):
+        raise HTTPException(status_code=400, detail="A pasta selecionada para o rAthena não foi encontrada.")
+    
+    env = _read_env()
+    env["SERVER_DB_BASE_PATH"] = db_base
+    os.environ["SERVER_DB_BASE_PATH"] = db_base
+    
+    if payload.GRF_0.strip():
+        grf_path = payload.GRF_0.strip().replace("\\", "/")
+        env["GRF_0"] = grf_path
+        os.environ["GRF_0"] = grf_path
+        
+    db_defaults = {
+        "ITEM_DB_PATH": "re/item_db.yml",
+        "MOB_DB_PATH": "re/mob_db.yml",
+        "SKILL_DB_PATH": "re/skill_db.yml",
+        "MOB_SKILL_DB_PATH": "re/mob_skill_db.txt",
+        "COMBO_DB_PATH": "re/item_combos.yml",
+        "QUEST_DB_PATH": "re/quest_db.yml",
+        "PET_DB_PATH": "re/pet_db.yml",
+        "ACHIEVEMENT_DB_PATH": "re/achievement_db.yml",
+        "CONST_DB_PATH": "const.yml",
+    }
+    for env_key, filename in db_defaults.items():
+        full_p = os.path.join(db_base, filename).replace("\\", "/")
+        env[env_key] = full_p
+        os.environ[env_key] = full_p
+        
+    _write_env(env)
+    APP_STATE["setup_required"] = False
+    APP_STATE["missing_keys"] = []
+    
+    reload_settings()
+    return {"status": "ok", "message": "Setup concluído com sucesso."}
 
 @app.get("/")
 def read_root():

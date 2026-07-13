@@ -21,6 +21,7 @@ import JobDatabaseEditor from './pages/JobDatabaseEditor';
 import ExperienceTablesEditor from './pages/ExperienceTablesEditor';
 import SkillTreeEditor from './pages/SkillTreeEditor';
 import MapEngine from './pages/MapEngine';
+import { SetupScreen } from './components/SetupScreen';
 
 type ActiveView = ModuleId | 'settings';
 
@@ -35,6 +36,7 @@ function App() {
   const [activeView, setActiveView] = useState<ActiveView>('items');
   const [encodingError, setEncodingError] = useState<EncodingErrorPayload | null>(null);
 
+  const [setupRequired, setSetupRequired] = useState(false);
   const [isCacheReady, setIsCacheReady] = useState(false);
   const [currentLoadingFile, setCurrentLoadingFile] = useState('');
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -42,6 +44,16 @@ function App() {
   const [connectionError, setConnectionError] = useState(false);
 
   useEffect(() => {
+    // Check First-Time Setup status before initializing cache
+    axios.get(`${API_URL}/api/status`).then((res) => {
+      if (res.data && res.data.status === 'setup_required') {
+        setSetupRequired(true);
+        setIsCacheReady(true);
+      }
+    }).catch(() => {
+      // If error or unconfigured, allow SSE to continue or handle retry
+    });
+
     const es = new EventSource(getSSEUrl('/api/system/initialize-cache'));
 
     es.onopen = () => {
@@ -123,6 +135,17 @@ function App() {
       );
     }
   };
+
+  if (setupRequired) {
+    return (
+      <SetupScreen
+        onSetupComplete={() => {
+          setSetupRequired(false);
+          setIsCacheReady(false);
+        }}
+      />
+    );
+  }
 
   if (!isCacheReady) {
     return (

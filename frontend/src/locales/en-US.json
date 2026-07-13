@@ -1314,5 +1314,20 @@
     "btn_label": "Remove from ItemInfo",
     "success": "Item #{id} removed from iteminfo.lua successfully!",
     "error_generic": "Error removing item from iteminfo.lua."
+  },
+  "setup_screen": {
+    "title": "Welcome to rAthena Web Editor",
+    "subtitle": "First-Time Setup",
+    "description": "Please select your rAthena database root folder to begin. The system will automatically verify and load your YAML files.",
+    "db_base_path_label": "Database Folder (rAthena /db)",
+    "db_base_path_placeholder": "E.g. C:/rAthena/db or /home/rathena/db",
+    "db_base_path_help": "Full path to the rAthena db folder containing re/item_db.yml, re/mob_db.yml, etc.",
+    "grf_0_label": "Primary GRF File (Optional)",
+    "grf_0_placeholder": "E.g. C:/Ragnarok/data.grf",
+    "grf_0_help": "Client .grf file for rendering sprites and icons inside the editor.",
+    "save_and_start": "Save & Launch",
+    "saving": "Validating and loading databases...",
+    "success_toast": "Configuration saved and databases loaded successfully!",
+    "error_path_required": "Please provide the rAthena database (db) folder path."
   }
 }

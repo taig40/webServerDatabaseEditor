@@ -1314,5 +1314,20 @@
     "btn_label": "Excluir do ItemInfo",
     "success": "Item #{id} removido do iteminfo.lua com sucesso!",
     "error_generic": "Erro ao remover o item do iteminfo.lua."
+  },
+  "setup_screen": {
+    "title": "Bem-vindo ao rAthena Web Editor",
+    "subtitle": "Configuração Inicial (First-Time Setup)",
+    "description": "Selecione a pasta raiz dos bancos de dados do seu rAthena para iniciar. O sistema verificará e carregará seus arquivos automaticamente.",
+    "db_base_path_label": "Pasta do Banco de Dados (rAthena /db)",
+    "db_base_path_placeholder": "Ex: C:/rAthena/db ou /home/rathena/db",
+    "db_base_path_help": "Caminho completo até a pasta db do rAthena contendo re/item_db.yml, re/mob_db.yml, etc.",
+    "grf_0_label": "Arquivo GRF Principal (Opcional)",
+    "grf_0_placeholder": "Ex: C:/Ragnarok/data.grf",
+    "grf_0_help": "Arquivo .grf do cliente para visualização de sprites e ícones no editor.",
+    "save_and_start": "Salvar e Iniciar",
+    "saving": "Validando e carregando bases...",
+    "success_toast": "Configurações salvas e bases carregadas com sucesso!",
+    "error_path_required": "Por favor, informe a pasta do banco de dados (db) do rAthena."
   }
 }
