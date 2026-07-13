@@ -50,17 +50,20 @@ async def get_skill_references():
 @router.get("/")
 async def get_skills(
     skip: int = Query(0),
-    limit: int = Query(50),
+    limit: int = Query(0),
 ):
-    limit = min(max(1, limit), 100)
     if skill_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     skills = skill_db.get_skills()
+    if limit > 0:
+        result_skills = skills[skip: skip + limit]
+    else:
+        result_skills = skills[skip:]
     return {
         "total": len(skills),
         "skip": skip,
         "limit": limit,
-        "skills": skills[skip: skip + limit],
+        "skills": result_skills,
     }
 
 
