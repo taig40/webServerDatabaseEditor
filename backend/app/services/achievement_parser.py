@@ -18,17 +18,50 @@ def get_achievements_lua_path() -> str:
     # Auto-guess
     iteminfo = os.environ.get("ITEMINFO_PATH", "").strip()
     if iteminfo:
-        system_dir = os.path.dirname(os.path.dirname(iteminfo)) # goes up to System/
-        p1 = os.path.join(system_dir, "achievements.lub").replace("\\", "/")
-        if os.path.exists(p1):
-            return p1
-        p2 = os.path.join(system_dir, "achievement_list.lub").replace("\\", "/")
-        if os.path.exists(p2):
-            return p2
+        system_dir = os.path.dirname(os.path.dirname(iteminfo)) # goes up to System/ or SystemEN/
+        filenames = ("achievements.lub", "achievements.lua", "achievement_list.lub", "achievement_list.lua")
+        for fn in filenames:
+            p = os.path.join(system_dir, fn).replace("\\", "/")
+            if os.path.exists(p):
+                return p
+        
+        # Try checking in System/ if parent was SystemEN/ or vice versa
+        game_root = os.path.dirname(system_dir)
+        for fn in filenames:
+            p = os.path.join(game_root, "System", fn).replace("\\", "/")
+            if os.path.exists(p):
+                return p
+                
+        # Default fallback
+        return os.path.join(system_dir, "achievements.lub").replace("\\", "/")
     return ""
 
 
 # ─── Client Lua/Lub Parser ───────────────────────────────────────────────────
+
+def extract_lua_string(key: str, block: str) -> str:
+    m = re.search(key + r"\s*=\s*\"([^\"]*)\"", block)
+    if m: return m.group(1)
+    m = re.search(key + r"\s*=\s*'([^']*)'", block)
+    if m: return m.group(1)
+    m = re.search(key + r"\s*=\s*\[\[([\s\S]*?)\]\]", block)
+    if m: return m.group(1).strip()
+    return ""
+
+def extract_brace_content(key: str, block: str) -> str:
+    pattern = re.compile(key + r"\s*=\s*\{")
+    m = pattern.search(block)
+    if not m: return ""
+    start_idx = m.end()
+    brace_count = 1
+    content_chars = []
+    for i in range(start_idx, len(block)):
+        char = block[i]
+        if char == '{': brace_count += 1
+        elif char == '}': brace_count -= 1
+        if brace_count == 0: break
+        content_chars.append(char)
+    return "".join(content_chars)
 
 def parse_achievements_lua(filepath: str) -> dict[int, dict]:
     """Reads achievements.lub line-by-line and extracts all entries into a dictionary."""
@@ -50,7 +83,7 @@ def parse_achievements_lua(filepath: str) -> dict[int, dict]:
         return {}
 
     ach_map = {}
-    re_entry = re.compile(r"^\s*\[(\d+)\]\s*=\s*\{")
+    re_entry = re.compile(r"\[(\d+)\]\s*=\s*\{")
 
     current_id = None
     current_lines = []
@@ -58,11 +91,22 @@ def parse_achievements_lua(filepath: str) -> dict[int, dict]:
 
     for line in raw_lines:
         if current_id is None:
-            m = re_entry.match(line)
+            m = re_entry.search(line)
             if m:
                 current_id = int(m.group(1))
-                current_lines = [line]
+                current_lines = [line[m.start():]]
                 brace_count = 1
+                rest = line[m.end():]
+                if "--" in rest:
+                    rest = rest[:rest.index("--")]
+                for char in rest:
+                    if char == '{': brace_count += 1
+                    elif char == '}': brace_count -= 1
+                if brace_count <= 0:
+                    ach_map[current_id] = parse_lua_block("".join(current_lines))
+                    current_id = None
+                    current_lines = []
+                    brace_count = 0
             continue
 
         current_lines.append(line)
@@ -105,8 +149,8 @@ def parse_lua_block(block: str) -> dict:
     m_ui = re.search(r"UI_Type\s*=\s*(-?\d+)", block)
     if m_ui: data["UI_Type"] = int(m_ui.group(1))
 
-    m_group = re.search(r"group\s*=\s*\"([^\"]*)\"", block)
-    if m_group: data["group"] = m_group.group(1)
+    group = extract_lua_string("group", block)
+    if group: data["group"] = group
 
     m_major = re.search(r"major\s*=\s*(-?\d+)", block)
     if m_major: data["major"] = int(m_major.group(1))
@@ -114,41 +158,41 @@ def parse_lua_block(block: str) -> dict:
     m_minor = re.search(r"minor\s*=\s*(-?\d+)", block)
     if m_minor: data["minor"] = int(m_minor.group(1))
 
-    m_title = re.search(r"title\s*=\s*\"([^\"]*)\"", block)
-    if m_title: data["title"] = m_title.group(1)
+    title = extract_lua_string("title", block)
+    if title: data["title"] = title
 
     m_score = re.search(r"score\s*=\s*(-?\d+)", block)
     if m_score: data["score"] = int(m_score.group(1))
 
-    m_summary = re.search(r"summary\s*=\s*\"([^\"]*)\"", block)
-    if m_summary: data["summary"] = m_summary.group(1)
+    summary = extract_lua_string("summary", block)
+    if summary: data["summary"] = summary
 
-    m_details = re.search(r"details\s*=\s*\"([^\"]*)\"", block)
-    if m_details: data["details"] = m_details.group(1)
+    details = extract_lua_string("details", block)
+    if details: data["details"] = details
 
     # Reward parsing
-    m_reward = re.search(r"reward\s*=\s*\{([^\}]*)\}", block)
-    if m_reward:
-        rew_str = m_reward.group(1)
-        m_item = re.search(r"item\s*=\s*(\d+)", rew_str)
+    rew_block = extract_brace_content("reward", block)
+    if rew_block:
+        m_item = re.search(r"item\s*=\s*(\d+)", rew_block)
         if m_item: data["reward_item"] = int(m_item.group(1))
-        m_title_rew = re.search(r"title\s*=\s*(\d+)", rew_str)
+        m_title_rew = re.search(r"title\s*=\s*(\d+)", rew_block)
         if m_title_rew: data["reward_title"] = int(m_title_rew.group(1))
-        m_buff = re.search(r"buff\s*=\s*(\d+)", rew_str)
+        m_buff = re.search(r"buff\s*=\s*(\d+)", rew_block)
         if m_buff: data["reward_buff"] = int(m_buff.group(1))
 
     # Resource parsing
-    m_res = re.search(r"resource\s*=\s*\{([^\}]*)\}", block)
-    if m_res:
-        res_str = m_res.group(1)
-        texts = re.findall(r"text\s*=\s*\"([^\"]*)\"", res_str)
+    res_block = extract_brace_content("resource", block)
+    if res_block:
+        texts = []
+        for text in re.findall(r"text\s*=\s*\"([^\"]*)\"", res_block):
+            texts.append(text)
+        for text in re.findall(r"text\s*=\s*'([^']*)'", res_block):
+            texts.append(text)
+        for text in re.findall(r"text\s*=\s*\[\[([\s\S]*?)\]\]", res_block):
+            texts.append(text.strip())
         data["resource"] = texts
-    else:
-        # Check multiline resource block (looks ahead until reward block)
-        m_res_multi = re.search(r"resource\s*=\s*\{([\s\S]*?)\}\s*,\s*reward", block)
-        if m_res_multi:
-            texts = re.findall(r"text\s*=\s*\"([^\"]*)\"", m_res_multi.group(1))
-            data["resource"] = texts
+
+    return data
 
     return data
 
@@ -297,10 +341,26 @@ class AchievementDatabase(GenericYamlParser):
         for s in server_list:
             ach_id = s.get("Id")
             if ach_id is not None:
+                client_data = self.client_cache.get(ach_id)
+                if client_data is None:
+                    client_data = {
+                        "UI_Type": 0,
+                        "group": "",
+                        "major": 1,
+                        "minor": 0,
+                        "title": "",
+                        "summary": "",
+                        "details": "",
+                        "resource": [],
+                        "reward_item": None,
+                        "reward_title": None,
+                        "reward_buff": None,
+                        "score": 0
+                    }
                 merged[ach_id] = {
                     "Id": ach_id,
                     "server": s,
-                    "client": self.client_cache.get(ach_id),
+                    "client": client_data,
                     "status": "divergent"
                 }
 
@@ -317,11 +377,11 @@ class AchievementDatabase(GenericYamlParser):
         # 3. Determine status
         for ach_id, m in merged.items():
             s = m["server"]
+            has_client = ach_id in self.client_cache
             c = m["client"]
-            if s and c:
+            if s and has_client:
                 s_score = s.get("Score", 0)
                 c_score = c.get("score", 0)
-                # Compare scores and names/titles basically
                 if s_score == c_score:
                     m["status"] = "ok"
                 else:

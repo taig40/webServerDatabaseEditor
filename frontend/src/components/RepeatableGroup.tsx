@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 interface RepeatableGroupProps<T> {
   title: string;
@@ -17,10 +18,12 @@ export function RepeatableGroup<T>({
   onAdd,
   onRemove,
   renderItem,
-  emptyMessage = "Nenhum item adicionado.",
+  emptyMessage,
   maxItems,
 }: RepeatableGroupProps<T>) {
+  const t = useLanguageStore(state => state.t);
   const canAdd = maxItems === undefined || items.length < maxItems;
+  const displayEmptyMessage = emptyMessage || t('components.repeatable_group.empty');
 
   return (
     <div className="flex flex-col gap-2 border border-dark-700 bg-dark-900/40 rounded-lg p-3">
@@ -38,14 +41,14 @@ export function RepeatableGroup<T>({
             className="flex items-center gap-1 bg-primary-600/20 hover:bg-primary-600/30 text-primary-400 border border-primary-500/30 text-xs px-2 py-1 rounded transition-colors"
           >
             <Plus size={14} />
-            <span>Adicionar</span>
+            <span>{t('components.repeatable_group.add')}</span>
           </button>
         )}
       </div>
 
       {items.length === 0 ? (
         <div className="text-center py-4 text-xs text-gray-500 italic bg-dark-950/50 rounded border border-dashed border-dark-800">
-          {emptyMessage}
+          {displayEmptyMessage}
         </div>
       ) : (
         <div className="flex flex-col gap-2.5 max-h-96 overflow-y-auto pr-1">
@@ -58,7 +61,7 @@ export function RepeatableGroup<T>({
                 <button
                   type="button"
                   onClick={() => onRemove(idx)}
-                  title="Remover item"
+                  title={t('components.repeatable_group.remove')}
                   className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
                 >
                   <Trash2 size={15} />

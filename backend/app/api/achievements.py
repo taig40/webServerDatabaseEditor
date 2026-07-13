@@ -32,7 +32,7 @@ async def get_achievements(
     limit: int = Query(2000),
 ):
     if achievement_db.is_loading:
-        raise HTTPException(status_code=503, detail="Banco de dados de conquistas ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     
     ach_list = achievement_db.get_ach_list()
     return {
@@ -46,20 +46,20 @@ async def get_achievements(
 @router.get("/{ach_id}")
 async def get_achievement(ach_id: int):
     if achievement_db.is_loading:
-        raise HTTPException(status_code=503, detail="Banco de dados de conquistas ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     
     # Locate from merged list
     ach_list = achievement_db.get_ach_list()
     found = next((x for x in ach_list if x["Id"] == ach_id), None)
     if not found:
-        raise HTTPException(status_code=404, detail="Conquista não encontrada.")
+        raise HTTPException(status_code=404, detail="ERROR_ACHIEVEMENT_NOT_FOUND")
     return found
 
 
 @router.put("/{ach_id}")
 async def update_achievement(ach_id: int, body: AchievementSavePayload):
     if achievement_db.is_loading:
-        raise HTTPException(status_code=503, detail="Banco de dados de conquistas ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     
     try:
         res = achievement_db.update_achievement(ach_id, body.server_data, body.client_data)
@@ -71,12 +71,12 @@ async def update_achievement(ach_id: int, body: AchievementSavePayload):
 @router.post("/{ach_id}")
 async def create_achievement(ach_id: int, body: AchievementSavePayload):
     if achievement_db.is_loading:
-        raise HTTPException(status_code=503, detail="Banco de dados de conquistas ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     
     # Check duplicate
     ach_list = achievement_db.get_ach_list()
     if any(x["Id"] == ach_id for x in ach_list):
-        raise HTTPException(status_code=400, detail=f"Conquista com ID {ach_id} já existe.")
+        raise HTTPException(status_code=400, detail="ERROR_DUPLICATE_ID")
         
     try:
         res = achievement_db.add_achievement(ach_id, body.server_data, body.client_data)

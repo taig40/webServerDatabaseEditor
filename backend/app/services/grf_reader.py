@@ -143,15 +143,22 @@ class _SingleGRF:
             return None
 
         comp_size, comp_size_aligned, uncomp_size, flags, offset = self.files[filename]
-        with open(self.path, 'rb') as f:
-            f.seek(offset + 46)
-            data = f.read(comp_size_aligned)
-            if flags == 1:  # Standard zlib-compressed file
-                try:
-                    return zlib.decompress(data)
-                except Exception:
-                    return data
-            return data
+        try:
+            with open(self.path, 'rb') as f:
+                f.seek(offset + 46)
+                data = f.read(comp_size_aligned)
+                if flags == 1:  # Standard zlib-compressed file
+                    try:
+                        return zlib.decompress(data)
+                    except Exception:
+                        return data
+                return data
+        except PermissionError:
+            print(f"[!] Erro de Permissão: '{self.path}' está bloqueado por outro processo (ex: Client rodando).")
+            return None
+        except Exception as e:
+            print(f"[!] Erro ao extrair do GRF {self.path}: {e}")
+            return None
 
 
 # ─── Public GRFReader (supports up to MAX_GRF_SLOTS GRFs with priority) ───────
@@ -289,6 +296,57 @@ class GRFReader:
 
         return None
 
+    def has_file(self, filename: str) -> bool:
+        """
+        Checks if a file exists in the override directory or inside any loaded GRF.
+        Does not read the file content, making it very fast.
+        """
+        if not self.loaded:
+            return False
+
+        filename_lower = filename.lower().replace('\\', '/')
+
+        # 1. Check override path
+        if self.override_path and os.path.isdir(self.override_path):
+            root = self.override_path.rstrip('/\\')
+            if root.endswith('data') and filename_lower.startswith('data/'):
+                adjusted = filename_lower[5:]
+            else:
+                adjusted = filename_lower
+            full = os.path.join(root, adjusted).replace('\\', '/')
+            if os.path.exists(full):
+                return True
+            try:
+                os_adjusted = adjusted.encode('latin-1').decode('euc-kr')
+                full_os = os.path.join(root, os_adjusted).replace('\\', '/')
+                if os.path.exists(full_os):
+                    return True
+            except Exception:
+                pass
+
+        # 2. Iterate GRFs
+        for grf in self._grfs:
+            if grf.is_folder:
+                if grf.path.rstrip('/\\').endswith('data') and filename_lower.startswith('data/'):
+                    adjusted = filename_lower[5:]
+                else:
+                    adjusted = filename_lower
+                full = os.path.join(grf.path, adjusted).replace('\\', '/')
+                if os.path.exists(full):
+                    return True
+                try:
+                    os_adjusted = adjusted.encode('latin-1').decode('euc-kr')
+                    full_os = os.path.join(grf.path, os_adjusted).replace('\\', '/')
+                    if os.path.exists(full_os):
+                        return True
+                except Exception:
+                    pass
+            else:
+                if filename_lower in grf.files:
+                    return True
+
+        return False
+
     # ── Image helpers (unchanged) ─────────────────────────────────────────
 
     def convert_bmp_to_png(self, bmp_bytes: bytes) -> Optional[bytes]:
@@ -381,6 +439,32 @@ class GRFReader:
                 return self.convert_bmp_to_png(bmp_data)
         return None
 
+    def get_skill_icon(self, skill_name: str, skill_id: int = 0) -> bytes:
+        """Returns PNG bytes of a skill icon from GRF."""
+        if not self.loaded:
+            return self.generate_dummy_png()
+        paths_to_try = []
+        if skill_name:
+            paths_to_try.extend([
+                f"data/texture/{_KOREAN_UI_FOLDER}/item/{skill_name}.bmp".lower(),
+                f"data/texture/userinterface/item/{skill_name}.bmp".lower(),
+                f"data/texture/{_KOREAN_UI_FOLDER}/skill/{skill_name}.bmp".lower(),
+                f"data/texture/userinterface/skill/{skill_name}.bmp".lower(),
+            ])
+        if skill_id > 0:
+            paths_to_try.extend([
+                f"data/texture/{_KOREAN_UI_FOLDER}/item/{skill_id}.bmp".lower(),
+                f"data/texture/userinterface/item/{skill_id}.bmp".lower(),
+            ])
+        for path in paths_to_try:
+            bmp_data = self.extract_file(path)
+            if bmp_data:
+                png = self.convert_bmp_to_png(bmp_data)
+                if png:
+                    return png
+        return self.generate_dummy_png()
+
+
     def get_collection_by_resource_name(self, resource_name: str) -> Optional[bytes]:
         """Returns PNG bytes of item collection BMP matching resource_name."""
         if not self.loaded or not resource_name:
@@ -418,7 +502,14 @@ class GRFReader:
                 if rname:
                     res_map[rname.lower()] = (item_id, dname)
 
-        if asset_type == "item_collection":
+        ext = ".bmp"
+        if asset_type == "item_sprite":
+            prefixes = [
+                f"data/sprite/{_KOREAN_ITEM_FOLDER}/".lower(),
+                "data/sprite/item/".lower(),
+            ]
+            ext = ".spr"
+        elif asset_type == "item_collection":
             prefixes = [
                 f"data/texture/{_KOREAN_UI_FOLDER}/collection/".lower(),
                 "data/texture/userinterface/collection/".lower(),
@@ -435,10 +526,10 @@ class GRFReader:
 
         for grf in self._grfs:
             for k in grf.files.keys():
-                if any(k.startswith(p) for p in prefixes) and k.endswith(".bmp"):
+                if any(k.startswith(p) for p in prefixes) and k.endswith(ext):
                     basename = os.path.basename(k)
-                    if basename.endswith(".bmp"):
-                        res_name = basename[:-4]
+                    if basename.endswith(ext):
+                        res_name = basename[:-len(ext)]
                         if res_name:
                             found_resources.add(res_name)
 
@@ -531,6 +622,14 @@ class GRFReader:
     def save_mob_act(self, aegis_name: str, act_bytes: bytes) -> str:
         """Saves a .act action file for a monster."""
         return self._save_asset(f"data/sprite/{_KOREAN_MONSTER_FOLDER}/{aegis_name}.act", act_bytes)
+
+    def save_item_drop_spr(self, resource_name: str, spr_bytes: bytes) -> str:
+        """Saves a .spr drop sprite file for an item."""
+        return self._save_asset(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.spr", spr_bytes)
+
+    def save_item_drop_act(self, resource_name: str, act_bytes: bytes) -> str:
+        """Saves a .act drop action file for an item."""
+        return self._save_asset(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.act", act_bytes)
 
 
 grf_reader = GRFReader()

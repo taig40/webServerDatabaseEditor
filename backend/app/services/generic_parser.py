@@ -152,9 +152,45 @@ class GenericYamlParser:
     def save_file(self, filepath: str) -> bool:
         if filepath not in self.db_cache:
             return False
-        with open(filepath, 'w', encoding='utf-8') as f:
-            self.yaml.dump(self.db_cache[filepath], f)
+        
+        # Temporarily strip metadata keys (starting with '_') from the cached data before dumping
+        removed_keys = []
+        
+        def process_data(obj):
+            if isinstance(obj, dict):
+                to_remove = [k for k in obj.keys() if isinstance(k, str) and k.startswith('_')]
+                for k in to_remove:
+                    removed_keys.append((obj, k, obj[k]))
+                    del obj[k]
+                for k, v in obj.items():
+                    if isinstance(v, str) and ('\n' in v or '\r' in v):
+                        from ruamel.yaml.scalarstring import LiteralScalarString
+                        normalized = v.replace('\r\n', '\n').replace('\r', '\n')
+                        obj[k] = LiteralScalarString(normalized)
+                    else:
+                        process_data(v)
+            elif isinstance(obj, list):
+                for i, item in enumerate(obj):
+                    if isinstance(item, str) and ('\n' in item or '\r' in item):
+                        from ruamel.yaml.scalarstring import LiteralScalarString
+                        normalized = item.replace('\r\n', '\n').replace('\r', '\n')
+                        obj[i] = LiteralScalarString(normalized)
+                    else:
+                        process_data(item)
+                    
+        data = self.db_cache[filepath]
+        process_data(data)
+        
+        try:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                self.yaml.dump(data, f)
+        finally:
+            # Restore the keys back to their original dictionary objects
+            for obj, k, val in removed_keys:
+                obj[k] = val
+                
         return True
+
 
     def _get_import_path(self) -> str:
         return f'{self.rathena_root}/db/import/{self._import_filename}'.replace('\\', '/')

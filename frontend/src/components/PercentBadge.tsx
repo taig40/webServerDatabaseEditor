@@ -18,7 +18,7 @@ export const PercentBadge: React.FC<PercentBadgeProps> = ({
   description,
 }) => {
   // Convert raw value to display percentage
-  const displayVal = (value / scale).toFixed(scale > 100 ? 2 : scale > 1 ? 1 : 0);
+  const displayVal = Number((value / scale).toFixed(2));
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const num = parseFloat(e.target.value);

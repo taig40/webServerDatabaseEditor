@@ -1,6 +1,8 @@
 from ruamel.yaml import YAML
+from ruamel.yaml.scalarstring import LiteralScalarString
 import os
 import threading
+from app.services.load_progress import progress_tracker
 
 class MobDatabase:
     def __init__(self):
@@ -18,6 +20,9 @@ class MobDatabase:
         
         self.rathena_root = ""
         
+        # Cache em memória para buscas instantâneas
+        self.cached_mobs_list = None
+        
         # Async loading state
         self.is_loading = False
         self.loading_status = "Aguardando inicialização..."
@@ -30,6 +35,7 @@ class MobDatabase:
         self.is_loading = True
         self.mobs_loaded = 0
         self.loading_status = "Iniciando engine de parse de monstros YAML..."
+        progress_tracker.update(current_db="mob_db.yml", status=self.loading_status, progress=50.0)
         
         thread = threading.Thread(target=self._load_db_sync, args=(main_filepath,))
         thread.daemon = True
@@ -38,9 +44,12 @@ class MobDatabase:
     def _load_db_sync(self, main_filepath: str):
         try:
             self.load_db(main_filepath)
+            self.rebuild_cache()
+            progress_tracker.finish_loading(status="Carregamento Finalizado.")
         except Exception as e:
             print(f"[!] Erro fatal no carregamento background de monstros: {e}")
             self.loading_status = f"Erro: {e}"
+            progress_tracker.update(status=f"Erro em monstros: {e}")
         finally:
             self.is_loading = False
             if "Erro" not in self.loading_status:
@@ -80,6 +89,7 @@ class MobDatabase:
             
         filename = os.path.basename(filepath)
         self.loading_status = f"Lendo arquivo de monstros: {filename}..."
+        progress_tracker.update(current_db=filename, status=self.loading_status, progress=min(95.0, progress_tracker.progress + 10.0))
 
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -108,7 +118,7 @@ class MobDatabase:
         except Exception as e:
             print(f"[!] Falha ao fazer parse de {filepath}: {e}")
 
-    def get_mobs(self):
+    def rebuild_cache(self):
         all_mobs = []
         for filepath, data in self.db_cache.items():
             if data and 'Body' in data and isinstance(data['Body'], list):
@@ -118,14 +128,92 @@ class MobDatabase:
                     annotated = dict(mob)
                     annotated['_source'] = 'custom' if is_custom else 'rathena'
                     all_mobs.append(annotated)
-        return all_mobs
+        all_mobs.sort(key=lambda x: x.get('Id', 0))
+        self.cached_mobs_list = all_mobs
+
+    def get_mobs(self):
+        if self.cached_mobs_list is None:
+            self.rebuild_cache()
+        return self.cached_mobs_list
+
+    def search_mobs(self, page: int = 1, limit: int = 50, search: str = "", source: str = "", skip: int = None):
+        mobs = self.get_mobs()
+        filtered = mobs
+
+        if source and source in ('rathena', 'custom'):
+            filtered = [m for m in filtered if m.get('_source') == source]
+
+        if search:
+            q = search.strip().lower()
+            filtered = [
+                m for m in filtered
+                if q in str(m.get('Id', ''))
+                or (m.get('Name') and q in str(m.get('Name')).lower())
+                or (m.get('AegisName') and q in str(m.get('AegisName')).lower())
+                or (m.get('JapaneseName') and q in str(m.get('JapaneseName')).lower())
+            ]
+
+        total_count = len(filtered)
+        if skip is not None:
+            start = skip
+        else:
+            start = max(0, (page - 1) * limit)
+        end = start + limit
+        paginated = filtered[start:end]
+        return paginated, total_count
+
+    def _wrap_scripts_for_dump(self, obj):
+        """
+        Converte strings de script multilinhas para LiteralScalarString,
+        forçando o ruamel.yaml a usar o estilo de bloco (pipe |) no YAML.
+        """
+        SCRIPT_KEYS = {'Script', 'OnKillScript', 'CaptureScript'}
+        if isinstance(obj, dict):
+            for key in list(obj.keys()):
+                val = obj[key]
+                if key in SCRIPT_KEYS and isinstance(val, str) and val.strip():
+                    normalized = val if val.endswith('\n') else val + '\n'
+                    obj[key] = LiteralScalarString(normalized)
+                else:
+                    self._wrap_scripts_for_dump(val)
+        elif isinstance(obj, list):
+            for item in obj:
+                self._wrap_scripts_for_dump(item)
 
     def save_file(self, filepath: str):
         if filepath not in self.db_cache:
             return False
-        with open(filepath, 'w', encoding='utf-8') as f:
-            self.yaml.dump(self.db_cache[filepath], f)
+        
+        # Temporarily strip metadata keys (starting with '_') from the cached data before dumping
+        removed_keys = []
+        
+        def strip_metadata(obj):
+            if isinstance(obj, dict):
+                to_remove = [k for k in obj.keys() if isinstance(k, str) and k.startswith('_')]
+                for k in to_remove:
+                    removed_keys.append((obj, k, obj[k]))
+                    del obj[k]
+                for v in obj.values():
+                    strip_metadata(v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    strip_metadata(item)
+                    
+        data = self.db_cache[filepath]
+        strip_metadata(data)
+        # Converte scripts para LiteralScalarString antes do dump → pipe | no YAML
+        self._wrap_scripts_for_dump(data)
+        
+        try:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                self.yaml.dump(data, f)
+        finally:
+            # Restore the keys back to their original dictionary objects
+            for obj, k, val in removed_keys:
+                obj[k] = val
+                
         return True
+
 
     def update_mob(self, mob_id: int, updated_data: dict, save_mode: str = 'import'):
         if mob_id not in self.mob_index:
@@ -198,6 +286,7 @@ class MobDatabase:
             self.save_file(import_db_path)
             self.mob_index[mob_id] = import_db_path
             saved_mob['_source'] = 'custom'
+            self.rebuild_cache()
             return saved_mob
 
         # --- Mob already lives in db/import/: update in place ---
@@ -213,6 +302,7 @@ class MobDatabase:
                 self.save_file(target_filepath)
                 result = dict(mob)
                 result['_source'] = 'custom'
+                self.rebuild_cache()
                 return result
         return None
 
@@ -238,6 +328,49 @@ class MobDatabase:
         data['Body'].insert(0, mob_data)
         self.save_file(import_db_path)
         self.mob_index[mob_data['Id']] = import_db_path
+        self.rebuild_cache()
         return mob_data
+
+    def delete_mob(self, mob_id: int) -> bool:
+        """
+        Remove permanentemente um monstro do arquivo YAML em que reside.
+
+        Guard de Segurança (SRP):
+        - Apenas monstros que vivem em db/import/ podem ser excluídos.
+        - Monstros do banco oficial do rAthena (db/re/ ou db/pre-re/) lançam
+          PermissionError que a rota da API converte em HTTP 403.
+
+        Retorna True em caso de sucesso, False se o monstro não foi encontrado.
+        """
+        if mob_id not in self.mob_index:
+            return False
+
+        filepath = self.mob_index[mob_id]
+        norm_path = filepath.replace('\\', '/')
+
+        if '/db/import/' not in norm_path:
+            raise PermissionError(
+                f"O monstro {mob_id} reside em '{norm_path}' que faz parte do banco "
+                "oficial do rAthena. Somente monstros em db/import/ podem ser excluídos."
+            )
+
+        data = self.db_cache.get(filepath)
+        if not data:
+            return False
+
+        body = data.get('Body', [])
+        original_len = len(body)
+
+        data['Body'] = [mob for mob in body if mob.get('Id') != mob_id]
+
+        if len(data['Body']) == original_len:
+            del self.mob_index[mob_id]
+            return False
+
+        self.save_file(filepath)
+        del self.mob_index[mob_id]
+        self.cached_mobs_list = None   # Invalida o cache para a listagem refletir a remoção
+        return True
+
 
 mob_db = MobDatabase()

@@ -40,3 +40,12 @@ html, body, #root {
   image-rendering: crisp-edges;
 }
 
+.react-flow__node {
+  transition: transform 0.5s ease-in-out;
+}
+
+.react-flow__node.dragging {
+  transition: none;
+}
+
+

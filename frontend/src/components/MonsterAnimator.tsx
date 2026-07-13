@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { API_URL } from '../config/env';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 interface Patch {
   x: number;
@@ -33,6 +34,7 @@ interface MonsterAnimatorProps {
 }
 
 const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size = 'md', spriteKey = 0 }) => {
+  const t = useLanguageStore(state => state.t);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +108,7 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
     // Call local FastAPI backend — spriteKey forces cache bust after upload
     fetch(`${API_URL}/api/mobs/${mobId}/animation?_t=${spriteKey}`)
       .then(res => {
-        if (!res.ok) throw new Error("Animação não encontrada");
+        if (!res.ok) throw new Error(t('monster_animator.animation_not_found'));
         return res.json();
       })
       .then((data: AnimationData) => {
@@ -122,13 +124,13 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
         };
         img.onerror = () => {
           if (!active) return;
-          setError("Erro ao carregar spritesheet");
+          setError(t('monster_animator.error_spritesheet'));
           setLoading(false);
         };
       })
       .catch(err => {
         if (!active) return;
-        setError(err.message || "Erro desconhecido");
+        setError(err.message || t('common.error'));
         setLoading(false);
       });
 
@@ -221,7 +223,7 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
         className="flex flex-col items-center justify-center bg-dark-700 border border-dark-600 rounded gap-2 text-gray-500 shadow-inner"
       >
         <Loader2 className="animate-spin text-primary" size={24} />
-        <span className="text-xs">Carregando...</span>
+        <span className="text-xs">{t('common.loading')}</span>
       </div>
     );
   }
@@ -229,7 +231,7 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
   if (error || !animData) {
     if (size === 'sm') {
       return (
-        <div className="w-full h-full flex items-center justify-center text-[9px] text-gray-600 bg-dark-900/50 font-bold" title="Sem sprite no kRO">
+        <div className="w-full h-full flex items-center justify-center text-[9px] text-gray-600 bg-dark-900/50 font-bold" title={t('monster_animator.no_sprite_kro')}>
           N/A
         </div>
       );
@@ -241,7 +243,7 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
       >
         <AlertCircle size={20} className="text-red-500 opacity-60" />
         <span className="text-xs font-semibold">{mobName}</span>
-        <span className="text-[10px] text-gray-600">Sem sprite no kRO</span>
+        <span className="text-[10px] text-gray-600">{t('monster_animator.no_sprite_kro')}</span>
       </div>
     );
   }
@@ -266,7 +268,7 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
         className="pixelated"
       />
       <div className="absolute bottom-1 right-2 text-[9px] text-gray-500 bg-dark-900/80 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-        {animData.frames.length} frames
+        {t('monster_animator.frames_count', { count: animData.frames.length })}
       </div>
     </div>
   );

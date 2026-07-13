@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config/env';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 interface NewItemModalProps {
   onClose: () => void;
@@ -8,6 +9,7 @@ interface NewItemModalProps {
 }
 
 const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) => {
+  const t = useLanguageStore(state => state.t);
   const [formData, setFormData] = useState({
     Id: 20000,
     AegisName: '',
@@ -36,13 +38,13 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
     setError('');
 
     if (formData.Id <= 0) {
-      setError('ID deve ser maior que 0.');
+      setError(t('components.modals.new_item.error_id'));
       setLoading(false);
       return;
     }
     
     if (!formData.AegisName || !formData.Name) {
-      setError('AegisName e Name são obrigatórios.');
+      setError(t('components.modals.new_item.error_required'));
       setLoading(false);
       return;
     }
@@ -62,7 +64,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
       onClose();
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.detail || 'Erro ao criar item.');
+      setError(err.response?.data?.detail || t('components.modals.new_item.error_create'));
     } finally {
       setLoading(false);
     }
@@ -72,7 +74,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
       <div className="bg-dark-900 border border-dark-600 rounded-lg shadow-2xl w-[500px] flex flex-col">
         <div className="p-4 border-b border-dark-600 flex justify-between items-center">
-          <h2 className="text-xl text-white font-bold">Create Custom Item</h2>
+          <h2 className="text-xl text-white font-bold">{t('components.modals.new_item.title')}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
         </div>
         
@@ -80,7 +82,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
           {error && <div className="bg-red-900/50 border border-red-500 text-red-200 px-3 py-2 rounded text-sm">{error}</div>}
           
           <div className="flex flex-col space-y-1">
-            <label className="text-gray-300 text-sm font-semibold">Item ID</label>
+            <label className="text-gray-300 text-sm font-semibold">{t('components.modals.new_item.fields.id')}</label>
             <input 
               type="number" 
               name="Id"
@@ -88,11 +90,11 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
               onChange={handleChange}
               className="bg-dark-800 border border-dark-600 rounded p-2 text-white focus:border-primary focus:outline-none"
             />
-            <span className="text-xs text-gray-500">Recommended &gt; 20000 to avoid official item conflicts.</span>
+            <span className="text-xs text-gray-500">{t('components.modals.new_item.fields.id_tip')}</span>
           </div>
 
           <div className="flex flex-col space-y-1">
-            <label className="text-gray-300 text-sm font-semibold">AegisName</label>
+            <label className="text-gray-300 text-sm font-semibold">{t('components.modals.new_item.fields.aegis_name')}</label>
             <input 
               type="text" 
               name="AegisName"
@@ -101,11 +103,11 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
               onChange={handleChange}
               className="bg-dark-800 border border-dark-600 rounded p-2 text-white focus:border-primary focus:outline-none"
             />
-            <span className="text-xs text-gray-500">System reference name (no spaces).</span>
+            <span className="text-xs text-gray-500">{t('components.modals.new_item.fields.aegis_name_tip')}</span>
           </div>
 
           <div className="flex flex-col space-y-1">
-            <label className="text-gray-300 text-sm font-semibold">Name</label>
+            <label className="text-gray-300 text-sm font-semibold">{t('components.modals.new_item.fields.name')}</label>
             <input 
               type="text" 
               name="Name"
@@ -114,12 +116,12 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
               onChange={handleChange}
               className="bg-dark-800 border border-dark-600 rounded p-2 text-white focus:border-primary focus:outline-none"
             />
-            <span className="text-xs text-gray-500">Display name in English.</span>
+            <span className="text-xs text-gray-500">{t('components.modals.new_item.fields.name_tip')}</span>
           </div>
 
           <div className="flex space-x-4">
             <div className="flex flex-col space-y-1 flex-1">
-              <label className="text-gray-300 text-sm font-semibold">Type</label>
+              <label className="text-gray-300 text-sm font-semibold">{t('components.modals.new_item.fields.type')}</label>
               <select 
                 name="Type"
                 value={formData.Type}
@@ -136,7 +138,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
               </select>
             </div>
             <div className="flex flex-col space-y-1 flex-1">
-              <label className="text-gray-300 text-sm font-semibold">SubType (Optional)</label>
+              <label className="text-gray-300 text-sm font-semibold">{t('components.modals.new_item.fields.subtype')}</label>
               <input 
                 type="text" 
                 name="SubType"
@@ -150,7 +152,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
           {formData.Type === 'Weapon' && (
             <div className="flex space-x-4">
               <div className="flex flex-col space-y-1 flex-1">
-                <label className="text-gray-300 text-sm font-semibold">Attack (ATK)</label>
+                <label className="text-gray-300 text-sm font-semibold">{t('components.modals.new_item.fields.atk')}</label>
                 <input 
                   type="number" 
                   name="Attack"
@@ -160,7 +162,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
                 />
               </div>
               <div className="flex flex-col space-y-1 flex-1">
-                <label className="text-gray-300 text-sm font-semibold">EquipLevelMin</label>
+                <label className="text-gray-300 text-sm font-semibold">{t('components.modals.new_item.fields.equip_level')}</label>
                 <input 
                   type="number" 
                   name="EquipLevelMin"
@@ -175,7 +177,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
           {formData.Type === 'Armor' && (
             <div className="flex space-x-4">
               <div className="flex flex-col space-y-1 flex-1">
-                <label className="text-gray-300 text-sm font-semibold">Defense (DEF)</label>
+                <label className="text-gray-300 text-sm font-semibold">{t('components.modals.new_item.fields.def')}</label>
                 <input 
                   type="number" 
                   name="Defense"
@@ -185,7 +187,7 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
                 />
               </div>
               <div className="flex flex-col space-y-1 flex-1">
-                <label className="text-gray-300 text-sm font-semibold">EquipLevelMin</label>
+                <label className="text-gray-300 text-sm font-semibold">{t('components.modals.new_item.fields.equip_level')}</label>
                 <input 
                   type="number" 
                   name="EquipLevelMin"
@@ -203,14 +205,14 @@ const NewItemModal: React.FC<NewItemModalProps> = ({ onClose, onItemCreated }) =
               onClick={onClose}
               className="px-4 py-2 rounded bg-dark-700 hover:bg-dark-600 text-white transition"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button 
               type="submit" 
               disabled={loading}
               className="px-4 py-2 rounded bg-primary hover:bg-blue-600 text-white font-semibold transition disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create Item'}
+              {loading ? t('components.modals.new_item.creating') : t('components.modals.new_item.create_btn')}
             </button>
           </div>
         </form>

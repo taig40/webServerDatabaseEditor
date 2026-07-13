@@ -64,6 +64,20 @@ if (missingKeys.length > 0) {
   process.exit(1)
 }
 
+let targetApiUrl = currentEnv['VITE_API_URL']
+if (targetApiUrl && !targetApiUrl.startsWith('http://') && !targetApiUrl.startsWith('https://')) {
+  targetApiUrl = `http://${targetApiUrl}`
+}
+
 export default defineConfig({
   plugins: [react()],
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: targetApiUrl,
+        changeOrigin: true,
+      },
+    },
+  },
 })

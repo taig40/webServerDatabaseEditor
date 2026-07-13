@@ -31,7 +31,7 @@ async def get_pets(
     limit: int = Query(50000),
 ):
     if pet_db.is_loading:
-        raise HTTPException(status_code=503, detail="Pet DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     pets = pet_db.get_pets()
     return {
         "total": len(pets),
@@ -44,26 +44,26 @@ async def get_pets(
 @router.get("/{mob}")
 async def get_pet(mob: str):
     if pet_db.is_loading:
-        raise HTTPException(status_code=503, detail="Pet DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     pet = pet_db.get_pet(mob)
     if not pet:
-        raise HTTPException(status_code=404, detail="Pet não encontrado.")
+        raise HTTPException(status_code=404, detail="ERROR_PET_NOT_FOUND")
     return pet
 
 
 @router.put("/{mob}")
 async def update_pet(mob: str, body: PetUpdate):
     if pet_db.is_loading:
-        raise HTTPException(status_code=503, detail="Pet DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     result = pet_db.update_pet(mob, body.data)
     if result is None:
-        raise HTTPException(status_code=404, detail="Pet não encontrado.")
+        raise HTTPException(status_code=404, detail="ERROR_PET_NOT_FOUND")
     return result
 
 
 @router.post("/")
 async def create_pet(body: PetCreate):
     if pet_db.is_loading:
-        raise HTTPException(status_code=503, detail="Pet DB ainda carregando.")
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     result = pet_db.add_pet(body.data)
     return result

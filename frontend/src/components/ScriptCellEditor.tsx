@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ICellEditorParams } from 'ag-grid-community';
 import Editor from '@monaco-editor/react';
 import { X, Check } from 'lucide-react';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 const ScriptCellEditor = forwardRef((props: ICellEditorParams, ref) => {
   // Extrai a string do script para edição
@@ -28,6 +29,8 @@ const ScriptCellEditor = forwardRef((props: ICellEditorParams, ref) => {
     };
   });
 
+  const t = useLanguageStore(state => state.t);
+
   // Usamos createPortal para jogar o modal direto no <body>
   // Isso impede que o CSS restrito do AG Grid (.ag-popup) quebre o tamanho e posição do nosso Modal.
   return createPortal(
@@ -42,20 +45,20 @@ const ScriptCellEditor = forwardRef((props: ICellEditorParams, ref) => {
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-dark-600 bg-dark-800 rounded-t-lg">
           <h3 className="text-white font-semibold text-lg flex items-center gap-2">
-            Editor de Script <span className="text-sm font-mono text-gray-400 font-normal ml-2">Item: {props.data?.Name || props.data?.Id}</span>
+            {t('components.script_cell_editor.title')} <span className="text-sm font-mono text-gray-400 font-normal ml-2">{t('components.script_cell_editor.item')} {props.data?.Name || props.data?.Id}</span>
           </h3>
           <div className="flex gap-2">
             <button 
               onClick={() => props.stopEditing(true)} 
               className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-dark-700 rounded transition"
-              title="Cancelar"
+              title={t('components.script_cell_editor.cancel')}
             >
               <X size={20} />
             </button>
             <button 
               onClick={() => props.stopEditing(false)} 
               className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-dark-700 rounded transition"
-              title="Salvar"
+              title={t('components.script_cell_editor.save')}
             >
               <Check size={20} />
             </button>
@@ -89,13 +92,13 @@ const ScriptCellEditor = forwardRef((props: ICellEditorParams, ref) => {
              className="px-5 py-2 rounded font-medium text-gray-300 hover:bg-dark-700 transition"
              onClick={() => props.stopEditing(true)}
           >
-            Cancelar
+            {t('components.script_cell_editor.cancel')}
           </button>
           <button 
              className="px-5 py-2 rounded font-medium bg-blue-600 text-white hover:bg-blue-500 transition shadow"
              onClick={() => props.stopEditing(false)}
           >
-            Salvar Script
+            {t('components.script_cell_editor.save_script')}
           </button>
         </div>
       </div>

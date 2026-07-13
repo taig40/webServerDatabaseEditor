@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import Editor from '@monaco-editor/react';
+import { useLanguageStore } from '../store/useLanguageStore';
+import { initRathenaItemScript, validateItemScript } from '../monaco/rathenaItemScript';
 
 interface ScriptEditorProps {
   label?: string;
@@ -16,6 +18,18 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   height = "160px",
   readOnly = false,
 }) => {
+  const t = useLanguageStore(state => state.t);
+  const monacoRef = useRef<any>(null);
+  const editorRef = useRef<any>(null);
+
+  const handleEditorChange = (val: string | undefined) => {
+    const nextVal = val || '';
+    onChange(nextVal);
+    if (monacoRef.current && editorRef.current) {
+      validateItemScript(monacoRef.current, editorRef.current.getModel(), t);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-1.5 border border-dark-700 rounded-lg overflow-hidden bg-dark-950 p-2">
       <div className="flex justify-between items-center px-1">
@@ -28,10 +42,18 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
       <div className="border border-dark-800 rounded overflow-hidden">
         <Editor
           height={height}
-          defaultLanguage="c"
+          defaultLanguage="rathena-item-script"
           theme="vs-dark"
           value={value || ''}
-          onChange={(val) => onChange(val || '')}
+          beforeMount={(monaco) => {
+            initRathenaItemScript(monaco);
+          }}
+          onMount={(editor, monaco) => {
+            editorRef.current = editor;
+            monacoRef.current = monaco;
+            validateItemScript(monaco, editor.getModel(), t);
+          }}
+          onChange={handleEditorChange}
           options={{
             minimap: { enabled: false },
             lineNumbers: 'on',
