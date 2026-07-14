@@ -266,6 +266,104 @@ class YamlDatabase:
             for item in obj:
                 self._wrap_scripts_for_dump(item)
 
+    def sanitize_item_for_yaml(self, item: dict) -> dict:
+        """
+        Sanitiza e higieniza os dados do item ANTES da serialização para YAML via ruamel.yaml.
+        Garante que regras do rAthena (EquipLevel, ArmorLevel, remoção de nulos/zeros indesejados)
+        sejam aplicadas rigorosamente para que o console do map-server não reporte avisos.
+        """
+        if not isinstance(item, dict):
+            return item
+
+        # 1. Correção do EquipLevel (Evitar Max < Min e { Min: X, Max: 0 })
+        if "EquipLevelMin" in item or "EquipLevelMax" in item:
+            min_val = item.pop("EquipLevelMin", None)
+            max_val = item.pop("EquipLevelMax", None)
+            if "EquipLevel" not in item and (min_val is not None or max_val is not None):
+                min_int = min_val if (isinstance(min_val, int) and min_val > 0) else 0
+                max_int = max_val if (isinstance(max_val, int) and max_val > 0) else 0
+                if min_int > 0 and max_int == 0:
+                    item["EquipLevel"] = min_int
+                elif min_int > 0 and max_int > 0:
+                    if min_int == max_int:
+                        item["EquipLevel"] = min_int
+                    elif max_int > min_int:
+                        item["EquipLevel"] = {"Min": min_int, "Max": max_int}
+                    else:
+                        item["EquipLevel"] = min_int
+
+        if "EquipLevel" in item:
+            eq = item["EquipLevel"]
+            if isinstance(eq, dict):
+                min_val = eq.get("Min", 0) or 0
+                max_val = eq.get("Max", 0) or 0
+                if min_val > 0 and (max_val == 0 or max_val < min_val):
+                    # Se Min > 0 e Max == 0 (ou ausente/menor que Min), converte o EquipLevel inteiro
+                    # para um valor numérico simples (apenas o valor de Min), conforme especificação do rAthena
+                    item["EquipLevel"] = min_val
+                elif min_val == 0 and max_val == 0:
+                    item.pop("EquipLevel", None)
+                elif max_val == 0:
+                    eq.pop("Max", None)
+                    if not eq or eq.get("Min", 0) <= 0:
+                        item.pop("EquipLevel", None)
+                    elif len(eq) == 1 and "Min" in eq:
+                        item["EquipLevel"] = eq["Min"]
+            elif eq == 0 or eq is None:
+                item.pop("EquipLevel", None)
+
+        # 2. Correção do ArmorLevel (Obrigatório para Type: Armor)
+        item_type = item.get("Type")
+        if item_type == "Armor" or item_type == 4 or item_type == "IT_ARMOR":
+            armor_lvl = item.get("ArmorLevel")
+            if armor_lvl is None or armor_lvl == 0 or armor_lvl == "0" or armor_lvl == "":
+                item["ArmorLevel"] = 1
+        elif item_type is not None and item_type != "Armor" and item_type != 4:
+            if item.get("ArmorLevel") in (0, 1, None):
+                item.pop("ArmorLevel", None)
+
+        # Limpeza do WeaponLevel para armas
+        if item_type == "Weapon" or item_type == 5 or item_type == "IT_WEAPON":
+            w_lvl = item.get("WeaponLevel")
+            if w_lvl is None or w_lvl == 0 or w_lvl == "0" or w_lvl == "":
+                item["WeaponLevel"] = 1
+        elif item_type is not None and item_type != "Weapon" and item_type != 5:
+            if item.get("WeaponLevel") in (0, None):
+                item.pop("WeaponLevel", None)
+
+        # 3. Remover campos com valor None ou 0 indesejados para manter YAML limpo
+        zero_defaults_to_clean = {
+            "Buy": 0,
+            "Sell": 0,
+            "Weight": 0,
+            "Attack": 0,
+            "MagicAttack": 0,
+            "Defense": 0,
+            "Range": 0,
+            "Slots": 0,
+            "View": 0,
+            "SubType": 0,
+            "EquipLevelMin": 0,
+            "EquipLevelMax": 0,
+        }
+        keys_to_remove = []
+        for k, v in item.items():
+            if k in ("Id", "_source"):
+                continue
+            if v is None:
+                keys_to_remove.append(k)
+            elif k in zero_defaults_to_clean and v == zero_defaults_to_clean[k]:
+                keys_to_remove.append(k)
+            elif isinstance(v, dict) and len(v) == 0:
+                keys_to_remove.append(k)
+            elif isinstance(v, (list, tuple)) and len(v) == 0:
+                keys_to_remove.append(k)
+
+        for k in keys_to_remove:
+            item.pop(k, None)
+
+        return item
+
     def save_file(self, filepath: str):
         if filepath not in self.db_cache:
             return False
@@ -287,6 +385,10 @@ class YamlDatabase:
                     strip_metadata(item)
                     
         data = self.db_cache[filepath]
+        if isinstance(data, dict) and 'Body' in data and isinstance(data['Body'], list):
+            for i, item in enumerate(data['Body']):
+                if isinstance(item, dict):
+                    data['Body'][i] = self.sanitize_item_for_yaml(item)
         strip_metadata(data)
         # Converte scripts para LiteralScalarString antes do dump → pipe | no YAML
         self._wrap_scripts_for_dump(data)
@@ -337,6 +439,7 @@ class YamlDatabase:
             override_item = dict(original_item)
             override_item.update(updated_data)
             override_item.pop('_source', None)
+            override_item = self.sanitize_item_for_yaml(override_item)
 
             # Ensure the import file is loaded in cache
             if import_db_path not in self.db_cache:
@@ -360,8 +463,10 @@ class YamlDatabase:
             if existing_override is not None:
                 for key, value in updated_data.items():
                     existing_override[key] = value
+                existing_override = self.sanitize_item_for_yaml(existing_override)
                 saved_item = dict(existing_override)
             else:
+                override_item = self.sanitize_item_for_yaml(override_item)
                 import_data['Body'].insert(0, override_item)
                 saved_item = override_item
 
@@ -373,13 +478,14 @@ class YamlDatabase:
 
         # --- Item already lives in db/import/ OR user requested overwrite in original rAthena file ---
         data = self.db_cache[target_filepath]
-        for item in data.get('Body', []):
+        for i, item in enumerate(data.get('Body', [])):
             if item.get('Id') == item_id:
                 for key, value in updated_data.items():
                     item[key] = value
                 item.pop('_source', None)
+                data['Body'][i] = self.sanitize_item_for_yaml(item)
                 self.save_file(target_filepath)
-                result = dict(item)
+                result = dict(data['Body'][i])
                 result['_source'] = 'custom' if '/db/import/' in norm_path else 'rathena'
                 self.rebuild_cache()
                 return result
@@ -457,6 +563,7 @@ class YamlDatabase:
         item_with_defaults = self._apply_item_defaults(item_data)
         self._normalize_scripts(item_with_defaults)
         clean_item = {k: v for k, v in item_with_defaults.items() if k != '_source'}
+        clean_item = self.sanitize_item_for_yaml(clean_item)
         data['Body'].insert(0, clean_item)
         self.save_file(import_db_path)
         self.item_index[clean_item['Id']] = import_db_path

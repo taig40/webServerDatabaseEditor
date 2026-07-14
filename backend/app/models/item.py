@@ -9,8 +9,8 @@ Na serialização para YAML, use sempre `model.model_dump(exclude_none=True)`
 para omitir campos não preenchidos e manter o output limpo.
 """
 
-from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, Literal, Union
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from typing import Optional, Literal, Union, Any
 
 
 # ─── Base ─────────────────────────────────────────────────────────────────────
@@ -170,7 +170,8 @@ class ItemDBModel(rAthenaBaseModel):
     Gender:        Literal['Female', 'Male', 'Both'] = "Both"
     Locations:     Optional[ItemLocations] = None
     WeaponLevel:   Optional[int] = None
-    ArmorLevel:    int = 1
+    ArmorLevel:    Optional[int] = None
+    EquipLevel:    Optional[Union[int, dict]] = None
     EquipLevelMin: Optional[int] = None
     EquipLevelMax: Optional[int] = None
     Refineable:    bool = False
@@ -185,6 +186,50 @@ class ItemDBModel(rAthenaBaseModel):
     Script:        Optional[str] = None
     EquipScript:   Optional[str] = None
     UnEquipScript: Optional[str] = None
+
+    @model_validator(mode='after')
+    def sanitize_model_data(self) -> Any:
+        if isinstance(self.EquipLevel, dict):
+            min_val = self.EquipLevel.get("Min", 0) or 0
+            max_val = self.EquipLevel.get("Max", 0) or 0
+            if min_val > 0 and (max_val == 0 or max_val < min_val):
+                self.EquipLevel = min_val
+            elif min_val == 0 and max_val == 0:
+                self.EquipLevel = None
+            elif max_val == 0:
+                self.EquipLevel.pop("Max", None)
+                if not self.EquipLevel or self.EquipLevel.get("Min", 0) <= 0:
+                    self.EquipLevel = None
+                elif len(self.EquipLevel) == 1 and "Min" in self.EquipLevel:
+                    self.EquipLevel = self.EquipLevel["Min"]
+        elif self.EquipLevel == 0:
+            self.EquipLevel = None
+
+        if self.EquipLevel is None and (self.EquipLevelMin is not None or self.EquipLevelMax is not None):
+            min_int = self.EquipLevelMin if (self.EquipLevelMin is not None and self.EquipLevelMin > 0) else 0
+            max_int = self.EquipLevelMax if (self.EquipLevelMax is not None and self.EquipLevelMax > 0) else 0
+            if min_int > 0 and max_int == 0:
+                self.EquipLevel = min_int
+                self.EquipLevelMin = None
+                self.EquipLevelMax = None
+            elif min_int > 0 and max_int > 0:
+                if min_int == max_int:
+                    self.EquipLevel = min_int
+                elif max_int > min_int:
+                    self.EquipLevel = {"Min": min_int, "Max": max_int}
+                else:
+                    self.EquipLevel = min_int
+                self.EquipLevelMin = None
+                self.EquipLevelMax = None
+
+        if self.Type == "Armor" or self.Type == 4 or self.Type == "IT_ARMOR":
+            if not self.ArmorLevel or self.ArmorLevel == 0:
+                self.ArmorLevel = 1
+        elif self.Type is not None and self.Type != "Armor" and self.Type != 4:
+            if self.ArmorLevel in (0, 1):
+                self.ArmorLevel = None
+
+        return self
 
 
 # ─── Alias de retrocompatibilidade ────────────────────────────────────────────
@@ -223,6 +268,7 @@ class ItemUpdateModel(rAthenaBaseModel):
     Locations:     Optional[ItemLocations] = None
     WeaponLevel:   Optional[int] = None
     ArmorLevel:    Optional[int] = None
+    EquipLevel:    Optional[Union[int, dict]] = None
     EquipLevelMin: Optional[int] = None
     EquipLevelMax: Optional[int] = None
     Refineable:    Optional[bool] = None
@@ -237,3 +283,47 @@ class ItemUpdateModel(rAthenaBaseModel):
     Script:        Optional[str] = None
     EquipScript:   Optional[str] = None
     UnEquipScript: Optional[str] = None
+
+    @model_validator(mode='after')
+    def sanitize_model_data(self) -> Any:
+        if isinstance(self.EquipLevel, dict):
+            min_val = self.EquipLevel.get("Min", 0) or 0
+            max_val = self.EquipLevel.get("Max", 0) or 0
+            if min_val > 0 and (max_val == 0 or max_val < min_val):
+                self.EquipLevel = min_val
+            elif min_val == 0 and max_val == 0:
+                self.EquipLevel = None
+            elif max_val == 0:
+                self.EquipLevel.pop("Max", None)
+                if not self.EquipLevel or self.EquipLevel.get("Min", 0) <= 0:
+                    self.EquipLevel = None
+                elif len(self.EquipLevel) == 1 and "Min" in self.EquipLevel:
+                    self.EquipLevel = self.EquipLevel["Min"]
+        elif self.EquipLevel == 0:
+            self.EquipLevel = None
+
+        if self.EquipLevel is None and (self.EquipLevelMin is not None or self.EquipLevelMax is not None):
+            min_int = self.EquipLevelMin if (self.EquipLevelMin is not None and self.EquipLevelMin > 0) else 0
+            max_int = self.EquipLevelMax if (self.EquipLevelMax is not None and self.EquipLevelMax > 0) else 0
+            if min_int > 0 and max_int == 0:
+                self.EquipLevel = min_int
+                self.EquipLevelMin = None
+                self.EquipLevelMax = None
+            elif min_int > 0 and max_int > 0:
+                if min_int == max_int:
+                    self.EquipLevel = min_int
+                elif max_int > min_int:
+                    self.EquipLevel = {"Min": min_int, "Max": max_int}
+                else:
+                    self.EquipLevel = min_int
+                self.EquipLevelMin = None
+                self.EquipLevelMax = None
+
+        if self.Type == "Armor" or self.Type == 4 or self.Type == "IT_ARMOR":
+            if not self.ArmorLevel or self.ArmorLevel == 0:
+                self.ArmorLevel = 1
+        elif self.Type is not None and self.Type != "Armor" and self.Type != 4:
+            if self.ArmorLevel in (0, 1):
+                self.ArmorLevel = None
+
+        return self
