@@ -75,9 +75,14 @@ cfg.reload_from_env()
 APP_STATE = {"setup_required": False, "missing_keys": []}
 
 def setup_and_validate_env():
+    from dotenv import load_dotenv
     unified_env_path = get_config_path()
     env_exists = os.path.exists(unified_env_path)
     
+    # [!] A LINHA CRÍTICA QUE FALTAVA:
+    if env_exists:
+        load_dotenv(dotenv_path=unified_env_path, override=True)
+        
     db_base = os.environ.get("RATHENA_DB_PATH", "").strip() or os.environ.get("SERVER_DB_BASE_PATH", "").strip()
     item_db = os.environ.get("ITEM_DB_PATH", "").strip()
     is_db_valid = False

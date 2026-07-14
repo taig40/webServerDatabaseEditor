@@ -6,7 +6,7 @@ Provides a single source of truth for settings that can change at runtime
 
 Usage in any service:
     from app.core.config import cfg
-    enc = cfg.client_encoding   # e.g. "euc-kr"
+    enc = cfg.client_encoding   # e.g. "latin1"
 """
 
 import os
@@ -104,7 +104,7 @@ class _Config:
 
     def reload_from_env(self):
         self.server_encoding: str = os.environ.get("SERVER_ENCODING", "utf-8").strip() or "utf-8"
-        self.client_encoding: str = os.environ.get("CLIENT_ENCODING", "euc-kr").strip() or "euc-kr"
+        self.client_encoding: str = os.environ.get("CLIENT_ENCODING", "latin1").strip() or "latin1"
         
         self.achievements_lua_path: str = os.environ.get("ACHIEVEMENTS_LUA_PATH", "").strip()
         if not self.achievements_lua_path:
