@@ -4,5 +4,4 @@ ruamel.yaml
 ruamel.yaml.clib
 pydantic
 Pillow
-python-dotenv
 python-multipart

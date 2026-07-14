@@ -3,9 +3,7 @@ import shutil
 import sys
 import traceback
 from pathlib import Path
-from dotenv import load_dotenv
-
-from app.core.config import cfg, get_env_path, get_config_path, BASE_DIR, ENV_PATH, CONFIG_PATH, ENV_TEMPLATE_PATH
+from app.core.config import cfg, get_env_path, get_config_path, load_config_file, BASE_DIR, ENV_PATH, CONFIG_PATH, ENV_TEMPLATE_PATH
 
 # ─── Load Environment Variables First (Highest Priority) ─────────────────────
 # 1. Obter caminho unificado e absoluto do config.conf (Desktop Config)
@@ -26,7 +24,7 @@ if not os.path.exists(unified_env_path):
         print(f"[*] Arquivo config.conf vazio gerado para modo First-Time Setup em {unified_env_path}")
 
 # 3. Carrega as variáveis (com override=True para garantir precedência do arquivo config.conf)
-load_dotenv(dotenv_path=get_config_path(), override=True)
+load_config_file(path=get_config_path(), override=True)
 
 # 2c. Preencher caminhos de banco de dados automaticamente a partir de RATHENA_DB_PATH ou SERVER_DB_BASE_PATH se preenchido
 db_base_path = os.environ.get("RATHENA_DB_PATH", "").strip() or os.environ.get("SERVER_DB_BASE_PATH", "").strip()
@@ -75,13 +73,12 @@ cfg.reload_from_env()
 APP_STATE = {"setup_required": False, "missing_keys": []}
 
 def setup_and_validate_env():
-    from dotenv import load_dotenv
     unified_env_path = get_config_path()
     env_exists = os.path.exists(unified_env_path)
     
     # [!] A LINHA CRÍTICA QUE FALTAVA:
     if env_exists:
-        load_dotenv(dotenv_path=unified_env_path, override=True)
+        load_config_file(path=unified_env_path, override=True)
         
     db_base = os.environ.get("RATHENA_DB_PATH", "").strip() or os.environ.get("SERVER_DB_BASE_PATH", "").strip()
     item_db = os.environ.get("ITEM_DB_PATH", "").strip()
@@ -277,7 +274,7 @@ async def post_system_setup(payload: SetupPayload):
             os.environ[env_key] = full_p
             
         _write_env(env)
-        load_dotenv(dotenv_path=get_env_path(), override=True)
+        load_config_file(path=get_env_path(), override=True)
         
         await reload_settings()
         APP_STATE["setup_required"] = False

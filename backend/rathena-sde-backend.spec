@@ -29,7 +29,6 @@ hidden_imports = [
     'pydantic',
     'pydantic_core',
     'PIL',
-    'dotenv',
     'multipart',
 ]
 

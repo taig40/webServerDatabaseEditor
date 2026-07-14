@@ -15,16 +15,11 @@ import traceback
 from pathlib import Path
 
 def get_config_path() -> str:
-    """Retorna o caminho absoluto do arquivo conf/config.conf em modo frozen (.exe) ou dev usando o AppData do usuário."""
-    app_name = "rAthenaWebEditor"
-    if sys.platform == "win32":
-        appdata = os.getenv("APPDATA")
-        if appdata:
-            base_dir = os.path.join(appdata, app_name)
-        else:
-            base_dir = os.path.join(str(Path.home()), f".{app_name}")
+    """Retorna o caminho absoluto do arquivo conf/config.conf em modo frozen (.exe) ou dev."""
+    if getattr(sys, 'frozen', False):
+        base_dir = os.path.dirname(os.path.abspath(sys.executable)) # Pasta onde está o .exe
     else:
-        base_dir = os.path.join(str(Path.home()), f".{app_name}")
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # Raiz em dev
         
     conf_dir = os.path.join(base_dir, 'conf')
     try:
@@ -41,6 +36,22 @@ def get_config_path() -> str:
             pass
         raise e
     return os.path.join(conf_dir, 'config.conf')
+
+def load_config_file(path: str = None, override: bool = True):
+    """Lê o arquivo conf/config.conf no formato chave=valor e popula o os.environ sem depender do dotenv."""
+    if path is None:
+        path = get_config_path()
+    if not os.path.exists(path):
+        return
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, val = line.partition("=")
+                key = key.strip()
+                val = val.strip()
+                if override or key not in os.environ:
+                    os.environ[key] = val
 
 def get_env_path() -> str:
     """Retorna o caminho de configuração (conf/config.conf) para compatibilidade de chamadas existentes."""
