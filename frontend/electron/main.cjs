@@ -120,12 +120,15 @@ async function createWindow() {
     title: 'rAthena Web Editor — Desktop Edition',
     icon: path.join(__dirname, '..', 'favicon.png'),
     backgroundColor: '#0a0a0f',
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
+
+  mainWindow.setMenu(null);
 
   ipcMain.removeHandler('dialog:openDirectory');
   ipcMain.handle('dialog:openDirectory', async () => {
