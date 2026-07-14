@@ -28,14 +28,21 @@ class VisualLuaHandler:
                     self.encoding_used = enc
                     success = True
                     break
-            except UnicodeDecodeError:
+            except Exception:
                 continue
                 
         if not success:
-            self.encoding_error = f"Impossível ler o arquivo visual {self.filepath} com encondings conhecidos."
-            raise RuntimeError(self.encoding_error)
+            self.encoding_error = f"Impossível ler o arquivo visual {self.filepath} com encodings conhecidos."
+            print(f"[!] Erro de leitura em {self.filepath}: {self.encoding_error}")
+            # Marcado como carregado para não bloquear o servidor principal com falhas de assets do cliente
+            self.loaded = True
+            return
             
-        self._parse_content()
+        try:
+            self._parse_content()
+        except Exception as e:
+            print(f"[!] Erro durante parse de visual em {self.filepath}: {e}")
+            
         self.loaded = True
         
     def _parse_content(self):
@@ -45,15 +52,20 @@ class VisualLuaHandler:
             # accessoryid.lua -> ACCESSORY_NAME = ID
             pattern = re.compile(r'^\s*(ACCESSORY_[A-Za-z0-9_]+)\s*=\s*(\d+)', re.MULTILINE)
             for match in pattern.finditer(self.content):
-                name, val = match.groups()
-                self.ast_dict[int(val)] = name
+                try:
+                    name, val = match.groups()
+                    self.ast_dict[int(val)] = name
+                except Exception as e:
+                    print(f"[!] Erro no parse de linha do accessoryid: {match.group(0)} - {e}")
         else:
             # accname.lua -> [ACCESSORY_IDs.ACCESSORY_NAME] = "_sprite_name",
-            # The regex ensures we capture [ACCESSORY_IDs.([^\]]+)]\s*=\s*"([^"]+)"
             pattern = re.compile(r'^\s*\[\s*ACCESSORY_IDs\.([A-Za-z0-9_]+)\s*\]\s*=\s*"([^"]+)"', re.MULTILINE)
             for match in pattern.finditer(self.content):
-                identity, sprite_name = match.groups()
-                self.identity_dict[identity] = sprite_name
+                try:
+                    identity, sprite_name = match.groups()
+                    self.identity_dict[identity] = sprite_name
+                except Exception as e:
+                    print(f"[!] Erro no parse de linha do accname: {match.group(0)} - {e}")
                 
     def upsert(self, identity: str, val: str):
         """

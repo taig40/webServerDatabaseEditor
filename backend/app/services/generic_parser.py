@@ -31,6 +31,9 @@ class GenericYamlParser:
     _label: str = 'entradas'
 
     def __init__(self):
+        # Lock de reentrância para garantir concorrência segura nos parsers genéricos
+        self.lock = threading.RLock()
+
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
         self.yaml.allow_duplicate_keys = True
@@ -68,27 +71,28 @@ class GenericYamlParser:
                 self.loading_status = 'Carregamento Finalizado.'
 
     def load_db(self, main_filepath: str):
-        main_filepath = main_filepath.replace('\\', '/')
-        if not os.path.exists(main_filepath):
-            self.loading_status = f'Arquivo não encontrado: {main_filepath}'
-            print(f'[!] {self.loading_status}')
-            return
+        with self.lock:
+            main_filepath = main_filepath.replace('\\', '/')
+            if not os.path.exists(main_filepath):
+                self.loading_status = f'Arquivo não encontrado: {main_filepath}'
+                print(f'[!] {self.loading_status}')
+                return
 
-        path_parts = main_filepath.split('/')
-        if 'db' in path_parts:
-            self.rathena_root = '/'.join(path_parts[:path_parts.index('db')])
-        else:
-            from app.core.config import get_rathena_root
-            self.rathena_root = get_rathena_root() or os.path.dirname(os.path.dirname(main_filepath))
+            path_parts = main_filepath.split('/')
+            if 'db' in path_parts:
+                self.rathena_root = '/'.join(path_parts[:path_parts.index('db')])
+            else:
+                from app.core.config import get_rathena_root
+                self.rathena_root = get_rathena_root() or os.path.dirname(os.path.dirname(main_filepath))
 
-        print(f'[*] rAthena root ({self._import_filename}): {self.rathena_root}')
-        self._load_file(main_filepath)
+            print(f'[*] rAthena root ({self._import_filename}): {self.rathena_root}')
+            self._load_file(main_filepath)
 
-        # Always force-load the custom import file even if it's not in Footer.Imports
-        import_path = f'{self.rathena_root}/db/import/{self._import_filename}'.replace('\\', '/')
-        if os.path.exists(import_path) and import_path not in self.db_cache:
-            print(f'[*] Forçando carregamento customizado: {import_path}')
-            self._load_file(import_path)
+            # Always force-load the custom import file even if it's not in Footer.Imports
+            import_path = f'{self.rathena_root}/db/import/{self._import_filename}'.replace('\\', '/')
+            if os.path.exists(import_path) and import_path not in self.db_cache:
+                print(f'[*] Forçando carregamento customizado: {import_path}')
+                self._load_file(import_path)
 
     def _load_file(self, filepath: str):
         if not os.path.exists(filepath):
@@ -99,7 +103,8 @@ class GenericYamlParser:
 
         self.loading_status = f'Lendo {os.path.basename(filepath)}...'
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            # errors='replace' previne caracteres não-UTF-8 válidos de abortarem a leitura
+            with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
                 data = self.yaml.load(f)
             self.db_cache[filepath] = data
 
@@ -151,46 +156,47 @@ class GenericYamlParser:
     # ─── Write ───────────────────────────────────────────────────────────────
 
     def save_file(self, filepath: str) -> bool:
-        if filepath not in self.db_cache:
-            return False
-        
-        # Temporarily strip metadata keys (starting with '_') from the cached data before dumping
-        removed_keys = []
-        
-        def process_data(obj):
-            if isinstance(obj, dict):
-                to_remove = [k for k in obj.keys() if isinstance(k, str) and k.startswith('_')]
-                for k in to_remove:
-                    removed_keys.append((obj, k, obj[k]))
-                    del obj[k]
-                for k, v in obj.items():
-                    if isinstance(v, str) and ('\n' in v or '\r' in v):
-                        from ruamel.yaml.scalarstring import LiteralScalarString
-                        normalized = v.replace('\r\n', '\n').replace('\r', '\n')
-                        obj[k] = LiteralScalarString(normalized)
-                    else:
-                        process_data(v)
-            elif isinstance(obj, list):
-                for i, item in enumerate(obj):
-                    if isinstance(item, str) and ('\n' in item or '\r' in item):
-                        from ruamel.yaml.scalarstring import LiteralScalarString
-                        normalized = item.replace('\r\n', '\n').replace('\r', '\n')
-                        obj[i] = LiteralScalarString(normalized)
-                    else:
-                        process_data(item)
+        with self.lock:
+            if filepath not in self.db_cache:
+                return False
+            
+            # Temporarily strip metadata keys (starting with '_') from the cached data before dumping
+            removed_keys = []
+            
+            def process_data(obj):
+                if isinstance(obj, dict):
+                    to_remove = [k for k in obj.keys() if isinstance(k, str) and k.startswith('_')]
+                    for k in to_remove:
+                        removed_keys.append((obj, k, obj[k]))
+                        del obj[k]
+                    for k, v in obj.items():
+                        if isinstance(v, str) and ('\n' in v or '\r' in v):
+                            from ruamel.yaml.scalarstring import LiteralScalarString
+                            normalized = v.replace('\r\n', '\n').replace('\r', '\n')
+                            obj[k] = LiteralScalarString(normalized)
+                        else:
+                            process_data(v)
+                elif isinstance(obj, list):
+                    for i, item in enumerate(obj):
+                        if isinstance(item, str) and ('\n' in item or '\r' in item):
+                            from ruamel.yaml.scalarstring import LiteralScalarString
+                            normalized = item.replace('\r\n', '\n').replace('\r', '\n')
+                            obj[i] = LiteralScalarString(normalized)
+                        else:
+                            process_data(item)
+                        
+            data = self.db_cache[filepath]
+            process_data(data)
+            
+            try:
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    self.yaml.dump(data, f)
+            finally:
+                # Restore the keys back to their original dictionary objects
+                for obj, k, val in removed_keys:
+                    obj[k] = val
                     
-        data = self.db_cache[filepath]
-        process_data(data)
-        
-        try:
-            with open(filepath, 'w', encoding='utf-8') as f:
-                self.yaml.dump(data, f)
-        finally:
-            # Restore the keys back to their original dictionary objects
-            for obj, k, val in removed_keys:
-                obj[k] = val
-                
-        return True
+            return True
 
 
     def _get_import_path(self) -> str:
@@ -221,62 +227,64 @@ class GenericYamlParser:
         - If entry is from rAthena original: write full override to db/import/
         - If already in db/import/: update in-place
         """
-        filepath = self.entry_index.get(id_value)
-        if not filepath:
-            return None
-
-        norm = filepath.replace('\\', '/')
-
-        if '/db/import/' not in norm:
-            # Read full original entry
-            original = None
-            for entry in self.db_cache[filepath].get('Body', []):
-                if entry.get(self._id_key) == id_value:
-                    original = entry
-                    break
-            if original is None:
+        with self.lock:
+            filepath = self.entry_index.get(id_value)
+            if not filepath:
                 return None
 
-            override = dict(original)
-            override.update(updated_data)
+            norm = filepath.replace('\\', '/')
 
-            import_path = self._ensure_import_loaded()
-            import_data = self.db_cache[import_path]
-            if 'Body' not in import_data or not isinstance(import_data['Body'], list):
-                import_data['Body'] = []
+            if '/db/import/' not in norm:
+                # Read full original entry
+                original = None
+                for entry in self.db_cache[filepath].get('Body', []):
+                    if entry.get(self._id_key) == id_value:
+                        original = entry
+                        break
+                if original is None:
+                    return None
 
-            existing = next((e for e in import_data['Body'] if e.get(self._id_key) == id_value), None)
-            if existing is not None:
-                existing.update(updated_data)
-                saved = dict(existing)
-            else:
-                import_data['Body'].insert(0, override)
-                saved = override
+                override = dict(original)
+                override.update(updated_data)
 
-            self.save_file(import_path)
-            self.entry_index[id_value] = import_path
-            saved['_source'] = 'custom'
-            return saved
+                import_path = self._ensure_import_loaded()
+                import_data = self.db_cache[import_path]
+                if 'Body' not in import_data or not isinstance(import_data['Body'], list):
+                    import_data['Body'] = []
 
-        # Already in import — update in place
-        for entry in self.db_cache[filepath].get('Body', []):
-            if entry.get(self._id_key) == id_value:
-                entry.update(updated_data)
-                self.save_file(filepath)
-                result = dict(entry)
-                result['_source'] = 'custom'
-                return result
-        return None
+                existing = next((e for e in import_data['Body'] if e.get(self._id_key) == id_value), None)
+                if existing is not None:
+                    existing.update(updated_data)
+                    saved = dict(existing)
+                else:
+                    import_data['Body'].insert(0, override)
+                    saved = override
+
+                self.save_file(import_path)
+                self.entry_index[id_value] = import_path
+                saved['_source'] = 'custom'
+                return saved
+
+            # Already in import — update in place
+            for entry in self.db_cache[filepath].get('Body', []):
+                if entry.get(self._id_key) == id_value:
+                    entry.update(updated_data)
+                    self.save_file(filepath)
+                    result = dict(entry)
+                    result['_source'] = 'custom'
+                    return result
+            return None
 
     def add_entry(self, entry_data: dict):
         """Add a new entry to db/import/."""
-        import_path = self._ensure_import_loaded()
-        data = self.db_cache[import_path]
-        if 'Body' not in data or not isinstance(data['Body'], list):
-            data['Body'] = []
-        data['Body'].insert(0, entry_data)
-        self.save_file(import_path)
-        id_value = entry_data.get(self._id_key)
-        if id_value is not None:
-            self.entry_index[id_value] = import_path
-        return entry_data
+        with self.lock:
+            import_path = self._ensure_import_loaded()
+            data = self.db_cache[import_path]
+            if 'Body' not in data or not isinstance(data['Body'], list):
+                data['Body'] = []
+            data['Body'].insert(0, entry_data)
+            self.save_file(import_path)
+            id_value = entry_data.get(self._id_key)
+            if id_value is not None:
+                self.entry_index[id_value] = import_path
+            return entry_data

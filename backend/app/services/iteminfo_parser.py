@@ -177,43 +177,46 @@ class ItemInfoParser:
         re_identified_desc = re.compile(r'\bidentifiedDescriptionName\s*=\s*\{([\s\S]*?)\}')
 
         for item_id, block_content in blocks:
-            fields = {}
-            
-            m = re_unidentified_display.search(block_content)
-            if m: fields['unidentifiedDisplayName'] = m.group(1)
-            
-            m = re_unidentified_resource.search(block_content)
-            if m: fields['unidentifiedResourceName'] = m.group(1)
-            
-            m = re_identified_display.search(block_content)
-            if m: fields['identifiedDisplayName'] = m.group(1)
-            
-            m = re_identified_resource.search(block_content)
-            if m: fields['identifiedResourceName'] = m.group(1)
-            
-            m = re_slot.search(block_content)
-            if m: fields['slotCount'] = int(m.group(1))
-            
-            m = re_class.search(block_content)
-            if m: fields['ClassNum'] = int(m.group(1))
-            
-            m = re_costume.search(block_content)
-            if m: fields['costume'] = (m.group(1) == "true")
-            
-            # Array descriptions
-            m = re_unidentified_desc.search(block_content)
-            if m:
-                desc_content = m.group(1)
-                lines = re.findall(r'"((?:[^"\\]|\\.)*)"', desc_content)
-                fields['unidentifiedDescriptionName'] = [ln.replace('\\"', '"').replace('\\\\', '\\') for ln in lines]
+            try:
+                fields = {}
                 
-            m = re_identified_desc.search(block_content)
-            if m:
-                desc_content = m.group(1)
-                lines = re.findall(r'"((?:[^"\\]|\\.)*)"', desc_content)
-                fields['identifiedDescriptionName'] = [ln.replace('\\"', '"').replace('\\\\', '\\') for ln in lines]
+                m = re_unidentified_display.search(block_content)
+                if m: fields['unidentifiedDisplayName'] = m.group(1)
                 
-            new_map[item_id] = fields
+                m = re_unidentified_resource.search(block_content)
+                if m: fields['unidentifiedResourceName'] = m.group(1)
+                
+                m = re_identified_display.search(block_content)
+                if m: fields['identifiedDisplayName'] = m.group(1)
+                
+                m = re_identified_resource.search(block_content)
+                if m: fields['identifiedResourceName'] = m.group(1)
+                
+                m = re_slot.search(block_content)
+                if m: fields['slotCount'] = int(m.group(1))
+                
+                m = re_class.search(block_content)
+                if m: fields['ClassNum'] = int(m.group(1))
+                
+                m = re_costume.search(block_content)
+                if m: fields['costume'] = (m.group(1) == "true")
+                
+                # Array descriptions
+                m = re_unidentified_desc.search(block_content)
+                if m:
+                    desc_content = m.group(1)
+                    lines = re.findall(r'"((?:[^"\\]|\\.)*)"', desc_content)
+                    fields['unidentifiedDescriptionName'] = [ln.replace('\\"', '"').replace('\\\\', '\\') for ln in lines]
+                    
+                m = re_identified_desc.search(block_content)
+                if m:
+                    desc_content = m.group(1)
+                    lines = re.findall(r'"((?:[^"\\]|\\.)*)"', desc_content)
+                    fields['identifiedDescriptionName'] = [ln.replace('\\"', '"').replace('\\\\', '\\') for ln in lines]
+                    
+                new_map[item_id] = fields
+            except Exception as e:
+                print(f"[!] Erro ao parsear bloco Lua do item ID {item_id}: {e}")
 
         # Normalise all keys to canonical camelCase with uppercase first letter
         normalised: dict[int, dict] = {}
