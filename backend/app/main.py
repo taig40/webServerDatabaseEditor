@@ -1,6 +1,8 @@
 import os
 import shutil
 import sys
+import traceback
+from pathlib import Path
 from dotenv import load_dotenv
 
 from app.core.config import cfg, get_env_path, get_config_path, BASE_DIR, ENV_PATH, CONFIG_PATH, ENV_TEMPLATE_PATH
@@ -219,69 +221,86 @@ def get_system_status():
 async def post_system_setup(payload: SetupPayload):
     from fastapi import HTTPException
     from app.api.settings import _read_env, _write_env, reload_settings
-    db_base = payload.SERVER_DB_BASE_PATH.strip().replace("\\", "/")
-    if not os.path.exists(db_base):
-        raise HTTPException(status_code=400, detail="A pasta selecionada para o rAthena não foi encontrada.")
-    
-    env = _read_env()
-    env["SERVER_DB_BASE_PATH"] = db_base
-    os.environ["SERVER_DB_BASE_PATH"] = db_base
-    
-    if payload.GRF_0.strip():
-        grf_path = payload.GRF_0.strip().replace("\\", "/")
-        env["GRF_0"] = grf_path
-        os.environ["GRF_0"] = grf_path
-
-    if payload.ITEMINFO_PATH.strip():
-        i_path = payload.ITEMINFO_PATH.strip().replace("\\", "/")
-        env["ITEMINFO_PATH"] = i_path
-        os.environ["ITEMINFO_PATH"] = i_path
-
-    if payload.API_URL.strip():
-        api_u = payload.API_URL.strip()
-        env["DIVINE_PRIDE_API_KEY"] = api_u
-        os.environ["DIVINE_PRIDE_API_KEY"] = api_u
-
-    env["SERVER_ENCODING"] = (payload.SERVER_ENCODING or "utf-8").strip()
-    os.environ["SERVER_ENCODING"] = env["SERVER_ENCODING"]
-
-    env["CLIENT_ENCODING"] = (payload.CLIENT_ENCODING or "latin1").strip()
-    os.environ["CLIENT_ENCODING"] = env["CLIENT_ENCODING"]
+    try:
+        db_base = payload.SERVER_DB_BASE_PATH.strip().replace("\\", "/")
+        if not os.path.exists(db_base):
+            raise HTTPException(status_code=400, detail="A pasta selecionada para o rAthena não foi encontrada.")
         
-    db_defaults = {
-        "ITEM_DB_PATH": "re/item_db.yml",
-        "MOB_DB_PATH": "re/mob_db.yml",
-        "SKILL_DB_PATH": "re/skill_db.yml",
-        "MOB_SKILL_DB_PATH": "re/mob_skill_db.txt",
-        "COMBO_DB_PATH": "re/item_combos.yml",
-        "QUEST_DB_PATH": "re/quest_db.yml",
-        "PET_DB_PATH": "re/pet_db.yml",
-        "ACHIEVEMENT_DB_PATH": "re/achievement_db.yml",
-        "CONST_DB_PATH": "const.yml",
-    }
-    for env_key, filename in db_defaults.items():
-        full_p = os.path.join(db_base, filename).replace("\\", "/")
-        env[env_key] = full_p
-        os.environ[env_key] = full_p
+        env = _read_env()
+        env["SERVER_DB_BASE_PATH"] = db_base
+        os.environ["SERVER_DB_BASE_PATH"] = db_base
         
-    _write_env(env)
-    load_dotenv(dotenv_path=get_env_path(), override=True)
-    
-    await reload_settings()
-    APP_STATE["setup_required"] = False
-    APP_STATE["missing_keys"] = []
+        if payload.GRF_0.strip():
+            grf_path = payload.GRF_0.strip().replace("\\", "/")
+            env["GRF_0"] = grf_path
+            os.environ["GRF_0"] = grf_path
 
-    # Agenda reinicialização via Thread em background após retorno do response
-    import threading
-    import time
-    def _delayed_restart():
-        time.sleep(0.5)
-        print("[*] Setup concluído. Reiniciando servidor backend (código 3)...")
-        os._exit(3)
-    
-    threading.Thread(target=_delayed_restart, daemon=True).start()
+        if payload.ITEMINFO_PATH.strip():
+            i_path = payload.ITEMINFO_PATH.strip().replace("\\", "/")
+            env["ITEMINFO_PATH"] = i_path
+            os.environ["ITEMINFO_PATH"] = i_path
 
-    return {"status": "ok", "message": "Setup concluído com sucesso. Reiniciando..."}
+        if payload.API_URL.strip():
+            api_u = payload.API_URL.strip()
+            env["DIVINE_PRIDE_API_KEY"] = api_u
+            os.environ["DIVINE_PRIDE_API_KEY"] = api_u
+
+        env["SERVER_ENCODING"] = (payload.SERVER_ENCODING or "utf-8").strip()
+        os.environ["SERVER_ENCODING"] = env["SERVER_ENCODING"]
+
+        env["CLIENT_ENCODING"] = (payload.CLIENT_ENCODING or "latin1").strip()
+        os.environ["CLIENT_ENCODING"] = env["CLIENT_ENCODING"]
+            
+        db_defaults = {
+            "ITEM_DB_PATH": "re/item_db.yml",
+            "MOB_DB_PATH": "re/mob_db.yml",
+            "SKILL_DB_PATH": "re/skill_db.yml",
+            "MOB_SKILL_DB_PATH": "re/mob_skill_db.txt",
+            "COMBO_DB_PATH": "re/item_combos.yml",
+            "QUEST_DB_PATH": "re/quest_db.yml",
+            "PET_DB_PATH": "re/pet_db.yml",
+            "ACHIEVEMENT_DB_PATH": "re/achievement_db.yml",
+            "CONST_DB_PATH": "const.yml",
+        }
+        for env_key, filename in db_defaults.items():
+            full_p = os.path.join(db_base, filename).replace("\\", "/")
+            env[env_key] = full_p
+            os.environ[env_key] = full_p
+            
+        _write_env(env)
+        load_dotenv(dotenv_path=get_env_path(), override=True)
+        
+        await reload_settings()
+        APP_STATE["setup_required"] = False
+        APP_STATE["missing_keys"] = []
+
+        # Agenda reinicialização via Thread em background após retorno do response
+        import threading
+        import time
+        def _delayed_restart():
+            time.sleep(0.5)
+            print("[*] Setup concluído. Reiniciando servidor backend (código 3)...")
+            os._exit(3)
+        
+        threading.Thread(target=_delayed_restart, daemon=True).start()
+
+        return {"status": "ok", "message": "Setup concluído com sucesso. Reiniciando..."}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        import traceback
+        try:
+            # Tenta salvar o log direto na Área de Trabalho do Windows
+            desktop = os.path.join(os.environ.get('USERPROFILE', 'C:\\'), 'Desktop')
+            log_file = os.path.join(desktop, 'rathena_crash_log.txt')
+            with open(log_file, 'w', encoding='utf-8') as f:
+                f.write("CRASH DURANTE O SETUP:\n")
+                f.write(traceback.format_exc())
+        except:
+            pass # Se até o log falhar, ignora
+        
+        # Retorna o erro pro frontend não ficar travado
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 def read_root():

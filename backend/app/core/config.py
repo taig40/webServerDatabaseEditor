@@ -11,6 +11,7 @@ Usage in any service:
 
 import os
 import sys
+import traceback
 from pathlib import Path
 
 def get_config_path() -> str:
@@ -26,7 +27,19 @@ def get_config_path() -> str:
         base_dir = os.path.join(str(Path.home()), f".{app_name}")
         
     conf_dir = os.path.join(base_dir, 'conf')
-    os.makedirs(conf_dir, exist_ok=True)
+    try:
+        os.makedirs(conf_dir, exist_ok=True)
+    except Exception as e:
+        try:
+            # Tenta salvar o log direto na Área de Trabalho do Windows
+            desktop = os.path.join(os.environ.get('USERPROFILE', 'C:\\'), 'Desktop')
+            log_file = os.path.join(desktop, 'rathena_crash_log.txt')
+            with open(log_file, 'w', encoding='utf-8') as f:
+                f.write("CRASH DURANTE A CRIAÇÃO DA PASTA DE CONFIGURAÇÕES:\n")
+                f.write(traceback.format_exc())
+        except:
+            pass
+        raise e
     return os.path.join(conf_dir, 'config.conf')
 
 def get_env_path() -> str:
