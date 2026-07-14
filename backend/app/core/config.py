@@ -11,13 +11,20 @@ Usage in any service:
 
 import os
 import sys
+from pathlib import Path
 
 def get_config_path() -> str:
-    """Retorna o caminho absoluto do arquivo conf/config.conf em modo frozen (.exe) ou dev."""
-    if getattr(sys, 'frozen', False):
-        base_dir = os.path.dirname(os.path.abspath(sys.executable))
+    """Retorna o caminho absoluto do arquivo conf/config.conf em modo frozen (.exe) ou dev usando o AppData do usuário."""
+    app_name = "rAthenaWebEditor"
+    if sys.platform == "win32":
+        appdata = os.getenv("APPDATA")
+        if appdata:
+            base_dir = os.path.join(appdata, app_name)
+        else:
+            base_dir = os.path.join(str(Path.home()), f".{app_name}")
     else:
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        base_dir = os.path.join(str(Path.home()), f".{app_name}")
+        
     conf_dir = os.path.join(base_dir, 'conf')
     os.makedirs(conf_dir, exist_ok=True)
     return os.path.join(conf_dir, 'config.conf')

@@ -270,7 +270,18 @@ async def post_system_setup(payload: SetupPayload):
     await reload_settings()
     APP_STATE["setup_required"] = False
     APP_STATE["missing_keys"] = []
-    return {"status": "ok", "message": "Setup concluído com sucesso."}
+
+    # Agenda reinicialização via Thread em background após retorno do response
+    import threading
+    import time
+    def _delayed_restart():
+        time.sleep(0.5)
+        print("[*] Setup concluído. Reiniciando servidor backend (código 3)...")
+        os._exit(3)
+    
+    threading.Thread(target=_delayed_restart, daemon=True).start()
+
+    return {"status": "ok", "message": "Setup concluído com sucesso. Reiniciando..."}
 
 @app.get("/")
 def read_root():

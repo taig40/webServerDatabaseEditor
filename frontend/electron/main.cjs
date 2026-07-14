@@ -108,6 +108,15 @@ function startBackendServer() {
   backendProcess.on('close', (code) => {
     console.log(`[*] Processo Backend encerrado com código ${code}`);
     backendProcess = null;
+    if (code === 3) {
+      console.log('[*] Reiniciando backend por solicitação do Setup/Hot-reload...');
+      setTimeout(() => {
+        startBackendServer();
+        if (mainWindow) {
+          mainWindow.webContents.reloadIgnoringCache();
+        }
+      }, 500);
+    }
   });
 }
 
