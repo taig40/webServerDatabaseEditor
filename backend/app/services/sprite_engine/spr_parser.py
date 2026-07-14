@@ -182,3 +182,19 @@ class SprParser:
     def get_images(self) -> List[Image.Image]:
         """Returns the decoded frames as a list of PIL Image objects."""
         return self.images
+
+    def get_image(self, spr_num: int, spr_type: int) -> Optional[Image.Image]:
+        """
+        Safely retrieves a PIL Image frame by its type-specific index.
+        spr_type 0 = Indexed palette-based sprite
+        spr_type 1 = RGBA sprite
+        """
+        if spr_type == 0:
+            if 0 <= spr_num < len(self.indexed_frames):
+                return self.images[spr_num]
+        else:
+            if 0 <= spr_num < len(self.rgba_frames):
+                indexed_count = len(self.indexed_frames)
+                if indexed_count + spr_num < len(self.images):
+                    return self.images[indexed_count + spr_num]
+        return None
