@@ -110,7 +110,17 @@
     },
     "browse": "Selecionar",
     "validate_btn": "Validar Caminhos",
-    "reload_success_message": "✓ Servidor recarregado — {count} GRF(s) ativa(s)"
+    "reload_success_message": "✓ Servidor recarregado — {count} GRF(s) ativa(s)",
+    "save_btn": "Atualizar Configurações",
+    "updated_success": "Configurações atualizadas com sucesso!",
+    "reload_success": "Cache e bancos de dados recarregados.",
+    "reload_error": "Erro ao recarregar cache."
+  },
+  "divinepride": {
+    "settings_title": "Integração DivinePride",
+    "settings_subtitle": "Chave de API para preenchimento automático de informações e sprites oficiais de itens.",
+    "api_key_label": "API Key DivinePride",
+    "api_key_placeholder": "Insira sua chave de API aqui..."
   },
   "item_detail": {
     "unnamed": "Item Sem Nome",

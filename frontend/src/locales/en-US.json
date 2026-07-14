@@ -110,7 +110,17 @@
     },
     "browse": "Browse",
     "validate_btn": "Validate Paths",
-    "reload_success_message": "✓ Server reloaded — {count} active GRF(s)"
+    "reload_success_message": "✓ Server reloaded — {count} active GRF(s)",
+    "save_btn": "Update Settings",
+    "updated_success": "Settings updated successfully!",
+    "reload_success": "Cache and databases reloaded.",
+    "reload_error": "Error reloading cache."
+  },
+  "divinepride": {
+    "settings_title": "DivinePride Integration",
+    "settings_subtitle": "API Key to automatically query official item data, descriptions, and sprites.",
+    "api_key_label": "DivinePride API Key",
+    "api_key_placeholder": "Enter your DivinePride API Key..."
   },
   "item_detail": {
     "unnamed": "Unnamed Item",
