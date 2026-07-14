@@ -11,6 +11,7 @@ import { useLanguageStore } from '../store/useLanguageStore';
 import { DivinePrideImporterPanel } from './DivinePrideImporterPanel';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import Select from 'react-select';
+import { FittingRoom } from './FittingRoom';
 
 const LOCATION_OPTIONS = [
   'Head_Top', 'Head_Mid', 'Head_Low', 'Armor', 'Right_Hand', 'Left_Hand', 'Garment', 
@@ -450,6 +451,20 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             </div>
           </div>
         </div>
+
+        {/* Fitting Room Card */}
+        {((localItem.View && localItem.View > 0) || (
+          localItem.Locations && (
+            localItem.Locations.Head_Top || 
+            localItem.Locations.Head_Mid || 
+            localItem.Locations.Head_Low || 
+            localItem.Locations.Costume_Head_Top || 
+            localItem.Locations.Costume_Head_Mid || 
+            localItem.Locations.Costume_Head_Low
+          )
+        )) && (
+          <FittingRoom viewId={localItem.View} />
+        )}
 
         {/* Restrições (Jobs, Classes, etc) */}
         <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl xl:col-span-2">

@@ -154,18 +154,21 @@ def compose_character(accessory_name: str, is_male: bool, direction: int) -> byt
     head_spr_path = f"{head_base}.spr"
     head_act_path = f"{head_base}.act"
     
-    acc_spr_path = f"{acc_dir}/{accessory_name}_{gender_suffix}.spr"
-    acc_act_path = f"{acc_dir}/{accessory_name}_{gender_suffix}.act"
+    acc_spr, acc_act = None, None
+    if accessory_name:
+        acc_spr_path = f"{acc_dir}/{accessory_name}_{gender_suffix}.spr"
+        acc_act_path = f"{acc_dir}/{accessory_name}_{gender_suffix}.act"
+        
+        # 2. Extract and parse files from GRF
+        logger.info(f"Loading accessory '{accessory_name}' from GRF...")
+        acc_spr, acc_act = load_sprite_from_grf(acc_spr_path, acc_act_path)
     
-    # 2. Extract and parse files from GRF
+    # 2b. Extract and parse body and head files from GRF
     logger.info("Loading body parts from GRF...")
     body_spr, body_act = load_sprite_from_grf(body_spr_path, body_act_path)
     
     logger.info("Loading head parts from GRF...")
     head_spr, head_act = load_sprite_from_grf(head_spr_path, head_act_path)
-    
-    logger.info(f"Loading accessory '{accessory_name}' from GRF...")
-    acc_spr, acc_act = load_sprite_from_grf(acc_spr_path, acc_act_path)
     
     # 3. Setup canvas (Transparent 200x200)
     canvas = Image.new("RGBA", (200, 200), (255, 255, 255, 0))

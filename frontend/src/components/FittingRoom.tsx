@@ -1,0 +1,101 @@
+import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight, User, UserCheck } from 'lucide-react';
+import { API_URL } from '../config/env';
+import { useLanguageStore } from '../store/useLanguageStore';
+
+interface FittingRoomProps {
+  viewId: number | undefined;
+}
+
+export const FittingRoom: React.FC<FittingRoomProps> = ({ viewId }) => {
+  const t = useLanguageStore(state => state.t);
+  const [isMale, setIsMale] = useState<boolean>(true);
+  const [direction, setDirection] = useState<number>(0);
+
+  const rotateLeft = () => {
+    setDirection(prev => (prev + 1) % 8);
+  };
+
+  const rotateRight = () => {
+    setDirection(prev => (prev - 1 + 8) % 8);
+  };
+
+  const toggleGender = () => {
+    setIsMale(prev => !prev);
+  };
+
+  // Build API URL for the direct preview image
+  const previewUrl = `${API_URL}/api/visualizer/preview?view_id=${viewId ?? 0}&is_male=${isMale}&direction=${direction}`;
+
+  return (
+    <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl flex flex-col items-center">
+      {/* Title */}
+      <div className="w-full flex items-center justify-between border-b border-white/5 pb-2 mb-4">
+        <h3 className="font-semibold text-white text-sm tracking-wide uppercase">
+          {t('fitting_room.title' as any) || 'Fitting Room'}
+        </h3>
+        <span className="text-[10px] font-mono text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">
+          DIR: {direction}
+        </span>
+      </div>
+
+      {/* Sprite Canvas stage */}
+      <div className="relative w-48 h-48 bg-dark-950/80 rounded-xl border border-white/10 flex items-center justify-center overflow-hidden shadow-inner group">
+        {viewId && viewId > 0 ? (
+          <img
+            src={previewUrl}
+            alt="Character Preview"
+            className="w-full h-full object-contain pixelated select-none"
+            key={`${viewId}-${isMale}-${direction}`} // force re-render/refetch on change
+          />
+        ) : (
+          <div className="text-center p-4 flex flex-col items-center justify-center h-full">
+            <span className="text-xs text-gray-500 italic">
+              {t('fitting_room.no_sprite' as any) || 'No accessory preview (View ID is 0 or empty)'}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Controls Container */}
+      <div className="w-full mt-4 grid grid-cols-2 gap-3">
+        {/* Rotation Group */}
+        <div className="flex items-center justify-center gap-1 bg-dark-900/60 p-1.5 rounded-lg border border-white/5">
+          <button
+            type="button"
+            onClick={rotateRight}
+            className="p-1 rounded hover:bg-white/5 active:scale-95 text-gray-400 hover:text-white transition-all"
+            title={t('fitting_room.rotate_left' as any) || 'Rotate Left'}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span className="text-xs text-gray-400 font-mono select-none px-1">
+            3D
+          </span>
+          <button
+            type="button"
+            onClick={rotateLeft}
+            className="p-1 rounded hover:bg-white/5 active:scale-95 text-gray-400 hover:text-white transition-all"
+            title={t('fitting_room.rotate_right' as any) || 'Rotate Right'}
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+
+        {/* Gender Toggle */}
+        <button
+          type="button"
+          onClick={toggleGender}
+          className="flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-violet-600/10 hover:bg-violet-600/20 text-violet-400 hover:text-violet-300 border border-violet-500/20 hover:border-violet-500/40 active:scale-[0.98] transition-all"
+        >
+          {isMale ? <User size={13} /> : <UserCheck size={13} />}
+          <span>
+            {isMale
+              ? t('fitting_room.male' as any) || 'Male'
+              : t('fitting_room.female' as any) || 'Female'}
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+};

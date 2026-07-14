@@ -55,7 +55,7 @@ if db_base_path:
 # ─── Import Application Modules (Dependent on Env Variables) ────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images, constants, progression, editor, system, divinepride, map_drops, custom_spawns
+from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images, constants, progression, editor, system, divinepride, map_drops, custom_spawns, visualizer
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
 from app.services.grf_reader import grf_reader, MAX_GRF_SLOTS
@@ -208,6 +208,7 @@ app.include_router(system.router,       prefix="/api/system",           tags=["s
 app.include_router(divinepride.router,  prefix="/api/divinepride",      tags=["divinepride"])
 app.include_router(map_drops.router,    prefix="/api/map-drops",          tags=["map-drops"])
 app.include_router(custom_spawns.router, prefix="/api/scripts/custom-spawns", tags=["custom-spawns"])
+app.include_router(visualizer.router,   prefix="/api/visualizer",       tags=["visualizer"])
 
 @app.get("/api/status")
 def get_system_status():

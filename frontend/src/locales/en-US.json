@@ -1355,5 +1355,13 @@
     "saving": "Validating and loading databases...",
     "success_toast": "Configuration saved and databases loaded successfully!",
     "error_path_required": "Please provide your rAthena root folder path."
+  },
+  "fitting_room": {
+    "title": "Fitting Room",
+    "male": "Male",
+    "female": "Female",
+    "rotate_left": "Rotate Left",
+    "rotate_right": "Rotate Right",
+    "no_sprite": "No accessory preview (View ID is 0 or empty)"
   }
 }

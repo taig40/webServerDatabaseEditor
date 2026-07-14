@@ -1355,5 +1355,13 @@
     "saving": "Validando e carregando bases...",
     "success_toast": "Configurações salvas e bases carregadas com sucesso!",
     "error_path_required": "Por favor, informe a pasta raiz do rAthena."
+  },
+  "fitting_room": {
+    "title": "Vestiário",
+    "male": "Masculino",
+    "female": "Feminino",
+    "rotate_left": "Girar para Esquerda",
+    "rotate_right": "Girar para Direita",
+    "no_sprite": "Sem pré-visualização de acessório (View ID é 0 ou vazio)"
   }
 }
