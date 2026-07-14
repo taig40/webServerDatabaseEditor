@@ -3,29 +3,21 @@ import shutil
 import sys
 from dotenv import load_dotenv
 
-# ─── Load Environment Variables First (Highest Priority) ─────────────────────
-if getattr(sys, 'frozen', False):
-    exe_dir = os.path.dirname(os.path.abspath(sys.executable))
-    bundle_dir = getattr(sys, '_MEIPASS', exe_dir)
-    env_path = os.path.join(exe_dir, ".env")
-    env_template_path = os.path.join(bundle_dir, ".env-template")
-else:
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    env_template_path = os.path.join(base_dir, ".env-template")
-    env_path = os.path.join(base_dir, ".env")
+from app.core.config import cfg, BASE_DIR, ENV_PATH, ENV_TEMPLATE_PATH
 
+# ─── Load Environment Variables First (Highest Priority) ─────────────────────
 # 1. Se é a primeira vez rodando (não existe .env), transforma o .env-template em .env (ou cria vazio em Safe Mode)
-if not os.path.exists(env_path):
-    if os.path.exists(env_template_path):
-        shutil.copyfile(env_template_path, env_path)
-        print(f"[*] Arquivo .env criado a partir de .env-template em {env_path}")
+if not os.path.exists(ENV_PATH):
+    if os.path.exists(ENV_TEMPLATE_PATH):
+        shutil.copyfile(ENV_TEMPLATE_PATH, ENV_PATH)
+        print(f"[*] Arquivo .env criado a partir de .env-template em {ENV_PATH}")
     else:
-        with open(env_path, "w", encoding="utf-8") as f:
+        with open(ENV_PATH, "w", encoding="utf-8") as f:
             f.write("# rAthena Web Editor - Gerado automaticamente em Safe Mode\nSERVER_DB_BASE_PATH=\n")
-        print(f"[*] Arquivo .env vazio gerado para modo First-Time Setup em {env_path}")
+        print(f"[*] Arquivo .env vazio gerado para modo First-Time Setup em {ENV_PATH}")
 
 # 2. Carrega as variáveis (com override=True para garantir precedência do arquivo .env)
-load_dotenv(dotenv_path=env_path, override=True)
+load_dotenv(dotenv_path=ENV_PATH, override=True)
 
 # 2c. Preencher caminhos de banco de dados automaticamente a partir de SERVER_DB_BASE_PATH se preenchido
 db_base_path = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
@@ -62,7 +54,6 @@ from app.services.achievement_parser import achievement_db
 from app.services.const_parser import const_db
 
 # ─── Live Config Sync ────────────────────────────────────────────────────────
-from app.core.config import cfg
 cfg.reload_from_env()
 
 APP_STATE = {"setup_required": False, "missing_keys": []}
@@ -70,8 +61,8 @@ APP_STATE = {"setup_required": False, "missing_keys": []}
 def setup_and_validate_env():
     # 3. Lê as chaves necessárias do .env-template para validar
     required_keys = []
-    if os.path.exists(env_template_path):
-        with open(env_template_path, "r", encoding="utf-8") as f:
+    if os.path.exists(ENV_TEMPLATE_PATH):
+        with open(ENV_TEMPLATE_PATH, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith("#") and "=" in line:

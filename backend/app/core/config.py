@@ -10,6 +10,18 @@ Usage in any service:
 """
 
 import os
+import sys
+
+if getattr(sys, 'frozen', False):
+    # Se estiver rodando como .exe (PyInstaller)
+    BASE_DIR = os.path.dirname(os.path.abspath(sys.executable))
+    ENV_TEMPLATE_PATH = os.path.join(getattr(sys, '_MEIPASS', BASE_DIR), '.env-template')
+else:
+    # Se estiver rodando em desenvolvimento
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    ENV_TEMPLATE_PATH = os.path.join(BASE_DIR, '.env-template')
+
+ENV_PATH = os.path.join(BASE_DIR, '.env')
 
 # Supported encodings (value, label, aliases the Python codec accepts)
 ENCODING_OPTIONS = [
