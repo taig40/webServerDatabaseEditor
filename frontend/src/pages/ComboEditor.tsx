@@ -8,6 +8,7 @@ import { useLanguageStore } from '../store/useLanguageStore';
 import AsyncSelect from 'react-select/async';
 import yaml from 'yaml';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
+import { toast } from '../store/useToastStore';
 
 const selectStyles = {
   control: (base: any, state: any) => ({
@@ -198,12 +199,12 @@ export const ComboEditor: React.FC = () => {
     // Front-end Validation min_length=2
     const groups = selectedCombo._item_groups || [];
     if (groups.length === 0) {
-      alert(t('combo_editor.validation.min_groups'));
+      toast.error(t('combo_editor.validation.min_groups'));
       return;
     }
     const hasInvalidGroup = groups.some((grp: string[]) => grp.length < 2);
     if (hasInvalidGroup) {
-      alert(t('combo_editor.validation.min_items'));
+      toast.error(t('combo_editor.validation.min_items'));
       return;
     }
     
@@ -215,12 +216,12 @@ export const ComboEditor: React.FC = () => {
         Script: selectedCombo.Script
       };
       await axios.put(`${API_URL}/api/combos/${selectedCombo._index}`, { data: payload });
-      alert(t('combo_editor.save_success'));
+      toast.success(t('combo_editor.save_success'));
       setCombos(prev => prev.map(c => c._index === selectedCombo._index ? { ...c, _source: 'custom' } : c));
       setSourceTab('custom');
     } catch (err) {
       console.error("Erro ao salvar combo:", err);
-      alert(t('combo_editor.save_error'));
+      toast.error(t('combo_editor.save_error'));
     } finally {
       setIsSaving(false);
     }
@@ -241,7 +242,7 @@ export const ComboEditor: React.FC = () => {
       setSourceTab('custom');
     } catch (err) {
       console.error("Erro ao criar combo:", err);
-      alert(t('combo_editor.create_error'));
+      toast.error(t('combo_editor.create_error'));
     }
   };
 
@@ -250,15 +251,15 @@ export const ComboEditor: React.FC = () => {
     setIsDeleting(true);
     try {
       await axios.delete(`${API_URL}/api/combos/${selectedCombo._index}`);
-      alert(t('combo_editor.delete_success' as any) || 'Combo excluído com sucesso!');
+      toast.success(t('combo_editor.delete_success' as any) || 'Combo excluído com sucesso!');
       setCombos(prev => prev.filter(c => c._index !== selectedCombo._index));
       setSelectedIndex(null);
     } catch (err: any) {
       console.error("Erro ao excluir combo:", err);
       if (err.response && err.response.status === 403) {
-        alert(err.response.data.detail || t('combo_editor.delete_error' as any));
+        toast.error(err.response.data.detail || t('combo_editor.delete_error' as any));
       } else {
-        alert(t('combo_editor.delete_error' as any) || 'Erro ao excluir combo.');
+        toast.error(t('combo_editor.delete_error' as any) || 'Erro ao excluir combo.');
       }
     } finally {
       setIsDeleting(false);

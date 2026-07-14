@@ -23,6 +23,7 @@ import SkillTreeEditor from './pages/SkillTreeEditor';
 import MapEngine from './pages/MapEngine';
 import { SetupScreen } from './components/SetupScreen';
 import { useItemLookupStore } from './store/useItemLookupStore';
+import { ToastContainer } from './components/ToastContainer';
 
 type ActiveView = ModuleId | 'settings';
 
@@ -250,6 +251,7 @@ function App() {
           </div>
         </div>
       )}
+      <ToastContainer />
     </>
   );
 }

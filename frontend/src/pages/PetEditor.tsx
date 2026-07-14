@@ -8,6 +8,7 @@ import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
 import { ScriptEditor } from '../components/ScriptEditor';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { toast } from '../store/useToastStore';
 
 type SourceTab = 'rathena' | 'custom';
 
@@ -77,12 +78,12 @@ export const PetEditor: React.FC = () => {
     setIsSaving(true);
     try {
       await axios.put(`${API_URL}/api/pets/${selectedPet.Mob}`, { data: selectedPet });
-      alert(t('pet_editor.save_success'));
+      toast.success(t('pet_editor.save_success'));
       setPets(prev => prev.map(p => p.Mob === selectedPet.Mob ? { ...selectedPet, _source: 'custom' } : p));
       setSourceTab('custom');
     } catch (err) {
       console.error("Erro ao salvar pet:", err);
-      alert(t('pet_editor.save_error'));
+      toast.error(t('pet_editor.save_error'));
     } finally {
       setIsSaving(false);
     }
@@ -119,7 +120,7 @@ export const PetEditor: React.FC = () => {
       setSourceTab('custom');
     } catch (err) {
       console.error("Erro ao criar pet:", err);
-      alert(t('pet_editor.create_error'));
+      toast.error(t('pet_editor.create_error'));
     }
   };
 

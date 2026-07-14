@@ -5,6 +5,7 @@ import { API_URL } from '../config/env';
 import { Search, Plus, Save, Trash2, Database, Sparkles, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { translateApiError } from '../utils/errors';
+import { toast } from '../store/useToastStore';
 
 interface Constant {
   Name: string;
@@ -80,7 +81,7 @@ export const ConstantsEditor: React.FC = () => {
     if (!targetItem) return;
 
     if (targetItem._source === 'rathena' && !targetItem._isNew) {
-      alert(t('constants_editor.alert_delete_core'));
+      toast.error(t('constants_editor.alert_delete_core'));
       return;
     }
 
@@ -110,15 +111,15 @@ export const ConstantsEditor: React.FC = () => {
     for (const c of constants) {
       const name = c.Name.trim();
       if (!name) {
-        alert(t('constants_editor.alert_name_empty'));
+        toast.error(t('constants_editor.alert_name_empty'));
         return;
       }
       if (!reValidName.test(name)) {
-        alert(t('constants_editor.alert_name_invalid'));
+        toast.error(t('constants_editor.alert_name_invalid'));
         return;
       }
       if (names.has(name)) {
-        alert(t('constants_editor.alert_duplicate', { name }));
+        toast.error(t('constants_editor.alert_duplicate', { name }));
         return;
       }
       names.add(name);
@@ -133,12 +134,12 @@ export const ConstantsEditor: React.FC = () => {
       }));
 
       await axios.put(`${API_URL}/api/constants/`, { constants: payload });
-      alert(t('constants_editor.save_success'));
+      toast.success(t('constants_editor.save_success'));
       await fetchConstants();
     } catch (err: any) {
       console.error("Erro ao salvar constantes:", err);
       const errMsg = translateApiError(err?.response?.data?.detail, t) || err.message;
-      alert(t('constants_editor.save_error', { error: errMsg }));
+      toast.error(t('constants_editor.save_error', { error: errMsg }));
     } finally {
       setIsSaving(false);
     }

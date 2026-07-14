@@ -10,6 +10,7 @@ import MonsterAnimator from '../components/MonsterAnimator';
 import MonsterDetail from '../components/MonsterDetail';
 import NewMobModal from '../components/NewMobModal';
 import { localizeLoadingStatus } from '../utils/i18nHelpers';
+import { toast } from '../store/useToastStore';
 
 type SourceTab = 'rathena' | 'custom';
 
@@ -149,7 +150,7 @@ const MonsterEditor: React.FC = () => {
       return true;
     } catch (error) {
       console.error('[webSDE] Falha ao salvar mob:', error);
-      alert(t('monster_editor.status.save_error'));
+      toast.error(t('monster_editor.status.save_error'));
       return false;
     }
   }, []);

@@ -9,6 +9,7 @@ import {
 import { ReferencePicker } from '../components/ReferencePicker';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { translateApiError } from '../utils/errors';
+import { toast } from '../store/useToastStore';
 
 interface ClientData {
   UI_Type: number;
@@ -156,11 +157,11 @@ export default function AchievementEditor() {
       });
 
       // Show success, re-fetch list to get computed status badge right
-      alert(t('achievement_editor.save_success'));
+      toast.success(t('achievement_editor.save_success'));
       await fetchAchievements();
     } catch (err: any) {
       const errMsg = translateApiError(err?.response?.data?.detail, t) || err.message;
-      alert(t('achievement_editor.save_error', { error: errMsg }));
+      toast.error(t('achievement_editor.save_error', { error: errMsg }));
     } finally {
       setIsSaving(false);
     }
@@ -242,7 +243,7 @@ export default function AchievementEditor() {
   // Create new Achievement
   const handleCreate = async () => {
     if (!newId || !newName.trim()) {
-      alert(t('achievement_editor.create_fill_fields'));
+      toast.error(t('achievement_editor.create_fill_fields'));
       return;
     }
 
@@ -275,13 +276,13 @@ export default function AchievementEditor() {
         client_data: client,
       });
 
-      alert(t('achievement_editor.create_success'));
+      toast.success(t('achievement_editor.create_success'));
       setShowNewModal(false);
       await fetchAchievements();
       setSelectedId(newId);
     } catch (err: any) {
       const errMsg = translateApiError(err?.response?.data?.detail, t) || err.message;
-      alert(t('achievement_editor.create_error', { error: errMsg }));
+      toast.error(t('achievement_editor.create_error', { error: errMsg }));
     }
   };
 

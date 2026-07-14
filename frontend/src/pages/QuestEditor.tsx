@@ -8,6 +8,7 @@ import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { translateApiError } from '../utils/errors';
+import { toast } from '../store/useToastStore';
 
 type SourceTab = 'rathena' | 'custom';
 
@@ -194,12 +195,12 @@ export const QuestEditor: React.FC = () => {
         server_data: selectedQuest.server,
         client_data: selectedQuest.client
       });
-      alert(t('quest_editor.save_success'));
+      toast.success(t('quest_editor.save_success'));
       await fetchQuests();
     } catch (err: any) {
       console.error("Erro ao salvar quest:", err);
       const errMsg = translateApiError(err?.response?.data?.detail, t) || err.message;
-      alert(t('quest_editor.save_error') + ': ' + errMsg);
+      toast.error(t('quest_editor.save_error') + ': ' + errMsg);
     } finally {
       setIsSaving(false);
     }
@@ -208,12 +209,12 @@ export const QuestEditor: React.FC = () => {
   // Create new quest
   const handleCreateQuest = async () => {
     if (!newId || !newTitle.trim()) {
-      alert(t('achievement_editor.create_fill_fields'));
+      toast.error(t('achievement_editor.create_fill_fields'));
       return;
     }
 
     if (quests.some(q => q.Id === newId)) {
-      alert(t('api_errors.ERROR_DUPLICATE_ID'));
+      toast.error(t('api_errors.ERROR_DUPLICATE_ID'));
       return;
     }
 
@@ -238,7 +239,7 @@ export const QuestEditor: React.FC = () => {
         client_data: client
       });
 
-      alert(t('quest_editor_extra.alert_save_success'));
+      toast.success(t('quest_editor_extra.alert_save_success'));
       setShowNewModal(false);
       await fetchQuests();
       setSelectedQuestId(newId);
@@ -246,7 +247,7 @@ export const QuestEditor: React.FC = () => {
     } catch (err: any) {
       console.error("Erro ao criar quest:", err);
       const errMsg = translateApiError(err?.response?.data?.detail, t) || err.message;
-      alert(t('quest_editor_extra.alert_create_error', { error: errMsg }));
+      toast.error(t('quest_editor_extra.alert_create_error', { error: errMsg }));
     }
   };
 

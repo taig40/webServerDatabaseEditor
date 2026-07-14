@@ -4,6 +4,7 @@ import { DownloadCloud, Loader2 } from 'lucide-react';
 import { API_URL } from '../config/env';
 import { getDivinePrideApiKey } from '../utils/divinePride';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { toast } from '../store/useToastStore';
 
 export interface DivinePrideImportButtonProps {
   resourceType: 'monster' | 'item' | 'skill';
@@ -24,7 +25,7 @@ export const DivinePrideImportButton: React.FC<DivinePrideImportButtonProps> = (
   const handleImport = async () => {
     const apiKey = getDivinePrideApiKey();
     if (!apiKey || !apiKey.trim()) {
-      alert(t('divinepride.missing_key_alert'));
+      toast.error(t('divinepride.missing_key_alert'));
       return;
     }
 
@@ -50,7 +51,7 @@ export const DivinePrideImportButton: React.FC<DivinePrideImportButtonProps> = (
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.detail || error.message || 'Unknown error';
-      alert(t('divinepride.import_error', { message: errorMessage }));
+      toast.error(t('divinepride.import_error', { message: errorMessage }));
     } finally {
       setIsLoading(false);
     }

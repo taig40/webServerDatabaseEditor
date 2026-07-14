@@ -9,6 +9,7 @@ import NewItemModal from '../components/NewItemModal';
 import ItemDetail from '../components/ItemDetail';
 import { ItemIcon } from '../components/ItemIcon';
 import { localizeLoadingStatus } from '../utils/i18nHelpers';
+import { toast } from '../store/useToastStore';
 
 type SourceTab = 'rathena' | 'custom';
 
@@ -227,7 +228,7 @@ const ItemEditor: React.FC = () => {
       return true;
     } catch (error) {
       console.error("[webSDE] Falha ao salvar", error);
-      alert(t('item_editor.status.save_error'));
+      toast.error(t('item_editor.status.save_error'));
       return false;
     }
   }, [t]);

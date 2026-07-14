@@ -8,6 +8,7 @@ import ClientAssetAudit from '../components/ClientAssetAudit';
 import { ItemIcon } from '../components/ItemIcon';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { localizeLoadingStatus } from '../utils/i18nHelpers';
+import { toast } from '../store/useToastStore';
 
 const ClientItemEditor: React.FC = () => {
   const t = useLanguageStore(state => state.t);
@@ -85,7 +86,7 @@ const ClientItemEditor: React.FC = () => {
       return true;
     } catch (err) {
       console.error('[webSDE] Falha ao salvar client item', err);
-      alert(t('client_item_editor.save_error'));
+      toast.error(t('client_item_editor.save_error'));
       return false;
     }
   }, [t]);
@@ -118,9 +119,9 @@ const ClientItemEditor: React.FC = () => {
     } catch (err: any) {
       const status = err?.response?.status;
       if (status === 409) {
-        alert(t('client_item_editor.create_duplicate_error'));
+        toast.error(t('client_item_editor.create_duplicate_error'));
       } else {
-        alert(t('client_item_editor.create_error'));
+        toast.error(t('client_item_editor.create_error'));
       }
       return false;
     }
@@ -142,7 +143,7 @@ const ClientItemEditor: React.FC = () => {
         setSelectedItemId(null);
         return true;
       }
-      alert(t('client_item_delete.error_generic'));
+      toast.error(t('client_item_delete.error_generic'));
       return false;
     }
   }, [t]);

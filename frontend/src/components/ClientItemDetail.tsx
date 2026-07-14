@@ -8,6 +8,7 @@ import {
 import { GrfAssetPickerModal } from './GrfAssetPickerModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { toast } from '../store/useToastStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -182,7 +183,7 @@ const AssetUploadButton: React.FC<{
       await axios.post(endpoint, form, { headers: { 'Content-Type': 'multipart/form-data' } });
       onUploaded();
     } catch (err: any) {
-      alert(t('client_item_detail.upload_error', { error: err?.response?.data?.detail ?? err.message }));
+      toast.error(t('client_item_detail.upload_error', { error: err?.response?.data?.detail ?? err.message }));
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';

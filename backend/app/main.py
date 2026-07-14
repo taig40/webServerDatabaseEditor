@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 # ─── Load Environment Variables First (Highest Priority) ─────────────────────
 if getattr(sys, 'frozen', False):
-    exe_dir = os.path.dirname(sys.executable)
+    exe_dir = os.path.dirname(os.path.abspath(sys.executable))
     bundle_dir = getattr(sys, '_MEIPASS', exe_dir)
     env_path = os.path.join(exe_dir, ".env")
     env_template_path = os.path.join(bundle_dir, ".env-template")

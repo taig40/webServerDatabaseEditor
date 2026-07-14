@@ -5,6 +5,8 @@ import { Search, Plus, Trash2, ShieldAlert, Save, Info } from 'lucide-react';
 import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
+import { toast } from '../store/useToastStore';
 
 const STATES = ['any','idle','walk','dead','loot','attack','angry','chase','follow','anytarget'];
 const TARGETS = [
@@ -87,6 +89,8 @@ export const MobSkillEditor: React.FC = () => {
   const [saveMsg, setSaveMsg] = useState<{ok: boolean; text: string} | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<'mob' | 'skill'>('skill');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [skillToDelete, setSkillToDelete] = useState<{ index: number; source: string } | null>(null);
 
   useEffect(() => { fetchMobSkills(); }, []);
 
@@ -150,10 +154,12 @@ export const MobSkillEditor: React.FC = () => {
         ));
       }
       setSaveMsg({ ok: true, text: t('mob_skill_editor.save_success') });
+      toast.success(t('mob_skill_editor.save_success'));
       setTimeout(() => setSaveMsg(null), 3000);
     } catch (err) {
       console.error("Erro ao salvar habilidade:", err);
       setSaveMsg({ ok: false, text: t('mob_skill_editor.save_error') });
+      toast.error(t('mob_skill_editor.save_error'));
     } finally {
       setIsSaving(false);
     }
@@ -173,22 +179,30 @@ export const MobSkillEditor: React.FC = () => {
       const res = await axios.post(`${API_URL}/api/mob_skills/`, { data: newEntry });
       setMobSkills(prev => [...prev, res.data]);
       setSelectedSkillIndex(res.data._line_index);
+      toast.success(t('mob_skill_editor.create_success' as any) || 'Habilidade criada com sucesso!');
     } catch (err) {
       console.error("Erro ao criar habilidade:", err);
-      alert(t('mob_skill_editor.create_error'));
+      toast.error(t('mob_skill_editor.create_error'));
     }
   };
 
-  const handleDeleteSkill = async (index: number, source: string) => {
-    if (!confirm(t('mob_skill_editor.delete_confirm'))) return;
+  const confirmDeleteSkill = async (index: number, source: string) => {
     try {
       await axios.delete(`${API_URL}/api/mob_skills/${index}?source=${source}`);
+      toast.success(t('mob_skill_editor.delete_success' as any) || 'Habilidade excluída com sucesso!');
       setMobSkills(prev => prev.filter(s => s._line_index !== index));
       if (selectedSkillIndex === index) setSelectedSkillIndex(null);
     } catch (err) {
       console.error("Erro ao deletar habilidade:", err);
-      alert(t('mob_skill_editor.delete_error'));
+      toast.error(t('mob_skill_editor.delete_error'));
+    } finally {
+      setDeleteModalOpen(false);
     }
+  };
+
+  const handleDeleteSkill = (index: number, source: string) => {
+    setSkillToDelete({ index, source });
+    setDeleteModalOpen(true);
   };
 
   const s = selectedSkillEntry;
@@ -456,6 +470,13 @@ export const MobSkillEditor: React.FC = () => {
             upd('skill_id', Number(id));
           }
         }}
+      />
+
+      <DeleteConfirmModal
+        isOpen={deleteModalOpen}
+        entityLabel={`Skill line #${skillToDelete?.index ?? ''}`}
+        onConfirm={() => skillToDelete && confirmDeleteSkill(skillToDelete.index, skillToDelete.source)}
+        onCancel={() => setDeleteModalOpen(false)}
       />
     </div>
   );
