@@ -5,6 +5,7 @@ import { API_URL } from '../config/env';
 import Editor from '@monaco-editor/react';
 import { initRathenaItemScript, validateItemScript } from '../monaco/rathenaItemScript';
 import NpcShopModal from './NpcShopModal';
+import { SoldBySection } from './SoldBySection';
 import { ItemIcon } from './ItemIcon';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { DivinePrideImporterPanel } from './DivinePrideImporterPanel';
@@ -69,9 +70,7 @@ interface ItemDetailProps {
 const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => {
   const t = useLanguageStore(state => state.t);
   const [drops, setDrops] = useState<any[]>([]);
-  const [soldBy, setSoldBy] = useState<any[]>([]);
   const [isLoadingDrops, setIsLoadingDrops] = useState(false);
-  const [isLoadingShops, setIsLoadingShops] = useState(false);
   const [localItem, setLocalItem] = useState(item);
   const [selectedShop, setSelectedShop] = useState<any | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -107,20 +106,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
       }
     };
     
-    const fetchSoldBy = async () => {
-      setIsLoadingShops(true);
-      try {
-        const res = await axios.get(`${API_URL}/api/items/${item.Id}/sold_by`);
-        setSoldBy(res.data);
-      } catch (err) {
-        console.error("Erro ao buscar lojas:", err);
-      } finally {
-        setIsLoadingShops(false);
-      }
-    };
-    
     fetchDrops();
-    fetchSoldBy();
   }, [item.Id]);
 
   const handleFieldChange = (field: string, val: any, isNumber = false) => {
@@ -662,42 +648,11 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
           </div>
         </div>
 
-        {/* Sold By (NPC Shops) */}
-        <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl xl:col-span-2">
-           <div className="flex items-center gap-2 mb-4 text-white border-b border-white/5 pb-2">
-            <Store size={18} className="text-cyan-400" />
-            <h3 className="font-semibold">{t('item_detail.sold_by')}</h3>
-           </div>
-           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-             {isLoadingShops ? (
-                 <span className="text-sm text-gray-500 col-span-full">{t('item_detail.loading_shops')}</span>
-             ) : soldBy.length === 0 ? (
-                 <span className="text-sm text-gray-500 col-span-full">{t('item_detail.no_shops')}</span>
-             ) : (
-                 soldBy.map((shop, idx) => (
-                     <button
-                        key={idx}
-                        onClick={() => setSelectedShop(shop)}
-                        className="flex items-center gap-3 bg-dark-900 border border-white/10 p-3.5 rounded-xl hover:border-cyan-500/50 hover:bg-cyan-500/5 hover:ring-2 hover:ring-cyan-500/10 transition-all shadow-sm w-full"
-                     >
-                         <div className="w-11 h-11 rounded-lg bg-dark-950 flex items-center justify-center shrink-0 overflow-hidden border border-white/5 shadow-inner">
-                             <img 
-                                src={`${API_URL}/api/grf/sprite?type=npc&id=${shop.sprite_id}`}
-                                className="max-w-full max-h-full object-contain transform scale-125 hover:scale-150 transition-transform duration-200"
-                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                             />
-                         </div>
-                         <div className="flex flex-col text-left min-w-0">
-                            <span className="text-xs font-semibold text-gray-200 truncate">{shop.name}</span>
-                            <span className="text-[10px] text-cyan-400/80 font-mono mt-0.5 truncate">
-                              {shop.map} {shop.x > 0 || shop.y > 0 ? `(${shop.x}, ${shop.y})` : ''}
-                            </span>
-                         </div>
-                      </button>
-                  ))
-             )}
-          </div>
-        </div>
+        {/* Sold By (NPC Shops) - Isolated Component with Error Boundary */}
+        <SoldBySection
+          itemId={item.Id}
+          onSelectShop={(shop) => setSelectedShop(shop)}
+        />
         
       </div>
       

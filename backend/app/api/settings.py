@@ -307,6 +307,10 @@ async def reload_settings():
     sizefix_db.initialize()
     reloaded.append("sizefix_db")
 
+    from app.services.shop_parser_service import shop_service
+    shop_service.load_async()
+    reloaded.append("shop_service")
+
     return {
         "status": "reloaded",
         "grf_count": len(grf_list),

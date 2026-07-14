@@ -1,3 +1,4 @@
+from typing import Union, Optional
 from fastapi import APIRouter, Query, HTTPException
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
@@ -54,37 +55,37 @@ async def get_item_references():
         })
     return {"items": result}
 
+@router.get("/{item_id}/sold-by")
 @router.get("/{item_id}/sold_by")
-async def get_item_sold_by(item_id: int):
+async def get_item_sold_by(item_id: str):
     """
-    Returns a list of shops that sell the given item.
+    Returns a list of shops that sell the given item. Zero-Regression isolated endpoint.
+    If search fails or item not sold, returns HTTP 200 with []
     """
-    item = yaml_db.get_item(item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+    try:
+        from app.services.shop_parser_service import shop_service
+        # Aceita tanto ID numérico como string de AegisName na URL
+        lookup_key: Union[int, str] = int(item_id) if item_id.isdigit() else item_id
+        shops = shop_service.get_sold_by(lookup_key)
+        if not shops and isinstance(lookup_key, int):
+            # Tenta pelo AegisName do item caso exista no cache de itens
+            item = yaml_db.get_item(lookup_key)
+            if item and item.get("AegisName"):
+                shops = shop_service.get_sold_by(item.get("AegisName"))
         
-    shops = npc_db.get_shops_selling_item(item_id, item.get('AegisName'))
-    
-    result = []
-    for s in shops:
-        price = s['items'].get(item_id)
-        if price is None and item.get('AegisName') in s['items']:
-            price = s['items'][item.get('AegisName')]
-            
-        if price == -1:
-            price = item.get('Buy', 0)
-            
-        result.append({
-            "map": s['map'],
-            "x": s['x'],
-            "y": s['y'],
-            "name": s['name'],
-            "full_name": s['full_name'],
-            "sprite_id": s['sprite_id'],
-            "price": price,
-            "all_items": s['items']
-        })
-    return result
+        # Ajusta preço padrão se o preço específico for -1 (preço nativo do item)
+        if shops and isinstance(lookup_key, int):
+            item_data = yaml_db.get_item(lookup_key)
+            if item_data:
+                default_buy = item_data.get("Buy", 0)
+                for s in shops:
+                    if s.get("price") == -1 and default_buy:
+                        s["price"] = default_buy
+
+        return shops or []
+    except Exception as e:
+        print(f"[items.py] Erro em /sold-by para item {item_id}: {e}")
+        return []
 
 from typing import Optional
 

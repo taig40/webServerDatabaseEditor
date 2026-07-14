@@ -137,6 +137,9 @@
     "no_drops": "No monster drops this item natively.",
     "loading_shops": "Looking for shops in the world...",
     "no_shops": "This item is not sold in any default shop.",
+    "copy_navi": "Copy Navi",
+    "navi_copied": "/navi command copied to clipboard!",
+    "sold_by_error": "Unable to load sellers.",
     "table": {
       "mob_id": "Mob ID",
       "name": "Original Name (kRO)",

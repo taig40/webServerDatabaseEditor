@@ -137,6 +137,9 @@
     "no_drops": "Nenhum monstro dropa este item nativamente.",
     "loading_shops": "Buscando lojas pelo mundo...",
     "no_shops": "Este item não é vendido em nenhuma loja padrão.",
+    "copy_navi": "Copiar Navi",
+    "navi_copied": "Comando /navi copiado para a área de transferência!",
+    "sold_by_error": "Não foi possível carregar os vendedores.",
     "table": {
       "mob_id": "Mob ID",
       "name": "Nome Original (kRO)",

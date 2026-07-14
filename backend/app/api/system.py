@@ -109,6 +109,9 @@ async def initialize_cache():
             job_aspd_db.load()
             job_outfits_db.load()
 
+            from app.services.shop_parser_service import shop_service
+            shop_service.load_async()
+
             grf_path = os.environ.get("GRF_PATH", "")
             if grf_path or any(os.environ.get(f"GRF_{i}", "").strip() for i in range(MAX_GRF_SLOTS)):
                 override_path = os.environ.get("GRF_OVERRIDE_PATH", "")
