@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, User, UserCheck } from 'lucide-react';
 import { API_URL } from '../config/env';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { VisualBrowserModal } from './VisualBrowserModal';
 
 interface FittingRoomProps {
   viewId: number | undefined;
+  onSelectViewId?: (viewId: number) => void;
 }
 
-export const FittingRoom: React.FC<FittingRoomProps> = ({ viewId }) => {
+export const FittingRoom: React.FC<FittingRoomProps> = ({ viewId, onSelectViewId }) => {
   const t = useLanguageStore(state => state.t);
   const [isMale, setIsMale] = useState<boolean>(true);
   const [direction, setDirection] = useState<number>(0);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   const rotateLeft = () => {
     setDirection(prev => (prev + 1) % 8);
@@ -96,6 +99,22 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ viewId }) => {
           </span>
         </button>
       </div>
+      {/* Browse Catalog button */}
+      <button
+        type="button"
+        onClick={() => setIsModalOpen(true)}
+        className="w-full mt-3 py-1.5 px-3 rounded-lg text-xs font-semibold bg-dark-900 hover:bg-dark-950 text-violet-400 hover:text-violet-300 border border-white/5 hover:border-violet-500/30 transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
+      >
+        <span>{t('fitting_room.catalog_btn' as any) || 'Browse Catalog'}</span>
+      </button>
+
+      <VisualBrowserModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSelect={(val) => {
+          if (onSelectViewId) onSelectViewId(val);
+        }}
+      />
     </div>
   );
 };

@@ -110,13 +110,22 @@ class VisualsDB:
         
     def get_handlers(self) -> Tuple[VisualLuaHandler, VisualLuaHandler]:
         if not self.accessoryid_handler or not self.accname_handler:
-            override_path = grf_reader.override_path
-            if not override_path:
-                raise RuntimeError("System folder path not configured in GRF settings.")
-            sys_path = os.path.join(override_path, "System")
+            lua_path = os.environ.get("RO_LUA_FILES_PATH", "").strip()
             
-            acc_id_path = os.path.join(sys_path, "accessoryid.lua")
-            acc_name_path = os.path.join(sys_path, "accname.lua")
+            if lua_path and os.path.exists(lua_path):
+                acc_id_path = os.path.join(lua_path, "accessoryid.lua")
+                if not os.path.exists(acc_id_path):
+                    acc_id_path = os.path.join(lua_path, "accessoryid.lub")
+                    
+                acc_name_path = os.path.join(lua_path, "accname.lua")
+                if not os.path.exists(acc_name_path):
+                    acc_name_path = os.path.join(lua_path, "accname.lub")
+            else:
+                override_path = grf_reader.override_path
+                sys_path = os.path.join(override_path, "System") if override_path else ""
+                
+                acc_id_path = os.path.join(sys_path, "accessoryid.lua")
+                acc_name_path = os.path.join(sys_path, "accname.lua")
             
             self.accessoryid_handler = VisualLuaHandler(acc_id_path, is_accname=False)
             self.accname_handler = VisualLuaHandler(acc_name_path, is_accname=True)
@@ -127,17 +136,44 @@ class VisualsDB:
         return self.accessoryid_handler, self.accname_handler
         
     def get_visual(self, view_id: int) -> Optional[dict]:
-        acc_id, acc_name = self.get_handlers()
-        identity = acc_id.ast_dict.get(view_id)
-        if not identity:
+        try:
+            acc_id, acc_name = self.get_handlers()
+            identity = acc_id.ast_dict.get(view_id)
+            if not identity:
+                return None
+                
+            name = acc_name.identity_dict.get(identity.replace("ACCESSORY_", ""), "")
+            return {
+                "view_id": view_id,
+                "identity": identity,
+                "name": name
+            }
+        except Exception:
             return None
+
+    def get_all_accessories(self) -> list[dict]:
+        """
+        Cruza as tabelas de accessoryid e accname e retorna
+        a lista completa de acessórios registrados.
+        """
+        try:
+            acc_id, acc_name = self.get_handlers()
+        except Exception:
+            return []
             
-        name = acc_name.identity_dict.get(identity.replace("ACCESSORY_", ""), "")
-        return {
-            "view_id": view_id,
-            "identity": identity,
-            "name": name
-        }
+        results = []
+        for val, identity in acc_id.ast_dict.items():
+            suffix = identity.replace("ACCESSORY_", "")
+            sprite_name = acc_name.identity_dict.get(suffix, "")
+            results.append({
+                "view_id": val,
+                "sprite_name": sprite_name,
+                "constant": identity
+            })
+            
+        # Ordenar por view_id crescente
+        results.sort(key=lambda x: x["view_id"])
+        return results
         
     def upsert_visual(self, view_id: int, identity: str, name: str) -> dict:
         acc_id, acc_name = self.get_handlers()

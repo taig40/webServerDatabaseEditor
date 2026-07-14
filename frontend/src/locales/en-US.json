@@ -1362,6 +1362,10 @@
     "female": "Female",
     "rotate_left": "Rotate Left",
     "rotate_right": "Rotate Right",
-    "no_sprite": "No accessory preview (View ID is 0 or empty)"
+    "no_sprite": "No accessory preview (View ID is 0 or empty)",
+    "catalog_btn": "Browse Catalog",
+    "search_placeholder": "Search by ID, name or constant...",
+    "no_accessories": "No accessories found. Make sure client files are configured.",
+    "modal_title": "Accessory Catalog"
   }
 }

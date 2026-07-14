@@ -49,3 +49,23 @@ async def get_preview(
     except Exception as e:
         logger.exception(f"Failed to compose character sprite: {e}")
         raise HTTPException(status_code=500, detail="ERROR_COMPOSITION_FAILED")
+
+
+from functools import lru_cache
+
+@lru_cache(maxsize=1)
+def get_cached_accessories_list():
+    """
+    Retorna a lista completa de acessórios com cache para evitar
+    reprocessar os arquivos LUA a cada chamada.
+    """
+    return visuals_db.get_all_accessories()
+
+
+@router.get("/accessories")
+def get_accessories():
+    """
+    Retorna a lista completa de acessórios mapeados do cliente (view_id, sprite_name, constant).
+    """
+    return get_cached_accessories_list()
+
