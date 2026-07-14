@@ -13,7 +13,7 @@ interface AccessoryItem {
 interface VisualBrowserModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (viewId: number) => void;
+  onSelect: (viewId: number, spriteName: string, constant: string) => void;
 }
 
 export const VisualBrowserModal: React.FC<VisualBrowserModalProps> = ({
@@ -123,12 +123,12 @@ export const VisualBrowserModal: React.FC<VisualBrowserModalProps> = ({
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {filtered.map(item => {
-                const previewSrc = `${API_URL}/api/visualizer/preview?sprite_name=${item.sprite_name}&is_male=true&direction=0`;
+                const previewSrc = `${API_URL}/api/visualizer/preview?resource_name=${item.sprite_name}&is_male=true&direction=0`;
                 return (
                   <div
                     key={item.view_id}
                     onClick={() => {
-                      onSelect(item.view_id);
+                      onSelect(item.view_id, item.sprite_name || '', item.constant || '');
                       onClose();
                     }}
                     className="flex flex-col items-center p-3 rounded-xl bg-dark-800/40 border border-white/5 hover:border-violet-500/50 hover:bg-violet-500/5 cursor-pointer hover:scale-[1.03] active:scale-95 transition-all shadow-md group relative overflow-hidden"

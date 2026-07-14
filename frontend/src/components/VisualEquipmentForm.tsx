@@ -3,6 +3,7 @@ import axios from 'axios';
 import { API_URL } from '../config/env';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { Save, AlertCircle } from 'lucide-react';
+import { FittingRoom } from './FittingRoom';
 
 interface VisualEquipmentFormProps {
   viewId: number;
@@ -75,75 +76,91 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#0a0a0f] p-8 h-full">
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <div className="bg-[#12121a] rounded-2xl border border-white/5 p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <h2 className="text-xl font-bold text-white tracking-tight">
-              {t('visual_equipment.title' as any) || 'Visual Configuration'}
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-400">View ID (ClassNum)</label>
-              <input
-                type="number"
-                value={currentViewId}
-                onChange={(e) => setCurrentViewId(parseInt(e.target.value) || 0)}
-                className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
-                placeholder="Ex: 2000"
-              />
+        {/* Left Column (Form) */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-[#12121a] rounded-2xl border border-white/5 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <h2 className="text-xl font-bold text-white tracking-tight">
+                {t('visual_equipment.title' as any) || 'Visual Configuration'}
+              </h2>
             </div>
             
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-400">Identity (accessoryid.lua)</label>
-              <input
-                type="text"
-                value={identity}
-                onChange={(e) => setIdentity(e.target.value)}
-                className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
-                placeholder="Ex: ACCESSORY_CustomWings"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">View ID (ClassNum)</label>
+                <input
+                  type="number"
+                  value={currentViewId}
+                  onChange={(e) => setCurrentViewId(parseInt(e.target.value) || 0)}
+                  className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
+                  placeholder="Ex: 2000"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">Identity (accessoryid.lua)</label>
+                <input
+                  type="text"
+                  value={identity}
+                  onChange={(e) => setIdentity(e.target.value)}
+                  className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
+                  placeholder="Ex: ACCESSORY_CustomWings"
+                />
+              </div>
+              
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-gray-400">Sprite Name (accname.lua) / Resource Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
+                  placeholder="Ex: _CustomWings"
+                />
+              </div>
             </div>
             
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium text-gray-400">Sprite Name (accname.lua)</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
-                placeholder="Ex: _CustomWings"
-              />
-            </div>
-          </div>
-          
-          {message && (
-            <div className={`mt-6 p-4 rounded-xl flex items-start gap-3 ${message.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-              <AlertCircle size={20} className="shrink-0 mt-0.5" />
-              <p className="text-sm leading-relaxed">{message.text}</p>
-            </div>
-          )}
+            {message && (
+              <div className={`mt-6 p-4 rounded-xl flex items-start gap-3 ${message.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                <AlertCircle size={20} className="shrink-0 mt-0.5" />
+                <p className="text-sm leading-relaxed">{message.text}</p>
+              </div>
+            )}
 
-          <div className="mt-8 flex justify-end">
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save size={18} />
-              {isSaving ? (t('common.saving' as any) || 'Saving...') : (t('common.save' as any) || 'Save Configuration')}
-            </button>
+            <div className="mt-8 flex justify-end">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Save size={18} />
+                {isSaving ? (t('common.saving' as any) || 'Saving...') : (t('common.save' as any) || 'Save Configuration')}
+              </button>
+            </div>
           </div>
         </div>
-        
-        <div className="bg-[#12121a] rounded-2xl border border-white/5 p-6 opacity-60">
-           <h3 className="text-sm font-semibold text-gray-300 mb-2">How it works</h3>
-           <p className="text-xs text-gray-400 leading-relaxed">
-             This module edits <code>accessoryid.lua</code> and <code>accname.lua</code> directly. The server automatically tries to preserve the native CP949 encoding required by the RO Client. If you change the <strong>View ID</strong> here and save, the Basic Information tab will be automatically synchronized.
-           </p>
+
+        {/* Right Column (Fitting Room + Info) */}
+        <div className="space-y-6">
+          <FittingRoom
+            resourceName={name}
+            onSelectAccessory={(spriteName, selectedViewId, selectedConstant) => {
+              setName(spriteName);
+              setCurrentViewId(selectedViewId);
+              setIdentity(selectedConstant);
+            }}
+          />
+
+          <div className="bg-[#12121a] rounded-2xl border border-white/5 p-6 opacity-60">
+             <h3 className="text-sm font-semibold text-gray-300 mb-2">How it works</h3>
+             <p className="text-xs text-gray-400 leading-relaxed">
+               This module edits <code>accessoryid.lua</code> and <code>accname.lua</code> directly. The server automatically tries to preserve the native CP949 encoding required by the RO Client. If you change the <strong>View ID</strong> here and save, the Basic Information tab will be automatically synchronized.
+             </p>
+          </div>
         </div>
+
       </div>
     </div>
   );

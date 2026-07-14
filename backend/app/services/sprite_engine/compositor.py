@@ -120,9 +120,9 @@ def draw_frame_part(canvas: Image.Image, spr: SprParser, act: ActParser, action_
         x_pos = int(cx + sprite['x'] - img.width / 2)
         y_pos = int(cy + sprite['y'] - img.height / 2)
         
-        # Blend using alpha compositing
+        # Blend using alpha compositing with mask to keep transparency intact
         temp_img = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-        temp_img.paste(img, (x_pos, y_pos))
+        temp_img.paste(img, (x_pos, y_pos), mask=img)
         canvas.alpha_composite(temp_img)
 
 
@@ -155,13 +155,19 @@ def compose_character(accessory_name: str, is_male: bool, direction: int) -> byt
     head_act_path = f"{head_base}.act"
     
     acc_spr, acc_act = None, None
-    if accessory_name:
-        acc_spr_path = f"{acc_dir}/{accessory_name}_{gender_suffix}.spr"
-        acc_act_path = f"{acc_dir}/{accessory_name}_{gender_suffix}.act"
+    if accessory_name and accessory_name.strip() not in ("", "0", "None", "null"):
+        # No RO standard, o acessório está em data/sprite/악세사리/남 (ou 여)
+        acc_spr_path = f"data/sprite/악세사리/{gender_folder}/{accessory_name}_{gender_suffix}.spr"
+        acc_act_path = f"data/sprite/악세사리/{gender_folder}/{accessory_name}_{gender_suffix}.act"
         
         # 2. Extract and parse files from GRF
-        logger.info(f"Loading accessory '{accessory_name}' from GRF...")
-        acc_spr, acc_act = load_sprite_from_grf(acc_spr_path, acc_act_path)
+        logger.info(f"Loading accessory '{accessory_name}' from GRF paths '{acc_spr_path}', '{acc_act_path}'...")
+        try:
+            acc_spr, acc_act = load_sprite_from_grf(acc_spr_path, acc_act_path)
+            if not acc_spr or not acc_act:
+                logger.warning(f"Accessory files not found in GRF for '{accessory_name}' (paths: {acc_spr_path}, {acc_act_path})")
+        except Exception as e:
+            logger.warning(f"Failed to load accessory '{accessory_name}' from GRF: {e}")
     
     # 2b. Extract and parse body and head files from GRF
     logger.info("Loading body parts from GRF...")

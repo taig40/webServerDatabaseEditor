@@ -5,11 +5,11 @@ import { useLanguageStore } from '../store/useLanguageStore';
 import { VisualBrowserModal } from './VisualBrowserModal';
 
 interface FittingRoomProps {
-  viewId: number | undefined;
-  onSelectViewId?: (viewId: number) => void;
+  resourceName: string | undefined;
+  onSelectAccessory?: (spriteName: string, viewId: number, constant: string) => void;
 }
 
-export const FittingRoom: React.FC<FittingRoomProps> = ({ viewId, onSelectViewId }) => {
+export const FittingRoom: React.FC<FittingRoomProps> = ({ resourceName, onSelectAccessory }) => {
   const t = useLanguageStore(state => state.t);
   const [isMale, setIsMale] = useState<boolean>(true);
   const [direction, setDirection] = useState<number>(0);
@@ -28,7 +28,7 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ viewId, onSelectViewId
   };
 
   // Build API URL for the direct preview image
-  const previewUrl = `${API_URL}/api/visualizer/preview?view_id=${viewId ?? 0}&is_male=${isMale}&direction=${direction}`;
+  const previewUrl = `${API_URL}/api/visualizer/preview?resource_name=${resourceName ?? ''}&is_male=${isMale}&direction=${direction}`;
 
   return (
     <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl flex flex-col items-center">
@@ -44,17 +44,17 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ viewId, onSelectViewId
 
       {/* Sprite Canvas stage */}
       <div className="relative w-48 h-48 bg-dark-950/80 rounded-xl border border-white/10 flex items-center justify-center overflow-hidden shadow-inner group">
-        {viewId && viewId > 0 ? (
+        {resourceName && resourceName.trim() !== "" ? (
           <img
             src={previewUrl}
             alt="Character Preview"
             className="w-full h-full object-contain pixelated select-none"
-            key={`${viewId}-${isMale}-${direction}`} // force re-render/refetch on change
+            key={`${resourceName}-${isMale}-${direction}`} // force re-render/refetch on change
           />
         ) : (
           <div className="text-center p-4 flex flex-col items-center justify-center h-full">
             <span className="text-xs text-gray-500 italic">
-              {t('fitting_room.no_sprite' as any) || 'No accessory preview (View ID is 0 or empty)'}
+              {t('fitting_room.no_sprite' as any) || 'No accessory preview (Sprite Name is empty)'}
             </span>
           </div>
         )}
@@ -111,8 +111,8 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ viewId, onSelectViewId
       <VisualBrowserModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSelect={(val) => {
-          if (onSelectViewId) onSelectViewId(val);
+        onSelect={(viewId, spriteName, constant) => {
+          if (onSelectAccessory) onSelectAccessory(spriteName, viewId, constant);
         }}
       />
     </div>
