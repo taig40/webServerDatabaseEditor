@@ -121,9 +121,7 @@ def draw_frame_part(canvas: Image.Image, spr: SprParser, act: ActParser, action_
         y_pos = int(cy + sprite['y'] - img.height / 2)
         
         # Blend using alpha compositing with mask to keep transparency intact
-        temp_img = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-        temp_img.paste(img, (x_pos, y_pos), mask=img)
-        canvas.alpha_composite(temp_img)
+        canvas.paste(img, (x_pos, y_pos), mask=img)
 
 
 def compose_character(accessory_name: str, is_male: bool, direction: int) -> bytes:
@@ -172,28 +170,15 @@ def compose_character(accessory_name: str, is_male: bool, direction: int) -> byt
     # 2b. Extract and parse body and head files from GRF
     logger.info("Loading body parts from GRF...")
     body_spr, body_act = load_sprite_from_grf(body_spr_path, body_act_path)
+    if not body_spr or not body_act:
+        raise ValueError(f"Failed to load body sprite/act from GRF: {body_spr_path} / {body_act_path}")
     
     logger.info("Loading head parts from GRF...")
     head_spr, head_act = load_sprite_from_grf(head_spr_path, head_act_path)
+    if not head_spr or not head_act:
+        raise ValueError(f"Failed to load head sprite/act from GRF: {head_spr_path} / {head_act_path}")
     
-    # Sanity check: Save isolated layers for debugging
-    if body_spr and body_spr.images:
-        body_img = body_spr.images[0]
-        logger.info(f"DEBUG: body_img size: {body_img.size}")
-        try:
-            body_img.save("debug_body.png")
-            logger.info("DEBUG: Saved debug_body.png")
-        except Exception as e:
-            logger.warning(f"DEBUG: Failed to save debug_body.png: {e}")
-            
-    if head_spr and head_spr.images:
-        head_img = head_spr.images[0]
-        logger.info(f"DEBUG: head_img size: {head_img.size}")
-        try:
-            head_img.save("debug_head.png")
-            logger.info("DEBUG: Saved debug_head.png")
-        except Exception as e:
-            logger.warning(f"DEBUG: Failed to save debug_head.png: {e}")
+
             
     # 3. Setup canvas (Transparent 200x200)
     canvas = Image.new("RGBA", (200, 200), (255, 255, 255, 0))
