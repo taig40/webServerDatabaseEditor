@@ -109,7 +109,7 @@ def draw_frame_part(canvas: Image.Image, spr: SprParser, act: ActParser, action_
         # Adjust opacity/alpha if color has transparency
         color = sprite.get('color', 0xFFFFFFFF)
         if color != 0xFFFFFFFF:
-            a_tint = color & 0xFF
+            a_tint = (color >> 24) & 0xFF
             if a_tint < 255:
                 # Apply alpha factor
                 r_ch, g_ch, b_ch, a_ch = img.split()
@@ -170,6 +170,25 @@ def compose_character(accessory_name: str, is_male: bool, direction: int) -> byt
     logger.info("Loading head parts from GRF...")
     head_spr, head_act = load_sprite_from_grf(head_spr_path, head_act_path)
     
+    # Sanity check: Save isolated layers for debugging
+    if body_spr and body_spr.images:
+        body_img = body_spr.images[0]
+        logger.info(f"DEBUG: body_img size: {body_img.size}")
+        try:
+            body_img.save("debug_body.png")
+            logger.info("DEBUG: Saved debug_body.png")
+        except Exception as e:
+            logger.warning(f"DEBUG: Failed to save debug_body.png: {e}")
+            
+    if head_spr and head_spr.images:
+        head_img = head_spr.images[0]
+        logger.info(f"DEBUG: head_img size: {head_img.size}")
+        try:
+            head_img.save("debug_head.png")
+            logger.info("DEBUG: Saved debug_head.png")
+        except Exception as e:
+            logger.warning(f"DEBUG: Failed to save debug_head.png: {e}")
+            
     # 3. Setup canvas (Transparent 200x200)
     canvas = Image.new("RGBA", (200, 200), (255, 255, 255, 0))
     

@@ -16,13 +16,13 @@ def main():
     from app.core.config import get_config_path, load_config_file
     cfg_path = get_config_path()
     if os.path.exists(cfg_path):
-        env_vars = load_config_file(cfg_path)
-        grf_path = env_vars.get("GRF_PATH", "")
+        load_config_file(cfg_path)
+        grf_path = os.environ.get("GRF_PATH", "")
         if grf_path:
             grf_reader.load(grf_path)
             print(f"[*] Loaded primary GRF path: {grf_path}")
         else:
-            db_path = env_vars.get("RATHENA_DB_PATH", "")
+            db_path = os.environ.get("RATHENA_DB_PATH", "")
             if db_path:
                 parent = os.path.dirname(os.path.normpath(db_path))
                 possible_grf = os.path.join(parent, "data.grf")
@@ -74,38 +74,52 @@ def main():
 def run_mock_compositor_test():
     print("[*] Running mock compositor test with synthetic SPR and ACT components...")
     
-    # Generate transparent 2x2 SPR frame
+    # Generate visible 2x2 SPR frame: solid red index 1
     spr_header = b'SPRX' + struct.pack('<H', 0x0201) + struct.pack('<H', 1) + struct.pack('<H', 0)
-    indexed_frame_header = struct.pack('<HHH', 2, 2, 2) + b'\x00\x04' # w=2, h=2, comp_size=2, RLE: 4 transparent
-    palette = b'\x00' * 1024
-    spr_data = spr_header + indexed_frame_header + palette
+    indexed_frame_header = struct.pack('<HHH', 2, 2, 4) + b'\x01\x01\x01\x01' # w=2, h=2, comp_size=4, 4 pixels of index 1
+    
+    palette = bytearray(1024)
+    palette[4] = 255 # R
+    palette[5] = 0   # G
+    palette[6] = 0   # B
+    palette[7] = 255 # A
+    spr_data = spr_header + indexed_frame_header + bytes(palette)
 
-    # Generate mock ACT data helper
+    # Generate mock ACT data helper with 1 visible sprite
     def make_mock_act_bytes(ap_id, ap_x, ap_y):
         act_header = b'AC\x00\x00' + struct.pack('<H', 0x0203) + struct.pack('<H', 1) + b'\x00' * 10
         act_action = struct.pack('<I', 1) # 1 frame
-        act_frame = b'\x00' * 32 + struct.pack('<I', 0) # 0 sprites
+        
+        act_frame_header = b'\x00' * 32
+        act_sprite_count = struct.pack('<I', 1)
+        # Sprite: x=0, y=0, spr_num=0, mirror=0, color=0xFFFFFFFF, scale=1.0, rotation=0, spr_type=0
+        act_sprite = struct.pack('<iiiiIfii', 0, 0, 0, 0, 0xFFFFFFFF, 1.0, 0, 0)
+        
         act_frame_end = struct.pack('<i', -1) # Event ID
         act_ap_count = struct.pack('<I', 1) # 1 attach point
         act_ap = struct.pack('<iiii', ap_x, ap_y, ap_id, 0)
         act_events = struct.pack('<I', 0)
         act_intervals = struct.pack('<f', 150.0)
-        return act_header + act_action + act_frame + act_frame_end + act_ap_count + act_ap + act_events + act_intervals
+        return act_header + act_action + act_frame_header + act_sprite_count + act_sprite + act_frame_end + act_ap_count + act_ap + act_events + act_intervals
 
     # Create mock body, head, and accessory ACT bytes
     body_act_bytes = make_mock_act_bytes(0, 5, -10) # Neck on body (id=0) at (5, -10)
     
-    # For head we need 2 attachment points (Neck id=0 at (2, 8), Hat id=1 at (0, -12))
+    # For head we need 2 attachment points (Neck id=0 at (2, 8), Hat id=1 at (0, -12)) and 1 sprite
     head_header = b'AC\x00\x00' + struct.pack('<H', 0x0203) + struct.pack('<H', 1) + b'\x00' * 10
     head_action = struct.pack('<I', 1)
-    head_frame = b'\x00' * 32 + struct.pack('<I', 0)
+    head_frame_header = b'\x00' * 32
+    head_sprite_count = struct.pack('<I', 1)
+    # Sprite: x=0, y=0, spr_num=0, mirror=0, color=0xFFFFFFFF, scale=1.0, rotation=0, spr_type=0
+    head_sprite = struct.pack('<iiiiIfii', 0, 0, 0, 0, 0xFFFFFFFF, 1.0, 0, 0)
     head_frame_end = struct.pack('<i', -1)
     head_ap_count = struct.pack('<I', 2)
     head_ap1 = struct.pack('<iiii', 2, 8, 0, 0) # Neck (id=0) at (2, 8)
     head_ap2 = struct.pack('<iiii', 0, -12, 1, 0) # Hat (id=1) at (0, -12)
     head_events = struct.pack('<I', 0)
     head_intervals = struct.pack('<f', 150.0)
-    head_act_bytes = head_header + head_action + head_frame + head_frame_end + head_ap_count + head_ap1 + head_ap2 + head_events + head_intervals
+    head_act_bytes = (head_header + head_action + head_frame_header + head_sprite_count + head_sprite + 
+                      head_frame_end + head_ap_count + head_ap1 + head_ap2 + head_events + head_intervals)
 
     acc_act_bytes = make_mock_act_bytes(1, 0, 0) # Hat anchor on accessory (id=1) at (0, 0)
 
@@ -170,6 +184,15 @@ def run_mock_compositor_test():
     output_path = os.path.join(os.path.dirname(__file__), "output_character_mock.png")
     canvas.save(output_path, format="PNG")
     print(f"[+] Saved mock composed character image to: '{output_path}'")
+    
+    # Assert composed character has visible pixels
+    non_transparent = 0
+    for pixel in canvas.getdata():
+        if pixel[3] > 0:
+            non_transparent += 1
+    print(f"[+] Mock Composed Image non-transparent pixels: {non_transparent}")
+    assert non_transparent > 0, "Error: Composed mock image is completely transparent!"
+    
     print("[+] Mock compositor test PASSED successfully!")
 
 

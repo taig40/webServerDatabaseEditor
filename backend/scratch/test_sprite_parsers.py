@@ -24,15 +24,15 @@ def main():
         from app.core.config import get_config_path, load_config_file
         cfg_path = get_config_path()
         if os.path.exists(cfg_path):
-            env_vars = load_config_file(cfg_path)
+            load_config_file(cfg_path)
             # Find any GRF path or rathena path in config
-            grf_path = env_vars.get("GRF_PATH", "")
+            grf_path = os.environ.get("GRF_PATH", "")
             if grf_path:
                 grf_reader.load(grf_path)
                 print(f"[*] Manually loaded primary GRF path from config: {grf_path}")
             else:
                 # Also try scanning RATHENA_DB_PATH parent or DATA.INI
-                db_path = env_vars.get("RATHENA_DB_PATH", "")
+                db_path = os.environ.get("RATHENA_DB_PATH", "")
                 if db_path:
                     # Let's see if there is a data.grf nearby
                     parent = os.path.dirname(os.path.normpath(db_path))

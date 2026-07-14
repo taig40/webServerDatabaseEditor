@@ -2,7 +2,7 @@ import io
 import struct
 import logging
 from PIL import Image
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 logger = logging.getLogger("sprite_engine.spr_parser")
 
@@ -110,7 +110,12 @@ class SprParser:
                 raise ValueError(f"Failed to parse RGBA frame {idx}: {e}")
 
         # 4. Parse Palette (located at the end of the file)
-        palette_data = self.stream.read(1024)
+        try:
+            self.stream.seek(-1024, io.SEEK_END)
+            palette_data = self.stream.read(1024)
+        except Exception as e:
+            logger.warning(f"Failed to seek to end for palette: {e}")
+            palette_data = b""
         if len(palette_data) >= 1024:
             for i in range(256):
                 offset = i * 4
