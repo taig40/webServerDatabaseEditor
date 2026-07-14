@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from typing import Optional
 import os
 import re
-from app.core.config import cfg, ENCODING_OPTIONS, ENV_PATH
+from app.core.config import cfg, ENCODING_OPTIONS, ENV_PATH, get_env_path
 
 router = APIRouter()
 
@@ -22,7 +22,7 @@ MAX_GRF_SLOTS = 10
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _get_env_path() -> str:
-    return ENV_PATH
+    return get_env_path()
 
 
 def _read_env() -> dict:

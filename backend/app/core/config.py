@@ -12,6 +12,14 @@ Usage in any service:
 import os
 import sys
 
+def get_env_path() -> str:
+    """Retorna o caminho absoluto do arquivo .env em modo frozen (.exe) ou dev."""
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(os.path.abspath(sys.executable)), '.env')
+    else:
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        return os.path.join(base_dir, '.env')
+
 if getattr(sys, 'frozen', False):
     # Se estiver rodando como .exe (PyInstaller)
     BASE_DIR = os.path.dirname(os.path.abspath(sys.executable))
@@ -21,7 +29,7 @@ else:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     ENV_TEMPLATE_PATH = os.path.join(BASE_DIR, '.env-template')
 
-ENV_PATH = os.path.join(BASE_DIR, '.env')
+ENV_PATH = get_env_path()
 
 # Supported encodings (value, label, aliases the Python codec accepts)
 ENCODING_OPTIONS = [

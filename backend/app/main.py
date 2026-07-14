@@ -3,21 +3,24 @@ import shutil
 import sys
 from dotenv import load_dotenv
 
-from app.core.config import cfg, BASE_DIR, ENV_PATH, ENV_TEMPLATE_PATH
+from app.core.config import cfg, get_env_path, BASE_DIR, ENV_PATH, ENV_TEMPLATE_PATH
 
 # ─── Load Environment Variables First (Highest Priority) ─────────────────────
-# 1. Se é a primeira vez rodando (não existe .env), transforma o .env-template em .env (ou cria vazio em Safe Mode)
-if not os.path.exists(ENV_PATH):
-    if os.path.exists(ENV_TEMPLATE_PATH):
-        shutil.copyfile(ENV_TEMPLATE_PATH, ENV_PATH)
-        print(f"[*] Arquivo .env criado a partir de .env-template em {ENV_PATH}")
-    else:
-        with open(ENV_PATH, "w", encoding="utf-8") as f:
-            f.write("# rAthena Web Editor - Gerado automaticamente em Safe Mode\nSERVER_DB_BASE_PATH=\n")
-        print(f"[*] Arquivo .env vazio gerado para modo First-Time Setup em {ENV_PATH}")
+# 1. Obter caminho unificado e absoluto do .env
+unified_env_path = get_env_path()
 
-# 2. Carrega as variáveis (com override=True para garantir precedência do arquivo .env)
-load_dotenv(dotenv_path=ENV_PATH, override=True)
+# 2. Se é a primeira vez rodando (não existe .env), transforma o .env-template em .env (ou cria vazio em Safe Mode)
+if not os.path.exists(unified_env_path):
+    if os.path.exists(ENV_TEMPLATE_PATH):
+        shutil.copyfile(ENV_TEMPLATE_PATH, unified_env_path)
+        print(f"[*] Arquivo .env criado a partir de .env-template em {unified_env_path}")
+    else:
+        with open(unified_env_path, "w", encoding="utf-8") as f:
+            f.write("# rAthena Web Editor - Gerado automaticamente em Safe Mode\nSERVER_DB_BASE_PATH=\n")
+        print(f"[*] Arquivo .env vazio gerado para modo First-Time Setup em {unified_env_path}")
+
+# 3. Carrega as variáveis (com override=True para garantir precedência do arquivo .env unificado)
+load_dotenv(dotenv_path=get_env_path(), override=True)
 
 # 2c. Preencher caminhos de banco de dados automaticamente a partir de SERVER_DB_BASE_PATH se preenchido
 db_base_path = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
@@ -59,48 +62,31 @@ cfg.reload_from_env()
 APP_STATE = {"setup_required": False, "missing_keys": []}
 
 def setup_and_validate_env():
-    # 3. Lê as chaves necessárias do .env-template para validar
-    required_keys = []
-    if os.path.exists(ENV_TEMPLATE_PATH):
-        with open(ENV_TEMPLATE_PATH, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    key = line.split("=")[0].strip()
-                    if key:
-                        required_keys.append(key)
-                        
-    # 4. Verifica se cada variável está preenchida (diferente de vazia)
-    optional_keys = {
-        "GRF_OVERRIDE_PATH", "GRF_PATH",
-        *[f"GRF_{i}" for i in range(10)],
-    }
-    missing_keys = []
-    for key in required_keys:
-        if key in optional_keys:
-            continue
-        val = os.environ.get(key, "").strip()
-        if not val:
-            if key == "SERVER_DB_BASE_PATH" and os.environ.get("ITEM_DB_PATH", "").strip():
-                continue
-            missing_keys.append(key)
+    unified_env_path = get_env_path()
+    env_exists = os.path.exists(unified_env_path)
+    
+    db_base = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
+    item_db = os.environ.get("ITEM_DB_PATH", "").strip()
+    is_db_valid = (db_base and os.path.exists(db_base)) or (item_db and os.path.exists(item_db))
 
     has_any_grf = any(os.environ.get(f"GRF_{i}", "").strip() for i in range(10))
     has_legacy_grf = bool(os.environ.get("GRF_PATH", "").strip())
     if not has_any_grf and not has_legacy_grf:
         print("[!] Aviso: Nenhum arquivo GRF configurado (GRF_0..GRF_9). "
               "Sprites e ícones não serão exibidos. Configure na página de Configurações.")
-            
-    db_base = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
-    item_db = os.environ.get("ITEM_DB_PATH", "").strip()
-    is_db_valid = (db_base and os.path.exists(db_base)) or (item_db and os.path.exists(item_db))
 
-    if missing_keys or not is_db_valid:
-        print(f"\n[!] Aviso: Configuração pendente ou pasta rAthena não configurada ou ausente.")
+    missing_keys = []
+    if not db_base and not item_db:
+        missing_keys.append("SERVER_DB_BASE_PATH")
+
+    if not env_exists or missing_keys or not is_db_valid:
+        print(f"\n[!] Aviso: Configuração pendente (.env existe: {env_exists}) ou pasta rAthena não configurada/ausente.")
+        print(f"    Caminho unificado verificado: {unified_env_path}")
         print("    O Backend iniciará em 'Safe Mode' aguardando configuração inicial via /api/setup.\n")
         APP_STATE["setup_required"] = True
         APP_STATE["missing_keys"] = missing_keys
     else:
+        print(f"[*] Configuração .env detectada e validada em {unified_env_path}")
         APP_STATE["setup_required"] = False
         APP_STATE["missing_keys"] = []
 
@@ -203,9 +189,10 @@ app.include_router(custom_spawns.router, prefix="/api/scripts/custom-spawns", ta
 
 @app.get("/api/status")
 def get_system_status():
+    env_exists = os.path.exists(get_env_path())
     db_base = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
     item_db = os.environ.get("ITEM_DB_PATH", "").strip()
-    is_ready = not APP_STATE["setup_required"] and ((db_base and os.path.exists(db_base)) or (item_db and os.path.exists(item_db)))
+    is_ready = env_exists and not APP_STATE["setup_required"] and ((db_base and os.path.exists(db_base)) or (item_db and os.path.exists(item_db)))
     return {
         "status": "ok" if is_ready else "setup_required",
         "missing_keys": APP_STATE["missing_keys"],
@@ -262,6 +249,7 @@ async def post_system_setup(payload: SetupPayload):
         os.environ[env_key] = full_p
         
     _write_env(env)
+    load_dotenv(dotenv_path=get_env_path(), override=True)
     
     await reload_settings()
     APP_STATE["setup_required"] = False
