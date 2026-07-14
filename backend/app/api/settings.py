@@ -142,7 +142,12 @@ async def save_settings(payload: SettingsPayload):
 
     # Validate server encoding
     db_base = payload.server_db_base_path or ""
-    mob_skill_path = os.path.join(db_base, "re/mob_skill_db.txt").replace("\\", "/") if db_base else ""
+    if db_base:
+        mob_skill_path = os.path.join(db_base, "re/mob_skill_db.txt").replace("\\", "/")
+        if not os.path.exists(mob_skill_path):
+            mob_skill_path = os.path.join(db_base, "pre-re/mob_skill_db.txt").replace("\\", "/")
+    else:
+        mob_skill_path = ""
     if mob_skill_path and os.path.exists(mob_skill_path):
         from app.core.utils import read_file_safely
         read_file_safely(mob_skill_path, payload.server_encoding or "utf-8")

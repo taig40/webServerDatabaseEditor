@@ -78,7 +78,8 @@ class GenericYamlParser:
         if 'db' in path_parts:
             self.rathena_root = '/'.join(path_parts[:path_parts.index('db')])
         else:
-            self.rathena_root = os.path.dirname(main_filepath)
+            from app.core.config import get_rathena_root
+            self.rathena_root = get_rathena_root() or os.path.dirname(os.path.dirname(main_filepath))
 
         print(f'[*] rAthena root ({self._import_filename}): {self.rathena_root}')
         self._load_file(main_filepath)

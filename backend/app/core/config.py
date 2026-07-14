@@ -12,13 +12,19 @@ Usage in any service:
 import os
 import sys
 
-def get_env_path() -> str:
-    """Retorna o caminho absoluto do arquivo .env em modo frozen (.exe) ou dev."""
+def get_config_path() -> str:
+    """Retorna o caminho absoluto do arquivo conf/config.conf em modo frozen (.exe) ou dev."""
     if getattr(sys, 'frozen', False):
-        return os.path.join(os.path.dirname(os.path.abspath(sys.executable)), '.env')
+        base_dir = os.path.dirname(os.path.abspath(sys.executable))
     else:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        return os.path.join(base_dir, '.env')
+    conf_dir = os.path.join(base_dir, 'conf')
+    os.makedirs(conf_dir, exist_ok=True)
+    return os.path.join(conf_dir, 'config.conf')
+
+def get_env_path() -> str:
+    """Retorna o caminho de configuração (conf/config.conf) para compatibilidade de chamadas existentes."""
+    return get_config_path()
 
 if getattr(sys, 'frozen', False):
     # Se estiver rodando como .exe (PyInstaller)
@@ -29,7 +35,37 @@ else:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     ENV_TEMPLATE_PATH = os.path.join(BASE_DIR, '.env-template')
 
-ENV_PATH = get_env_path()
+CONFIG_PATH = get_config_path()
+ENV_PATH = CONFIG_PATH
+
+def get_rathena_root(db_base: str = None) -> str:
+    """
+    Deduz de forma segura a pasta raiz do rAthena a partir de SERVER_DB_BASE_PATH ou ITEM_DB_PATH,
+    blindada contra erros de caminhos relativos e verificando tanto C:/rAthena/db quanto C:/rAthena.
+    """
+    if not db_base:
+        db_base = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
+    if not db_base:
+        item_db = os.environ.get("ITEM_DB_PATH", "").strip()
+        if item_db and "/re/" in item_db.replace("\\", "/"):
+            db_base = item_db.replace("\\", "/").split("/re/")[0]
+        elif item_db and "/pre-re/" in item_db.replace("\\", "/"):
+            db_base = item_db.replace("\\", "/").split("/pre-re/")[0]
+    if not db_base:
+        return ""
+    
+    clean_base = db_base.rstrip("/\\")
+    if not os.path.isabs(clean_base):
+        clean_base = os.path.abspath(os.path.join(BASE_DIR, clean_base))
+    else:
+        clean_base = os.path.abspath(clean_base)
+        
+    parent_dir = os.path.dirname(clean_base)
+    if os.path.exists(os.path.join(parent_dir, "npc")):
+        return parent_dir.replace("\\", "/")
+    if os.path.exists(os.path.join(clean_base, "npc")):
+        return clean_base.replace("\\", "/")
+    return parent_dir.replace("\\", "/")
 
 # Supported encodings (value, label, aliases the Python codec accepts)
 ENCODING_OPTIONS = [

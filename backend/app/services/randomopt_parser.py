@@ -29,15 +29,19 @@ class RandomOptParser:
             item_db = os.environ.get("ITEM_DB_PATH", "").strip()
             if item_db and "/re/" in item_db.replace("\\", "/"):
                 db_base = item_db.replace("\\", "/").split("/re/")[0]
-            else:
-                db_base = "C:/Users/taiga/Documents/rAthena/emulador/rathena/db"
+            elif item_db and "/pre-re/" in item_db.replace("\\", "/"):
+                db_base = item_db.replace("\\", "/").split("/pre-re/")[0]
         
+        if not db_base:
+            return
+            
         self.db_base_path = db_base.replace("\\", "/")
         
         # Paths
-        self.options_file_path = f"{self.db_base_path}/re/item_randomopt_db.yml"
-        self.groups_file_path = f"{self.db_base_path}/re/item_randomopt_group.yml"
-        self.laphine_file_path = f"{self.db_base_path}/re/laphine_upgrade.yml"
+        mode = "re" if os.path.exists(f"{self.db_base_path}/re/item_randomopt_db.yml") else ("pre-re" if os.path.exists(f"{self.db_base_path}/pre-re/item_randomopt_db.yml") else "re")
+        self.options_file_path = f"{self.db_base_path}/{mode}/item_randomopt_db.yml"
+        self.groups_file_path = f"{self.db_base_path}/{mode}/item_randomopt_group.yml"
+        self.laphine_file_path = f"{self.db_base_path}/{mode}/laphine_upgrade.yml"
         
         # Load options
         if os.path.exists(self.options_file_path):

@@ -46,7 +46,8 @@ class SizeFixParser:
             return
         
         self.db_base_path = db_base.replace("\\", "/")
-        self.filepath = f"{self.db_base_path}/re/size_fix.yml"
+        mode = "re" if os.path.exists(f"{self.db_base_path}/re/size_fix.yml") else ("pre-re" if os.path.exists(f"{self.db_base_path}/pre-re/size_fix.yml") else "re")
+        self.filepath = f"{self.db_base_path}/{mode}/size_fix.yml"
         
         if os.path.exists(self.filepath):
             try:

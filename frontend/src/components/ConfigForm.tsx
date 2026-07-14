@@ -292,11 +292,11 @@ export const ConfigForm: React.FC<ConfigFormProps> = ({
     return (
       <form onSubmit={handleSubmit} className="space-y-6">
         <PathField
-          label={t('setup_screen.db_base_path_label') || 'Pasta rAthena Base'}
-          sublabel={t('setup_screen.db_base_path_help') || 'Caminho principal do servidor rAthena (onde se encontram db/ e conf/).'}
+          label={t('setup_screen.db_base_path_label') || 'PASTA DB DO RATHENA (OBRIGATÓRIO)'}
+          sublabel={t('setup_screen.db_base_path_help') || 'Caminho completo até a pasta db/ do rAthena (ex: C:/rAthena/db)'}
           value={serverDbBasePath}
           onChange={setServerDbBasePath}
-          placeholder={t('setup_screen.db_base_path_placeholder') || 'Ex: C:\\rathena ou /home/user/rathena'}
+          placeholder={t('setup_screen.db_base_path_placeholder') || 'Ex: C:/rAthena/db'}
           type="directory"
           disabled={isSaving}
           icon={Database}
@@ -420,11 +420,11 @@ export const ConfigForm: React.FC<ConfigFormProps> = ({
       {/* ── Server DB ── */}
       <SectionCard icon={Database} title={t('settings.database.title') || 'Banco de Dados do Servidor'} subtitle={t('settings.database.subtitle_card') || 'Configuração do diretório principal do emulador rAthena'} iconClass="text-violet-400">
         <PathField
-          label={t('settings.database.label') || 'Pasta Base do rAthena'}
-          sublabel={t('settings.database.sublabel') || 'Caminho contendo as pastas /db e /conf'}
+          label={t('settings.database.label') || 'PASTA DB DO RATHENA (OBRIGATÓRIO)'}
+          sublabel={t('settings.database.sublabel') || 'Caminho completo até a pasta db/ do rAthena (ex: C:/rAthena/db)'}
           value={serverDbBasePath}
           onChange={setServerDbBasePath}
-          placeholder="Ex: C:\rathena\db"
+          placeholder="Ex: C:/rAthena/db"
           type="directory"
           disabled={isSaving}
           validationStatus={validation['SERVER_DB_BASE_PATH']}

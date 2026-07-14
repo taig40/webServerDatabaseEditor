@@ -43,21 +43,22 @@ class MapDropParser:
             item_db = os.environ.get("ITEM_DB_PATH", "").strip()
             if item_db and "/re/" in item_db.replace("\\", "/"):
                 db_base = item_db.replace("\\", "/").split("/re/")[0]
+            elif item_db and "/pre-re/" in item_db.replace("\\", "/"):
+                db_base = item_db.replace("\\", "/").split("/pre-re/")[0]
         if db_base:
-            return os.path.join(db_base, "re", "map_drops.yml").replace("\\", "/")
+            candidate = os.path.join(db_base, "re", "map_drops.yml").replace("\\", "/")
+            if os.path.exists(candidate):
+                return candidate
+            candidate_pre = os.path.join(db_base, "pre-re", "map_drops.yml").replace("\\", "/")
+            if os.path.exists(candidate_pre):
+                return candidate_pre
+            return candidate
         return ""
 
     def _resolve_rathena_root(self) -> str:
         """Resolve a raiz do rAthena para localizar npc/custom."""
-        db_base = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
-        if not db_base:
-            item_db = os.environ.get("ITEM_DB_PATH", "").strip()
-            if item_db and "/re/" in item_db.replace("\\", "/"):
-                db_base = item_db.replace("\\", "/").split("/re/")[0]
-        if db_base:
-            # db_base = .../rathena/db  →  root = .../rathena
-            return os.path.dirname(db_base.rstrip("/")).replace("\\", "/")
-        return ""
+        from app.core.config import get_rathena_root
+        return get_rathena_root()
 
     # ─── Load ─────────────────────────────────────────────────────────────────
 

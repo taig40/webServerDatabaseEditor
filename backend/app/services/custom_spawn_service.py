@@ -4,18 +4,8 @@ from typing import List
 
 
 def _resolve_rathena_root() -> str:
-    """
-    Tenta descobrir a raiz do rAthena a partir das variáveis de ambiente.
-    SERVER_DB_BASE_PATH = .../rathena/db  →  root = .../rathena
-    """
-    db_base = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
-    if not db_base:
-        item_db = os.environ.get("ITEM_DB_PATH", "").strip()
-        if item_db and "/re/" in item_db.replace("\\", "/"):
-            db_base = item_db.replace("\\", "/").split("/re/")[0]
-    if db_base:
-        return os.path.dirname(db_base.rstrip("/\\")).replace("\\", "/")
-    return ""
+    from app.core.config import get_rathena_root
+    return get_rathena_root()
 
 
 def get_spawn_file_path() -> str:
