@@ -8,8 +8,56 @@ import {
 import { API_URL } from '../config/env';
 import MonsterAnimator from './MonsterAnimator';
 import { useLanguageStore } from '../store/useLanguageStore';
+import { useItemLookupStore } from '../store/useItemLookupStore';
 import { DivinePrideImporterPanel } from './DivinePrideImporterPanel';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+
+// ─── DropItemInput Component (ID <-> AegisName Hybrid Lookup) ─────────────────
+
+const DropItemInput: React.FC<{
+  value: string | number | undefined;
+  onChange: (newValue: string) => void;
+  placeholder: string;
+}> = ({ value, onChange, placeholder }) => {
+  const formatHybrid = useItemLookupStore(state => state.formatHybrid);
+  const resolveAegis = useItemLookupStore(state => state.resolveAegis);
+  const resolveId = useItemLookupStore(state => state.resolveId);
+
+  const [isFocused, setIsFocused] = useState(false);
+
+  const rawStr = value !== undefined && value !== null ? String(value) : '';
+  const displayStr = isFocused ? rawStr : formatHybrid(value);
+
+  const resolvedAegis = resolveAegis(value);
+  const resolvedId = resolveId(value);
+  const isValid = Boolean(resolvedAegis || resolvedId);
+
+  return (
+    <div className="relative flex items-center w-full">
+      <input
+        type="text"
+        value={displayStr}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`w-full bg-dark-900 border ${
+          isValid
+            ? 'border-emerald-500/30 focus:border-emerald-500'
+            : 'border-white/10 focus:border-violet-500'
+        } rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none font-mono pr-8`}
+      />
+      {isValid && (
+        <span
+          title={`Validado: ${resolvedAegis || value} (ID: ${resolvedId || value})`}
+          className="absolute right-2.5 text-emerald-400 text-xs font-bold pointer-events-none select-none"
+        >
+          ✓
+        </span>
+      )}
+    </div>
+  );
+};
 
 // ─── Element & Race definitions ───────────────────────────────────────────────
 
@@ -789,12 +837,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
                 )}
                 {(local.Drops || []).map((drop: any, idx: number) => (
                   <div key={idx} className="grid grid-cols-[1fr_120px_32px] gap-2 items-center">
-                    <input
-                      type="text"
-                      value={drop.Item || ''}
-                      onChange={e => updateDrop('Drops', idx, 'Item', e.target.value)}
+                    <DropItemInput
+                      value={drop.Item}
+                      onChange={val => updateDrop('Drops', idx, 'Item', val)}
                       placeholder={t('monster_detail.drops.placeholder_item')}
-                      className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-violet-500 focus:outline-none font-mono"
                     />
                     <input
                       type="number"
@@ -837,12 +883,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
                 )}
                 {(local.MvpDrops || []).map((drop: any, idx: number) => (
                   <div key={idx} className="grid grid-cols-[1fr_120px_32px] gap-2 items-center">
-                    <input
-                      type="text"
-                      value={drop.Item || ''}
-                      onChange={e => updateDrop('MvpDrops', idx, 'Item', e.target.value)}
+                    <DropItemInput
+                      value={drop.Item}
+                      onChange={val => updateDrop('MvpDrops', idx, 'Item', val)}
                       placeholder={t('monster_detail.drops.placeholder_item')}
-                      className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-violet-500 focus:outline-none font-mono"
                     />
                     <input
                       type="number"

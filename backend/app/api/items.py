@@ -16,6 +16,22 @@ async def get_status():
         "items_loaded": yaml_db.items_loaded
     }
 
+@router.get("/lookup")
+async def get_items_lookup():
+    """
+    Retorna um dicionário JSON (Hash Map) de Id -> AegisName para resolução O(1) no frontend.
+    Exemplo: {"501": "Red_Potion", "502": "Apple"}
+    """
+    if yaml_db.is_loading:
+        raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando na memória RAM.")
+    items = yaml_db.get_items()
+    lookup = {}
+    for item in items:
+        item_id = item.get("Id")
+        if item_id is not None:
+            lookup[str(item_id)] = item.get("AegisName", f"ITEM_{item_id}")
+    return lookup
+
 @router.get("/references")
 async def get_item_references():
     """

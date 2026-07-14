@@ -22,6 +22,7 @@ import ExperienceTablesEditor from './pages/ExperienceTablesEditor';
 import SkillTreeEditor from './pages/SkillTreeEditor';
 import MapEngine from './pages/MapEngine';
 import { SetupScreen } from './components/SetupScreen';
+import { useItemLookupStore } from './store/useItemLookupStore';
 
 type ActiveView = ModuleId | 'settings';
 
@@ -111,6 +112,14 @@ function App() {
       if (esInstance) esInstance.close();
     };
   }, [t]);
+
+  const fetchLookup = useItemLookupStore(state => state.fetchLookup);
+
+  useEffect(() => {
+    if (isCacheReady && !setupRequired) {
+      fetchLookup();
+    }
+  }, [isCacheReady, setupRequired, fetchLookup]);
 
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
