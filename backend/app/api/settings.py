@@ -113,7 +113,7 @@ async def get_settings():
             grf_list.append({"priority": 0, "path": old_grf})
 
     return {
-        "server_db_base_path": env.get("SERVER_DB_BASE_PATH", ""),
+        "server_db_base_path": env.get("RATHENA_DB_PATH", "") or env.get("SERVER_DB_BASE_PATH", ""),
         "iteminfo_path": env.get("ITEMINFO_PATH", ""),
         "grf_list": grf_list,
         "grf_override_path": env.get("GRF_OVERRIDE_PATH", ""),
@@ -153,6 +153,7 @@ async def save_settings(payload: SettingsPayload):
         read_file_safely(mob_skill_path, payload.server_encoding or "utf-8")
 
     updates: dict = {
+        "RATHENA_DB_PATH": payload.server_db_base_path or "",
         "SERVER_DB_BASE_PATH": payload.server_db_base_path or "",
         "ITEMINFO_PATH": payload.iteminfo_path or "",
         "GRF_OVERRIDE_PATH": payload.grf_override_path or "",

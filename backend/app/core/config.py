@@ -64,7 +64,7 @@ def get_rathena_root(db_base: str = None) -> str:
     blindada contra erros de caminhos relativos e verificando tanto C:/rAthena/db quanto C:/rAthena.
     """
     if not db_base:
-        db_base = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
+        db_base = os.environ.get("RATHENA_DB_PATH", "").strip() or os.environ.get("SERVER_DB_BASE_PATH", "").strip()
     if not db_base:
         item_db = os.environ.get("ITEM_DB_PATH", "").strip()
         if item_db and "/re/" in item_db.replace("\\", "/"):

@@ -22,15 +22,17 @@ if not os.path.exists(unified_env_path):
         print(f"[*] Arquivo config.conf criado a partir de .env-template em {unified_env_path}")
     else:
         with open(unified_env_path, "w", encoding="utf-8") as f:
-            f.write("# rAthena Web Editor - Gerado automaticamente em Safe Mode\nSERVER_DB_BASE_PATH=\n")
+            f.write("# rAthena Web Editor - Gerado automaticamente em Safe Mode\nRATHENA_DB_PATH=\nSERVER_DB_BASE_PATH=\n")
         print(f"[*] Arquivo config.conf vazio gerado para modo First-Time Setup em {unified_env_path}")
 
 # 3. Carrega as variáveis (com override=True para garantir precedência do arquivo config.conf)
 load_dotenv(dotenv_path=get_config_path(), override=True)
 
-# 2c. Preencher caminhos de banco de dados automaticamente a partir de SERVER_DB_BASE_PATH se preenchido
-db_base_path = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
+# 2c. Preencher caminhos de banco de dados automaticamente a partir de RATHENA_DB_PATH ou SERVER_DB_BASE_PATH se preenchido
+db_base_path = os.environ.get("RATHENA_DB_PATH", "").strip() or os.environ.get("SERVER_DB_BASE_PATH", "").strip()
 if db_base_path:
+    os.environ["RATHENA_DB_PATH"] = db_base_path
+    os.environ["SERVER_DB_BASE_PATH"] = db_base_path
     print(f"[*] Usando pasta base de DB: '{db_base_path}'")
     mode_prefix = "re"
     if not os.path.exists(os.path.join(db_base_path, "re", "item_db.yml")) and os.path.exists(os.path.join(db_base_path, "pre-re", "item_db.yml")):
@@ -76,7 +78,7 @@ def setup_and_validate_env():
     unified_env_path = get_config_path()
     env_exists = os.path.exists(unified_env_path)
     
-    db_base = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
+    db_base = os.environ.get("RATHENA_DB_PATH", "").strip() or os.environ.get("SERVER_DB_BASE_PATH", "").strip()
     item_db = os.environ.get("ITEM_DB_PATH", "").strip()
     is_db_valid = False
     if db_base and os.path.exists(db_base):
@@ -95,7 +97,7 @@ def setup_and_validate_env():
 
     missing_keys = []
     if not db_base and not item_db:
-        missing_keys.append("SERVER_DB_BASE_PATH")
+        missing_keys.append("RATHENA_DB_PATH")
 
     if not env_exists or missing_keys or not is_db_valid:
         print(f"\n[!] Aviso: Configuração pendente (config.conf existe: {env_exists}) ou pasta rAthena DB não configurada/ausente.")
@@ -227,7 +229,9 @@ async def post_system_setup(payload: SetupPayload):
             raise HTTPException(status_code=400, detail="A pasta selecionada para o rAthena não foi encontrada.")
         
         env = _read_env()
+        env["RATHENA_DB_PATH"] = db_base
         env["SERVER_DB_BASE_PATH"] = db_base
+        os.environ["RATHENA_DB_PATH"] = db_base
         os.environ["SERVER_DB_BASE_PATH"] = db_base
         
         if payload.GRF_0.strip():
