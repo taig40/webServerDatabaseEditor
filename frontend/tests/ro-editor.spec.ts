@@ -8,14 +8,7 @@ test.describe('rAthena Web Editor E2E Tests', () => {
       await route.fulfill({ json: { status: 'ok' } });
     });
 
-    // Bypass do carregamento de cache via SSE
-    await page.route('**/api/system/initialize-cache', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'text/event-stream',
-        body: 'data: {"status":"complete","progress":100}\n\n'
-      });
-    });
+    // Apenas ignora a verificação de setup, mantendo o parser real intacto
 
     await page.goto('/');
     // Aumentamos o timeout dessa verificação específica para 90s,

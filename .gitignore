@@ -18,6 +18,26 @@ __pycache__/
 .env.*
 !.env.example
 
+# Build outputs
+dist/
+build/
+release/
+
+# Node modules
+node_modules/
+.agents/
+.agents/rules/CONVENTIONS.md
+
+# Python virtual environment
+venv/
+__pycache__/
+*.py[cod]
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
 # Vite config timestamp files
 *.timestamp-*
 
@@ -25,3 +45,7 @@ __pycache__/
 # Configuration files
 *.conf
 
+# Playwright
+playwright-report/
+test-results/
+.playwright-artifacts-*/
