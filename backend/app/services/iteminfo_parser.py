@@ -135,8 +135,8 @@ class ItemInfoParser:
                     "suggestion": "Vá até a aba Configurações (Settings) para ajustar o encoding."
                 }
 
-        # ALWAYS read as latin-1 (byte-transparent).
-        with open(filepath, "r", encoding="latin-1") as f:
+        # ALWAYS read with client_encoding (EUC-KR) replacing errors.
+        with open(filepath, "r", encoding=cfg.client_encoding, errors="replace") as f:
             content = f.read()
 
         # Step 1: Extract block boundaries using brace counting

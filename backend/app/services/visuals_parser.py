@@ -2,6 +2,7 @@ import os
 import re
 from typing import Dict, Optional, Tuple
 from app.services.grf_reader import grf_reader
+from app.core.config import cfg
 
 class VisualLuaHandler:
     def __init__(self, filepath: str, is_accname: bool = False):
@@ -19,20 +20,12 @@ class VisualLuaHandler:
             self.loaded = True
             return
             
-        encodings = ['cp949', 'euc-kr', 'windows-1252', 'latin-1']
-        success = False
-        for enc in encodings:
-            try:
-                with open(self.filepath, 'r', encoding=enc) as f:
-                    self.content = f.read()
-                    self.encoding_used = enc
-                    success = True
-                    break
-            except Exception:
-                continue
-                
-        if not success:
-            self.encoding_error = f"Impossível ler o arquivo visual {self.filepath} com encodings conhecidos."
+        try:
+            with open(self.filepath, 'r', encoding=cfg.client_encoding, errors='replace') as f:
+                self.content = f.read()
+                self.encoding_used = cfg.client_encoding
+        except Exception as e:
+            self.encoding_error = f"Impossível ler o arquivo visual {self.filepath}: {e}"
             print(f"[!] Erro de leitura em {self.filepath}: {self.encoding_error}")
             # Marcado como carregado para não bloquear o servidor principal com falhas de assets do cliente
             self.loaded = True

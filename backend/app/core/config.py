@@ -98,14 +98,6 @@ def get_rathena_root(db_base: str = None) -> str:
         return clean_base.replace("\\", "/")
     return parent_dir.replace("\\", "/")
 
-# Supported encodings (value, label, aliases the Python codec accepts)
-ENCODING_OPTIONS = [
-    {"value": "utf-8",   "label": "UTF-8 (padrão)"},
-    {"value": "euc-kr",  "label": "EUC-KR / CP949 (clientes coreanos kRO)"},
-    {"value": "cp1252",  "label": "Windows-1252 / CP1252 (servidores ocidentais)"},
-    {"value": "latin-1", "label": "Latin-1 (transparente / ignorar erros de decodificação)"},
-]
-
 
 class _Config:
     """Mutable runtime config — updated by the Settings API on reload."""
@@ -115,7 +107,9 @@ class _Config:
 
     def reload_from_env(self):
         self.server_encoding: str = os.environ.get("SERVER_ENCODING", "utf-8").strip() or "utf-8"
-        self.client_encoding: str = os.environ.get("CLIENT_ENCODING", "latin1").strip() or "latin1"
+        # Always force EUC-KR for client files as per strict Ragnarok standards
+        self.client_encoding: str = "euc-kr"
+        os.environ["CLIENT_ENCODING"] = "euc-kr"
         
         self.achievements_lua_path: str = os.environ.get("ACHIEVEMENTS_LUA_PATH", "").strip()
         if not self.achievements_lua_path:

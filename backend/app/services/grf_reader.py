@@ -401,16 +401,10 @@ class GRFReader:
                             resource_name = item.get('Name', str(item_id))
                             break
 
-        # Decode resource_name from latin-1 to EUC-KR if it was read as latin-1
-        try:
-            real_resource_name = resource_name.encode('latin-1').decode('euc-kr')
-        except Exception:
-            real_resource_name = resource_name
-
         paths_to_try = [
-            f"data/texture/유저인터페이스/item/{real_resource_name}.bmp".lower(),
+            f"data/texture/유저인터페이스/item/{resource_name}.bmp".lower(),
             f"data/texture/{_KOREAN_UI_FOLDER}/item/{resource_name}.bmp".lower(),
-            f"data/texture/userinterface/item/{real_resource_name}.bmp".lower(),
+            f"data/texture/userinterface/item/{resource_name}.bmp".lower(),
             f"data/texture/유저인터페이스/item/{item_id}.bmp".lower(),
             f"data/texture/{_KOREAN_UI_FOLDER}/item/{item_id}.bmp".lower(),
             f"data/texture/userinterface/item/{item_id}.bmp".lower(),
@@ -429,16 +423,10 @@ class GRFReader:
         """Returns PNG bytes of item icon BMP matching resource_name."""
         if not self.loaded or not resource_name:
             return None
-            
-        try:
-            real_resource_name = resource_name.encode('latin-1').decode('euc-kr')
-        except Exception:
-            real_resource_name = resource_name
-            
         paths_to_try = [
-            f"data/texture/유저인터페이스/item/{real_resource_name}.bmp".lower(),
+            f"data/texture/유저인터페이스/item/{resource_name}.bmp".lower(),
             f"data/texture/{_KOREAN_UI_FOLDER}/item/{resource_name}.bmp".lower(),
-            f"data/texture/userinterface/item/{real_resource_name}.bmp".lower(),
+            f"data/texture/userinterface/item/{resource_name}.bmp".lower(),
         ]
         
         for path in paths_to_try:
@@ -451,21 +439,15 @@ class GRFReader:
         """Returns PNG bytes of a skill icon from GRF."""
         if not self.loaded:
             return self.generate_dummy_png()
-            
-        try:
-            real_skill_name = skill_name.encode('latin-1').decode('euc-kr') if skill_name else ""
-        except Exception:
-            real_skill_name = skill_name
-            
         paths_to_try = []
         if skill_name:
             paths_to_try.extend([
-                f"data/texture/유저인터페이스/item/{real_skill_name}.bmp".lower(),
+                f"data/texture/유저인터페이스/item/{skill_name}.bmp".lower(),
                 f"data/texture/{_KOREAN_UI_FOLDER}/item/{skill_name}.bmp".lower(),
-                f"data/texture/userinterface/item/{real_skill_name}.bmp".lower(),
-                f"data/texture/유저인터페이스/skill/{real_skill_name}.bmp".lower(),
+                f"data/texture/userinterface/item/{skill_name}.bmp".lower(),
+                f"data/texture/유저인터페이스/skill/{skill_name}.bmp".lower(),
                 f"data/texture/{_KOREAN_UI_FOLDER}/skill/{skill_name}.bmp".lower(),
-                f"data/texture/userinterface/skill/{real_skill_name}.bmp".lower(),
+                f"data/texture/userinterface/skill/{skill_name}.bmp".lower(),
             ])
         if skill_id > 0:
             paths_to_try.extend([
@@ -486,16 +468,10 @@ class GRFReader:
         """Returns PNG bytes of item collection BMP matching resource_name."""
         if not self.loaded or not resource_name:
             return None
-            
-        try:
-            real_resource_name = resource_name.encode('latin-1').decode('euc-kr')
-        except Exception:
-            real_resource_name = resource_name
-            
         paths_to_try = [
-            f"data/texture/유저인터페이스/collection/{real_resource_name}.bmp".lower(),
+            f"data/texture/유저인터페이스/collection/{resource_name}.bmp".lower(),
             f"data/texture/{_KOREAN_UI_FOLDER}/collection/{resource_name}.bmp".lower(),
-            f"data/texture/userinterface/collection/{real_resource_name}.bmp".lower(),
+            f"data/texture/userinterface/collection/{resource_name}.bmp".lower(),
             f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.bmp".lower(),
             f"data/sprite/item/{resource_name}.bmp".lower(),
         ]
@@ -619,13 +595,6 @@ class GRFReader:
         if root_norm.endswith('/data') and rel.startswith('data/'):
             rel = rel[5:]
 
-        # Convert latin-1 byte-transparent string to EUC-KR decoded Unicode string
-        # for standard OS filesystem creation
-        try:
-            rel = rel.encode('latin-1').decode('euc-kr')
-        except Exception:
-            pass
-
         abs_path = os.path.join(root, rel).replace('\\', '/')
         os.makedirs(os.path.dirname(abs_path), exist_ok=True)
         with open(abs_path, 'wb') as f:
@@ -635,29 +604,29 @@ class GRFReader:
 
     def save_item_icon(self, resource_name: str, bmp_bytes: bytes) -> str:
         """Saves a BMP icon for an item under the standard RO texture path."""
-        return self._save_asset(f"data/texture/{_KOREAN_UI_FOLDER}/item/{resource_name}.bmp", bmp_bytes)
+        return self._save_asset(f"data/texture/유저인터페이스/item/{resource_name}.bmp", bmp_bytes)
 
     def save_item_collection(self, resource_name: str, bmp_bytes: bytes) -> str:
         """Saves a BMP collection sprite for an item under the standard RO sprite path."""
-        return self._save_asset(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.bmp", bmp_bytes)
+        return self._save_asset(f"data/texture/유저인터페이스/collection/{resource_name}.bmp", bmp_bytes)
 
     def save_mob_spr(self, aegis_name: str, spr_bytes: bytes) -> str:
         """
         Saves a .spr sprite file for a monster — picked up automatically by find_mob_files().
         """
-        return self._save_asset(f"data/sprite/{_KOREAN_MONSTER_FOLDER}/{aegis_name}.spr", spr_bytes)
+        return self._save_asset(f"data/sprite/몬스터/{aegis_name}.spr", spr_bytes)
 
     def save_mob_act(self, aegis_name: str, act_bytes: bytes) -> str:
         """Saves a .act action file for a monster."""
-        return self._save_asset(f"data/sprite/{_KOREAN_MONSTER_FOLDER}/{aegis_name}.act", act_bytes)
+        return self._save_asset(f"data/sprite/몬스터/{aegis_name}.act", act_bytes)
 
     def save_item_drop_spr(self, resource_name: str, spr_bytes: bytes) -> str:
         """Saves a .spr drop sprite file for an item."""
-        return self._save_asset(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.spr", spr_bytes)
+        return self._save_asset(f"data/sprite/아이템/{resource_name}.spr", spr_bytes)
 
     def save_item_drop_act(self, resource_name: str, act_bytes: bytes) -> str:
         """Saves a .act drop action file for an item."""
-        return self._save_asset(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.act", act_bytes)
+        return self._save_asset(f"data/sprite/아이템/{resource_name}.act", act_bytes)
 
 
 grf_reader = GRFReader()

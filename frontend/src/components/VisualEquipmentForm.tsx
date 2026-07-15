@@ -8,9 +8,10 @@ import { FittingRoom } from './FittingRoom';
 interface VisualEquipmentFormProps {
   viewId: number;
   onSyncViewId: (newViewId: number) => void;
+  initialResourceName?: string;
 }
 
-export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId, onSyncViewId }) => {
+export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId, onSyncViewId, initialResourceName }) => {
   const t = useLanguageStore((state) => state.t);
   
   const [identity, setIdentity] = useState('');
@@ -34,7 +35,7 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
     
     if (viewId === 0) {
       setIdentity('');
-      setName('');
+      setName(initialResourceName || '');
       return;
     }
 
@@ -42,7 +43,7 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
       try {
         const res = await axios.get(`${API_URL}/api/client_items/visuals/${viewId}`);
         setIdentity(res.data.identity || '');
-        setName(res.data.name || '');
+        setName(res.data.name || initialResourceName || '');
       } catch (err) {
         console.error('Failed to load visual data:', err);
       }

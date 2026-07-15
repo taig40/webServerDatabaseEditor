@@ -346,50 +346,7 @@ export const ConfigForm: React.FC<ConfigFormProps> = ({
           </p>
         </div>
 
-        {/* Encoding Settings */}
-        <div className="p-4 rounded-xl bg-[#16161f]/80 border border-white/5 space-y-3">
-          <div>
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-              {t('setup_screen.encoding_title') || 'Codificação de Caracteres (Encoding)'}
-            </h3>
-            <p className="text-[11px] text-gray-400 mt-0.5">
-              {t('setup_screen.encoding_desc') || 'Especifique o encoding dos arquivos para evitar caracteres corrompidos em português ou coreano.'}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            <div className="space-y-1">
-              <label className="text-[11px] font-medium text-gray-300">
-                {t('setup_screen.server_encoding_label') || 'Encoding do Servidor (rAthena)'}
-              </label>
-              <select
-                value={serverEncoding}
-                onChange={e => setServerEncoding(e.target.value)}
-                disabled={isSaving}
-                className="w-full px-3 py-2 bg-[#0f0f14] border border-white/10 rounded-lg text-xs text-white focus:outline-none focus:border-violet-500 transition-all"
-              >
-                <option value="utf-8">UTF-8 (Recomendado rAthena)</option>
-                <option value="latin1">LATIN1 (ISO-8859-1)</option>
-                <option value="cp1252">Windows-1252</option>
-              </select>
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-medium text-gray-300">
-                {t('setup_screen.client_encoding_label') || 'Encoding do Cliente (RO Client)'}
-              </label>
-              <select
-                value={clientEncoding}
-                onChange={e => setClientEncoding(e.target.value)}
-                disabled={isSaving}
-                className="w-full px-3 py-2 bg-[#0f0f14] border border-white/10 rounded-lg text-xs text-white focus:outline-none focus:border-violet-500 transition-all"
-              >
-                <option value="latin1">LATIN1 (Padrão Oficial RO Client)</option>
-                <option value="cp1252">Windows-1252</option>
-                <option value="utf-8">UTF-8</option>
-              </select>
-            </div>
-          </div>
-        </div>
 
         <div className="pt-2">
           <button
@@ -607,65 +564,7 @@ export const ConfigForm: React.FC<ConfigFormProps> = ({
         </SectionCard>
       </div>
 
-      {/* ── Encoding ── */}
-      <div className="xl:col-span-2">
-        <SectionCard
-          icon={Globe}
-          title={t('settings.advanced.encoding_title') || 'Configurações de Codificação de Caracteres (Encoding)'}
-          subtitle={t('settings.advanced.encoding_subtitle') || 'Define o encoding utilizado nas operações de leitura/escrita do emulador e arquivos do cliente.'}
-          iconClass="text-cyan-400"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">
-                {t('settings.advanced.server_encoding') || 'Encoding do Servidor (.txt / .yml)'}
-              </label>
-              <p className="text-[11px] text-gray-500 -mt-0.5">
-                {t('settings.advanced.server_encoding_desc') || 'Padrão recomendado: UTF-8 para rAthena recente.'}
-              </p>
-              <select
-                value={serverEncoding}
-                onChange={e => setServerEncoding(e.target.value)}
-                disabled={isSaving}
-                className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500/80 transition-all cursor-pointer mt-1"
-              >
-                {(encodingOptions.length > 0 ? encodingOptions : [
-                  { value: 'utf-8', label: 'UTF-8 (Padrão Recomendado)' },
-                  { value: 'euc-kr', label: 'EUC-KR (Coreano)' },
-                  { value: 'cp1252', label: 'Windows-1252 (Ocidental)' },
-                  { value: 'latin-1', label: 'Latin-1 (ISO-8859-1)' },
-                ]).map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">
-                {t('settings.advanced.client_encoding') || 'Encoding do Cliente (.lub / .lua / GRF)'}
-              </label>
-              <p className="text-[11px] text-gray-500 -mt-0.5">
-                {t('settings.advanced.client_encoding_desc') || 'Padrão do cliente RO: LATIN1 ou EUC-KR.'}
-              </p>
-              <select
-                value={clientEncoding}
-                onChange={e => setClientEncoding(e.target.value)}
-                disabled={isSaving}
-                className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-violet-500/80 transition-all cursor-pointer mt-1"
-              >
-                {(encodingOptions.length > 0 ? encodingOptions : [
-                  { value: 'utf-8', label: 'UTF-8' },
-                  { value: 'euc-kr', label: 'EUC-KR (Coreano kRO)' },
-                  { value: 'cp1252', label: 'Windows-1252' },
-                  { value: 'latin-1', label: 'Latin-1 (Padrão Oficial RO Client)' },
-                ]).map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </SectionCard>
-      </div>
 
       {/* ── DivinePride Integration ── */}
       <div className="xl:col-span-2">

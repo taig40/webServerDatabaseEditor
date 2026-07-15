@@ -10,6 +10,8 @@ Encoding: sempre latin-1 (byte-transparent) para preservar os bytes EUC-KR nativ
 import os
 import re
 from typing import Optional
+from app.core.config import cfg
+
 
 
 # ─── Templates ────────────────────────────────────────────────────────────────
@@ -135,7 +137,7 @@ def write_block(filepath: str, item_id: int, fields: dict) -> None:
     if not filepath or not os.path.exists(filepath):
         raise RuntimeError(f"Arquivo Lua não encontrado ou não configurado: {filepath!r}")
 
-    with open(filepath, "r", encoding="latin-1") as f:
+    with open(filepath, "r", encoding=cfg.client_encoding, errors="replace") as f:
         content = f.read()
 
     new_block = render_block(item_id, fields)
@@ -158,7 +160,7 @@ def write_block(filepath: str, item_id: int, fields: dict) -> None:
 
     # Escrita atômica: temp → rename
     tmp_path = filepath + ".tmp"
-    with open(tmp_path, "w", encoding="latin-1") as f:
+    with open(tmp_path, "w", encoding=cfg.client_encoding, errors="replace") as f:
         f.write(new_content)
     os.replace(tmp_path, filepath)
 
@@ -186,7 +188,7 @@ def delete_block(filepath: str, item_id: int) -> bool:
     if not filepath or not os.path.exists(filepath):
         raise RuntimeError(f"Arquivo Lua não encontrado ou não configurado: {filepath!r}")
 
-    with open(filepath, "r", encoding="latin-1") as f:
+    with open(filepath, "r", encoding=cfg.client_encoding, errors="replace") as f:
         content = f.read()
 
     bounds = find_lua_block_bounds(content, item_id)
@@ -203,7 +205,7 @@ def delete_block(filepath: str, item_id: int) -> bool:
 
     # Escrita atômica: temp → rename
     tmp_path = filepath + ".tmp"
-    with open(tmp_path, "w", encoding="latin-1") as f:
+    with open(tmp_path, "w", encoding=cfg.client_encoding, errors="replace") as f:
         f.write(new_content)
     os.replace(tmp_path, filepath)
 
