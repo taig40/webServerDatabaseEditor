@@ -21,3 +21,7 @@ __pycache__/
 # Vite config timestamp files
 *.timestamp-*
 
+
+# Configuration files
+*.conf
+
