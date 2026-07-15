@@ -44,20 +44,12 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ resourceName, onSelect
 
       {/* Sprite Canvas stage */}
       <div className="relative w-48 h-48 bg-dark-950/80 rounded-xl border border-white/10 flex items-center justify-center overflow-hidden shadow-inner group">
-        {resourceName && resourceName.trim() !== "" ? (
-          <img
-            src={previewUrl}
-            alt="Character Preview"
-            className="w-full h-full object-contain pixelated select-none"
-            key={`${resourceName}-${isMale}-${direction}`} // force re-render/refetch on change
-          />
-        ) : (
-          <div className="text-center p-4 flex flex-col items-center justify-center h-full">
-            <span className="text-xs text-gray-500 italic">
-              {t('fitting_room.no_sprite' as any) || 'No accessory preview (Sprite Name is empty)'}
-            </span>
-          </div>
-        )}
+        <img
+          src={previewUrl}
+          alt="Character Preview"
+          className="w-full h-full object-contain pixelated select-none"
+          key={`${resourceName}-${isMale}-${direction}`} // force re-render/refetch on change
+        />
       </div>
 
       {/* Controls Container */}
