@@ -9,7 +9,10 @@
     "error": "Error",
     "reload": "Reload",
     "reloading": "Reloading...",
-    "line": "Line"
+    "line": "Line",
+    "config_by_level": "Configure by Level",
+    "single_value": "Single Value",
+    "single_value_placeholder": "Single value for all levels"
   },
   "loading": {
     "connecting": "Connecting to Backend...",

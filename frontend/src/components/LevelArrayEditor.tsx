@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface LevelItem {
   Level: number;
@@ -22,6 +23,7 @@ export const LevelArrayEditor: React.FC<LevelArrayEditorProps> = ({
   onChange,
   isNumeric = true,
 }) => {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<'single' | 'perLevel'>(
     Array.isArray(value) ? 'perLevel' : 'single'
   );
@@ -81,7 +83,7 @@ export const LevelArrayEditor: React.FC<LevelArrayEditorProps> = ({
           onClick={toggleMode}
           className="text-[10px] bg-dark-800 hover:bg-dark-700 text-primary-400 border border-dark-600 px-2 py-0.5 rounded transition-colors"
         >
-          {mode === 'single' ? '⚙️ Configurar por Nível' : '📌 Valor Único'}
+          {mode === 'single' ? `⚙️ ${t('common.config_by_level' as any) || 'Configurar por Nível'}` : `📌 ${t('common.single_value' as any) || 'Valor Único'}`}
         </button>
       </div>
 
@@ -91,7 +93,7 @@ export const LevelArrayEditor: React.FC<LevelArrayEditorProps> = ({
           value={getLevelVal(1)}
           onChange={(e) => handleSingleChange(e.target.value)}
           className="w-full bg-dark-900 border border-dark-700 rounded px-2.5 py-1 text-sm text-white focus:outline-none focus:border-primary-500"
-          placeholder={`Valor único para todos os níveis`}
+          placeholder={(t('common.single_value_placeholder' as any) || 'Valor único para todos os níveis') as string}
         />
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-1 bg-dark-900/50 rounded border border-dark-800">

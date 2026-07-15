@@ -165,10 +165,8 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
           />
 
           <div className="bg-[#12121a] rounded-2xl border border-white/5 p-6 opacity-60">
-             <h3 className="text-sm font-semibold text-gray-300 mb-2">How it works</h3>
-             <p className="text-xs text-gray-400 leading-relaxed">
-               This module edits <code>accessoryid.lua</code> and <code>accname.lua</code> directly. The server automatically tries to preserve the native CP949 encoding required by the RO Client. If you change the <strong>View ID</strong> here and save, the Basic Information tab will be automatically synchronized.
-             </p>
+             <h3 className="text-sm font-semibold text-gray-300 mb-2">{t('visual_equipment.how_it_works')}</h3>
+             <p className="text-xs text-gray-400 leading-relaxed" dangerouslySetInnerHTML={{ __html: t('visual_equipment.how_it_works_desc') }}></p>
           </div>
         </div>
 

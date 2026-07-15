@@ -9,7 +9,10 @@
     "error": "Erro",
     "reload": "Recarregar",
     "reloading": "Recarregando...",
-    "line": "Linha"
+    "line": "Linha",
+    "config_by_level": "Configurar por Nível",
+    "single_value": "Valor Único",
+    "single_value_placeholder": "Valor único para todos os níveis"
   },
   "loading": {
     "connecting": "Conectando ao Backend...",
@@ -472,13 +475,15 @@
     "create_error": "Erro ao criar o item no ItemInfo.lua.",
     "create_duplicate_error": "Este ID já existe no ItemInfo.lua. Use a edição em vez disso."
   },
-  "visual_equipment": {
-    "title": "Configuração Visual de Equipamento",
-    "invalid_view_id": "View ID inválido.",
-    "missing_fields": "Campos Identity e Sprite Name são obrigatórios.",
-    "save_success": "Configuração visual salva com sucesso!",
-    "save_error": "Falha ao salvar a configuração visual."
-  },
+    "visual_equipment": {
+      "title": "Configuração Visual de Equipamento",
+      "invalid_view_id": "View ID inválido.",
+      "missing_fields": "Campos Identity e Sprite Name são obrigatórios.",
+      "save_success": "Configuração visual salva com sucesso!",
+      "save_error": "Falha ao salvar a configuração visual.",
+      "how_it_works": "Como funciona",
+      "how_it_works_desc": "Este módulo edita o <code>accessoryid.lua</code> e <code>accname.lua</code> diretamente. O servidor tenta automaticamente preservar o encoding nativo CP949 exigido pelo Cliente RO. Se você alterar o <strong>View ID</strong> aqui e salvar, a aba de Informações Básicas será automaticamente sincronizada."
+    },
   "client_item_detail": {
     "description_placeholder": "Uma linha por entrada da descrição.\nUse \\n para quebra de linha no jogo.",
     "upload_error": "Erro no upload: {error}",
@@ -1248,8 +1253,8 @@
   "map_engine": {
     "title": "Map Engine",
     "subtitle": "Gerencie drops por mapa e gere spawns customizados de monstros.",
-    "tab_map_drops": "Map Drops Database",
-    "tab_custom_spawns": "Custom Spawns",
+    "tab_map_drops": "Drops por Mapa",
+    "tab_custom_spawns": "Spawns Customizados",
     "absolute_drops_banner": "Atenção: Drops configurados neste módulo são absolutos. Eles ignoram bônus de servidor, Gomas de Mascar e penalidades de nível. O Rate definido aqui é o Rate final (n/100000).",
     "search_map_placeholder": "Buscar mapa...",
     "new_map_entry": "Novo Mapa",
