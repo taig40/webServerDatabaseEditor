@@ -154,21 +154,31 @@ def compose_character(accessory_name: str, is_male: bool, direction: int) -> byt
     
     acc_spr, acc_act = None, None
     if accessory_name and accessory_name.strip() not in ("", "0", "None", "null"):
-        # No RO standard, o acessório está em data/sprite/악세사리/남 (ou 여)
-        # Algumas GRFs escrevem '악세서리' em vez de '악세사리'
-        acc_spr_path1 = f"data/sprite/악세사리/{gender_folder}/{accessory_name}_{gender_suffix}.spr"
-        acc_act_path1 = f"data/sprite/악세사리/{gender_folder}/{accessory_name}_{gender_suffix}.act"
-        acc_spr_path2 = f"data/sprite/악세서리/{gender_folder}/{accessory_name}_{gender_suffix}.spr"
-        acc_act_path2 = f"data/sprite/악세서리/{gender_folder}/{accessory_name}_{gender_suffix}.act"
+        clean_name = accessory_name
+        if clean_name.startswith('_'):
+            clean_name = clean_name[1:]
+            
+        paths_to_try = [
+            f"data/sprite/악세사리/{gender_folder}/{gender_suffix}_{clean_name}",
+            f"data/sprite/악세사리/{gender_folder}/{clean_name}_{gender_suffix}",
+            f"data/sprite/악세사리/{gender_folder}/{clean_name}",
+            f"data/sprite/악세사리/{gender_folder}/{accessory_name}_{gender_suffix}",
+            f"data/sprite/악세사리/{gender_folder}/{gender_suffix}_{accessory_name}",
+            f"data/sprite/악세서리/{gender_folder}/{gender_suffix}_{clean_name}",
+            f"data/sprite/악세서리/{gender_folder}/{clean_name}_{gender_suffix}",
+            f"data/sprite/악세서리/{gender_folder}/{clean_name}",
+            f"data/sprite/악세서리/{gender_folder}/{accessory_name}_{gender_suffix}",
+            f"data/sprite/악세서리/{gender_folder}/{gender_suffix}_{accessory_name}",
+        ]
         
-        # 2. Extract and parse files from GRF
         logger.info(f"Loading accessory '{accessory_name}' from GRF paths...")
-        acc_spr, acc_act = load_sprite_from_grf(acc_spr_path1, acc_act_path1)
+        for path_base in paths_to_try:
+            acc_spr, acc_act = load_sprite_from_grf(f"{path_base}.spr", f"{path_base}.act")
+            if acc_spr and acc_act:
+                break
+                
         if not acc_spr or not acc_act:
-            logger.info("Accessory not found in '악세사리', trying '악세서리'...")
-            acc_spr, acc_act = load_sprite_from_grf(acc_spr_path2, acc_act_path2)
-            if not acc_spr or not acc_act:
-                logger.warning(f"Accessory files not found in GRF for '{accessory_name}' (tried both 악세사리 and 악세서리). Continuing without accessory.")
+            logger.warning(f"Accessory files not found in GRF for '{accessory_name}'. Continuing without accessory.")
     
     # 2b. Extract and parse body and head files from GRF
     logger.info("Loading body parts from GRF...")
@@ -248,8 +258,12 @@ def render_item_drop(resource_name: str) -> bytes:
     if not resource_name or resource_name.strip() in ("", "0", "None", "null"):
         raise ValueError("Invalid resource name")
         
-    spr_path = f"data/sprite/아이템/{resource_name}.spr"
-    act_path = f"data/sprite/아이템/{resource_name}.act"
+    clean_name = resource_name
+    if clean_name.startswith('_'):
+        clean_name = clean_name[1:]
+        
+    spr_path = f"data/sprite/아이템/{clean_name}.spr"
+    act_path = f"data/sprite/아이템/{clean_name}.act"
     
     spr, act = load_sprite_from_grf(spr_path, act_path)
     if not spr:

@@ -80,7 +80,7 @@ class _SingleGRF:
                         break
 
                     try:
-                        filename = table_data[idx:str_end].decode('euc-kr').lower()
+                        filename = table_data[idx:str_end].decode('cp949').lower()
                     except Exception:
                         filename = table_data[idx:str_end].decode('latin-1').lower()
 
@@ -129,7 +129,7 @@ class _SingleGRF:
             # Try decoding latin-1 byte representation to EUC-KR for real OS Unicode path
             # (Just in case the filename was requested in garbled encoding)
             try:
-                os_adjusted = adjusted.encode('latin-1').decode('euc-kr')
+                os_adjusted = adjusted.encode('latin-1').decode('cp949')
                 full_os = os.path.join(self.path, os_adjusted).replace('\\', '/')
                 if os.path.exists(full_os):
                     with open(full_os, 'rb') as f:
@@ -470,6 +470,22 @@ class GRFReader:
             f"data/texture/유저인터페이스/item/{resource_name}.bmp".lower(),
             f"data/texture/{_KOREAN_UI_FOLDER}/item/{resource_name}.bmp".lower(),
             f"data/texture/userinterface/item/{resource_name}.bmp".lower(),
+        ]
+        
+        for path in paths_to_try:
+            bmp_data = self.extract_file(path)
+            if bmp_data:
+                return self.convert_bmp_to_png(bmp_data)
+        return None
+
+    def get_collection_by_resource_name(self, resource_name: str) -> Optional[bytes]:
+        """Returns PNG bytes of item collection BMP matching resource_name."""
+        if not self.loaded or not resource_name:
+            return None
+        paths_to_try = [
+            f"data/texture/유저인터페이스/collection/{resource_name}.bmp".lower(),
+            f"data/texture/{_KOREAN_UI_FOLDER}/collection/{resource_name}.bmp".lower(),
+            f"data/texture/userinterface/collection/{resource_name}.bmp".lower(),
         ]
         
         for path in paths_to_try:

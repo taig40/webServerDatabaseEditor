@@ -769,7 +769,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
                   identifiedResourceName:    fields.unIdentifiedResourceName,
                   identifiedDescriptionName: fields.unIdentifiedDescriptionName,
                 }}
-                iconSrc={iconSrc}
+                iconSrc={`${API_URL}/api/images/item_icon?resource_name=${encodeURIComponent(fields.unIdentifiedResourceName || '')}&_bust=${iconBust}`}
               />
             </div>
           </div>

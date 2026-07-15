@@ -63,6 +63,30 @@ async def get_collection_image(item_id: int):
     return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
 
 
+@router.get("/item_icon")
+async def get_item_icon_by_name(resource_name: Optional[str] = None):
+    if not resource_name:
+        return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+    
+    _ensure_resources_loaded()
+    png_bytes = grf_reader.get_icon_by_resource_name(resource_name)
+    if png_bytes:
+        return Response(content=png_bytes, media_type="image/png")
+    return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+
+
+@router.get("/collection_image")
+async def get_collection_image_by_name(resource_name: Optional[str] = None):
+    if not resource_name:
+        return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+    
+    _ensure_resources_loaded()
+    png_bytes = grf_reader.get_collection_by_resource_name(resource_name)
+    if png_bytes:
+        return Response(content=png_bytes, media_type="image/png")
+    return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+
+
 @router.get("/drop")
 async def get_drop_image(resource_name: Optional[str] = None):
     if not resource_name:
