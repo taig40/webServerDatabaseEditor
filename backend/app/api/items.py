@@ -182,7 +182,12 @@ async def get_item_detail(item_id: int):
         if entry:
             it["identifiedDisplayName"] = entry.get("identifiedDisplayName")
             it["identifiedResourceName"] = entry.get("identifiedResourceName")
-    it["is_custom"] = (it.get("_source") == "custom")
+    target_filepath = yaml_db.item_index.get(item_id, "")
+    is_custom = "/db/import/" in target_filepath.replace("\\", "/")
+    
+    it["is_custom"] = is_custom
+    it["_source"] = "custom" if is_custom else "rathena"
+    
     return it
 
 from app.models.item import ItemDBModel, ItemUpdateModel
