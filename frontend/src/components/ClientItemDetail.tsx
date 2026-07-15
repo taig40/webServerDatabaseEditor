@@ -73,8 +73,10 @@ const TextInput: React.FC<{
   onChange: (v: string) => void;
   placeholder?: string;
   mono?: boolean;
-}> = ({ value, onChange, placeholder, mono }) => (
+  "data-testid"?: string;
+}> = ({ value, onChange, placeholder, mono, "data-testid": dataTestId }) => (
   <input
+    data-testid={dataTestId}
     type="text"
     value={value}
     onChange={(e) => onChange(e.target.value)}
@@ -513,6 +515,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
             <div>
               <Label text="identifiedResourceName" mono />
               <TextInput
+                data-testid="input-resourcename"
                 value={fields.identifiedResourceName}
                 onChange={(v) => set('identifiedResourceName', v)}
                 placeholder="Resource filename without extension"

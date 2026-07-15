@@ -229,6 +229,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
               <span className="flex items-center gap-1 bg-dark-800 px-2 py-0.5 rounded border border-white/10">
                 AegisName: 
                 <input
+                  data-testid="input-aegisname"
                   type="text"
                   value={localItem.AegisName || ''}
                   onChange={e => handleFieldChange('AegisName', e.target.value)}
@@ -358,6 +359,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             <div>
               <label className="block text-xs text-gray-500 mb-1">View ID</label>
               <input 
+                data-testid="input-viewid"
                 type="number" 
                 value={localItem.View ?? ''}
                 onChange={e => handleFieldChange('View', e.target.value, true)}

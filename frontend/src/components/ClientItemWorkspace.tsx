@@ -50,6 +50,7 @@ export const ClientItemWorkspace: React.FC<ClientItemWorkspaceProps> = ({ item, 
       <div className="flex-shrink-0 flex items-center px-6 h-14 bg-[#12121a] border-b border-white/5 gap-2">
         <button
           onClick={() => setActiveTab('basic')}
+          data-testid="tab-basic"
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === 'basic' 
               ? 'bg-white/10 text-white' 
@@ -61,6 +62,7 @@ export const ClientItemWorkspace: React.FC<ClientItemWorkspaceProps> = ({ item, 
         </button>
         <button
           onClick={() => setActiveTab('visual')}
+          data-testid="tab-visual"
           disabled={mode === 'create'}
           title={mode === 'create' ? (t('client_item_editor.visual_disabled_hint' as any) || 'Salve o item primeiro') : undefined}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${

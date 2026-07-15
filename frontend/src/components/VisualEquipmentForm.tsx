@@ -103,6 +103,7 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-400">View ID (ClassNum)</label>
                 <input
+                  data-testid="input-viewid"
                   type="number"
                   value={currentViewId}
                   onChange={(e) => setCurrentViewId(parseInt(e.target.value) || 0)}

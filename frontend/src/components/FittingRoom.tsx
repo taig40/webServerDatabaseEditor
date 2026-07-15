@@ -45,6 +45,7 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ resourceName, onSelect
       {/* Sprite Canvas stage */}
       <div className="relative w-48 h-48 bg-dark-950/80 rounded-xl border border-white/10 flex items-center justify-center overflow-hidden shadow-inner group">
         <img
+          data-testid="visualizer-canvas"
           src={previewUrl}
           alt="Character Preview"
           className="w-full h-full object-contain pixelated select-none"

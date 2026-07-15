@@ -239,6 +239,7 @@ const ClientItemEditor: React.FC = () => {
                       return (
                         <div
                           onClick={() => { setSelectedItemId(item.Id); setIsDraftMode(false); }}
+                          data-testid={`item-list-row-${item.Id}`}
                           className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer border-b border-white/5 transition-all duration-100 ${
                             isActive
                               ? 'bg-gradient-to-r from-cyan-600/20 to-transparent border-l-2 border-l-cyan-500'

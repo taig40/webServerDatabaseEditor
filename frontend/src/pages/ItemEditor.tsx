@@ -414,6 +414,7 @@ const ItemEditor: React.FC = () => {
                 return (
                   <div 
                     onClick={() => setSelectedItemId(item.Id)}
+                    data-testid={`item-list-row-${item.Id}`}
                     className={`flex items-center gap-3 p-3 cursor-pointer border-b border-white/5 transition-all duration-150 ${
                       isSelected 
                         ? isCustom
