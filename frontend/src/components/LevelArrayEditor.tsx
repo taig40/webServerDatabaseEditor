@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useLanguageStore } from '../store/useLanguageStore';
 
 interface LevelItem {
   Level: number;
@@ -23,7 +23,7 @@ export const LevelArrayEditor: React.FC<LevelArrayEditorProps> = ({
   onChange,
   isNumeric = true,
 }) => {
-  const { t } = useTranslation();
+  const t = useLanguageStore((state) => state.t);
   const [mode, setMode] = useState<'single' | 'perLevel'>(
     Array.isArray(value) ? 'perLevel' : 'single'
   );
