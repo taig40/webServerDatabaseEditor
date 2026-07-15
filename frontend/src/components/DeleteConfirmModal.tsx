@@ -112,6 +112,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
               ref={confirmRef}
               onClick={onConfirm}
               disabled={isDeleting}
+              data-testid="btn-confirm-delete"
               className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-500 rounded-xl transition-all shadow-lg shadow-red-900/30 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isDeleting ? (

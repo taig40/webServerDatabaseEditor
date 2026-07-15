@@ -456,6 +456,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
                   onClick={() => setIsDeleteModalOpen(true)}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 transition-all"
                   title={t('client_item_delete.btn_label' as any) || 'Excluir do ItemInfo'}
+                  data-testid="btn-delete-item"
                 >
                   <Trash2 size={14} />
                   {t('client_item_delete.btn_label' as any) || 'Excluir'}

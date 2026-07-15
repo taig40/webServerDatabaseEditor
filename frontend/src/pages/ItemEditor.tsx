@@ -300,6 +300,7 @@ const ItemEditor: React.FC = () => {
               onClick={() => setIsModalOpen(true)}
               className="p-1.5 bg-violet-600/20 hover:bg-violet-600/40 text-violet-400 rounded transition-colors"
               title={t('item_editor.new_item')}
+              data-testid="btn-new-item"
             >
               <Plus size={16} />
             </button>
@@ -376,6 +377,7 @@ const ItemEditor: React.FC = () => {
                     }
                   }}
                   className="w-full bg-dark-900 border border-white/10 rounded-lg pl-9 pr-3 py-1.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-violet-500/50 transition-colors"
+                  data-testid="input-search"
                 />
               </div>
               <button

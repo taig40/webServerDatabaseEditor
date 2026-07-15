@@ -207,6 +207,7 @@ const ClientItemEditor: React.FC = () => {
                     onClick={() => { setIsDraftMode(true); setSelectedItemId(null); }}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 text-violet-400 hover:text-violet-300 text-xs font-medium transition-all"
                     title={t('client_item_editor.new_item_btn' as any) || 'Novo Item'}
+                    data-testid="btn-new-item"
                   >
                     <Plus size={13} />
                     {t('client_item_editor.new_item_btn' as any) || 'Novo Item'}
@@ -221,6 +222,7 @@ const ClientItemEditor: React.FC = () => {
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
                     className="w-full bg-[#0f0f14] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                    data-testid="input-search"
                   />
                 </div>
                 <div className="text-[10px] text-gray-600 mt-2 font-mono">

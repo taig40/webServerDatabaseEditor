@@ -134,4 +134,87 @@ test.describe('rAthena Web Editor E2E Tests', () => {
 
     expect(genderResponse.status()).toBe(200);
   });
+  test('Cenário 4: Motor de Busca e Filtro (Search Engine)', async ({ page }) => {
+    await page.getByTestId('menu-items').click();
+
+    const searchInput = page.getByTestId('input-search');
+    await searchInput.fill('2220');
+    await page.keyboard.press('Enter');
+
+    // The list should shrink and 2220 should be visible
+    const itemRow = page.getByTestId('item-list-row-2220');
+    await expect(itemRow).toBeVisible();
+
+    await searchInput.clear();
+    await page.keyboard.press('Enter');
+  });
+
+  test('Cenário 5: Ciclo CRUD Completo (Create & Delete)', async ({ page }) => {
+    await page.getByTestId('menu-items').click();
+
+    // Create
+    await page.getByTestId('btn-new-item').click();
+
+    const idInput = page.locator('input[name="Id"]');
+    await idInput.fill('99999');
+
+    const aegisNameInput = page.locator('input[name="AegisName"]');
+    await aegisNameInput.fill('_QA_TEST_ITEM_');
+
+    const nameInput = page.locator('input[name="Name"]');
+    await nameInput.fill('QA Test Item');
+
+    // Submit
+    await page.locator('button[type="submit"]').click();
+
+    // Check Toast / item exists
+    const toastMessage = page.getByTestId('toast-message');
+    await expect(toastMessage).toBeVisible({ timeout: 5000 });
+
+    const itemRow = page.getByTestId('item-list-row-99999');
+    await expect(itemRow).toBeVisible({ timeout: 5000 });
+    await itemRow.click();
+
+    // Delete
+    await page.getByTestId('btn-delete-item').click();
+    await page.getByTestId('btn-confirm-delete').click();
+
+    // Check Toast / item is gone
+    await expect(toastMessage.nth(1)).toBeVisible({ timeout: 5000 });
+    await expect(itemRow).toBeHidden({ timeout: 5000 });
+  });
+
+  test('Cenário 6: Auditoria de Rotas (Sidebar Navigation)', async ({ page }) => {
+    // Navigate to Quests
+    await page.getByTestId('menu-server_quests').click();
+    await expect(page.locator('h2').filter({ hasText: /Quests/i })).toBeVisible();
+
+    // Navigate to Pets
+    await page.getByTestId('menu-pets').click();
+    await expect(page.locator('h2').filter({ hasText: /Mascotes/i })).toBeVisible();
+
+    // Navigate to Achievements
+    await page.getByTestId('menu-server_achievements').click();
+    await expect(page.locator('h2').filter({ hasText: /Conquistas/i })).toBeVisible();
+  });
+
+  test('Cenário 7: Validação de Formulário (Bad Inputs)', async ({ page }) => {
+    await page.getByTestId('menu-items').click();
+
+    // Create
+    await page.getByTestId('btn-new-item').click();
+
+    // Leave ID as 0 or empty, and AegisName empty
+    const idInput = page.locator('input[name="Id"]');
+    await idInput.fill('0');
+
+    // Submit
+    await page.locator('button[type="submit"]').click();
+
+    // The system should block and show an error in the form (or toast)
+    // The NewItemModal has a generic error div:
+    // {error && <div className="bg-red-900/50 ...">{error}</div>}
+    const errorDiv = page.locator('form div.bg-red-900\\/50');
+    await expect(errorDiv).toBeVisible({ timeout: 3000 });
+  });
 });

@@ -28,7 +28,7 @@ export const ToastContainer: React.FC = () => {
               {isSuccess && <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />}
               {isError && <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />}
               {!isSuccess && !isError && <Info className="w-5 h-5 text-cyan-400 shrink-0" />}
-              <span className="text-sm font-medium leading-snug break-words">{t.text}</span>
+              <span className="text-sm font-medium leading-snug break-words" data-testid="toast-message">{t.text}</span>
             </div>
             <button
               onClick={() => removeToast(t.id)}
