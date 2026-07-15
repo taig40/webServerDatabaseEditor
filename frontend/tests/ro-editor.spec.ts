@@ -3,6 +3,20 @@ import { test, expect } from '@playwright/test';
 test.describe('rAthena Web Editor E2E Tests', () => {
 
   test.beforeEach(async ({ page }) => {
+    // Bypass da tela de Setup: Força a API a dizer que já está configurada
+    await page.route('**/api/status', async route => {
+      await route.fulfill({ json: { status: 'ok' } });
+    });
+
+    // Bypass do carregamento de cache via SSE
+    await page.route('**/api/system/initialize-cache', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: 'data: {"status":"complete","progress":100}\n\n'
+      });
+    });
+
     await page.goto('/');
     // Aumentamos o timeout dessa verificação específica para 90s,
     // pois a carga inicial da GRF e dos YAMLs do rAthena é pesada.
