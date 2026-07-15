@@ -206,7 +206,13 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             <ItemIcon itemId={localItem.Id} />
           </div>
           <div className="flex flex-col">
-            <h2 className="text-2xl font-bold text-white mb-1">{localItem.Name || t('item_detail.unnamed')}</h2>
+            <input
+              type="text"
+              value={localItem.Name || ''}
+              onChange={e => handleFieldChange('Name', e.target.value)}
+              className="text-2xl font-bold text-white mb-1 bg-transparent border-b border-transparent hover:border-white/20 focus:border-cyan-500 focus:outline-none w-full transition-colors placeholder-gray-600"
+              placeholder={t('item_detail.unnamed')}
+            />
             <div className="flex items-center gap-3 text-sm font-mono text-gray-400 flex-wrap">
               <span className="flex items-center gap-1.5 bg-dark-800 px-2 py-0.5 rounded border border-white/10">
                 <span>ID: <span className="text-violet-400">{localItem.Id}</span></span>
