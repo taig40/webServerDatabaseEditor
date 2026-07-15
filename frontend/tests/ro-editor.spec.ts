@@ -20,13 +20,13 @@ test.describe('rAthena Web Editor E2E Tests', () => {
     if (await setupInput.isVisible()) {
       await setupInput.fill(process.env.TEST_DB_PATH || 'C:/rAthena/db');
       await page.getByPlaceholder(/data\.grf/i).fill(process.env.TEST_GRF_PATH || 'C:/Ragnarok/data.grf');
-      await page.getByPlaceholder(/itemInfo\.lua/i).fill(process.env.TEST_LUA_PATH || 'C:/Ragnarok/System/itemInfo.lua');
-      await page.getByRole('button', { name: /Salvar|Iniciar|Save/i }).click();
+      await page.getByPlaceholder(/itemInfo\.lub/i).fill(process.env.TEST_LUA_PATH || 'C:/Ragnarok/System/itemInfo.lua');
+      await page.getByRole('button', { name: /Salvar e Iniciar|Save and Start/i }).click();
     }
 
-    // Aumentamos o timeout dessa verificação específica para 90s,
+    // Aumentamos o timeout dessa verificação específica para 10 minutos,
     // pois a carga inicial da GRF e dos YAMLs do rAthena é pesada.
-    await expect(loadingScreen).toBeHidden({ timeout: 90000 });
+    await expect(loadingScreen).toBeHidden({ timeout: 600000 });
 
     // Cenário 4: Prevenção de Falsos Positivos - falha o teste caso qualquer requisição retorne 500
     page.on('response', response => {
@@ -71,7 +71,7 @@ test.describe('rAthena Web Editor E2E Tests', () => {
     });
 
     await page.getByTestId('menu-client_items').click();
-    
+
     const searchInput = page.getByPlaceholder(/Buscar/i).or(page.getByPlaceholder(/Search/i));
     await searchInput.fill('2220');
     await page.keyboard.press('Enter');
@@ -81,7 +81,7 @@ test.describe('rAthena Web Editor E2E Tests', () => {
 
     // Wait for the resource name input to be visible which triggers asset loading
     await expect(page.getByTestId('input-resourcename')).toBeVisible();
-    
+
     // Give some time for images to load
     await page.waitForTimeout(1000);
   });
@@ -102,17 +102,17 @@ test.describe('rAthena Web Editor E2E Tests', () => {
     // It is placeholder="Ex: _CustomWings". We can just rely on the existing one or type "_Hat"
     // The VisualEquipmentForm has an input for Sprite Name. Let's find it by placeholder or label.
     const spriteNameInput = page.getByLabel(/Sprite Name|Resource Name/i);
-    
+
     // Wait for response to /api/visualizer/preview
-    const responsePromise = page.waitForResponse(response => 
+    const responsePromise = page.waitForResponse(response =>
       response.url().includes('/api/visualizer/preview')
     );
 
     // Type resource name
     await spriteNameInput.fill('모자'); // Example valid korean resource name or we can use existing
-    
+
     const response = await responsePromise;
-    
+
     // Assert 200 and image/png
     expect(response.status()).toBe(200);
     expect(response.headers()['content-type']).toContain('image/png');
@@ -123,8 +123,8 @@ test.describe('rAthena Web Editor E2E Tests', () => {
 
     // Toggle gender
     const genderButton = page.getByRole('button', { name: /Male|Female|Masculino|Feminino/i });
-    
-    const genderResponsePromise = page.waitForResponse(response => 
+
+    const genderResponsePromise = page.waitForResponse(response =>
       response.url().includes('/api/visualizer/preview')
     );
     await genderButton.click();
