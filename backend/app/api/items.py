@@ -308,4 +308,4 @@ async def delete_item(item_id: int):
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Item {item_id} não encontrado.")
 
-    return {"deleted": True, "item_id": item_id}
+    return {"status": "success", "message": "Item deletado com sucesso.", "item_id": item_id}
