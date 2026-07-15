@@ -156,7 +156,7 @@ const ItemCard: React.FC<{ fields: ClientFields; iconSrc: string }> = ({ fields,
         {fields.ClassNum > 0 && (
           <p className="text-[10px] text-gray-500 font-mono">ClassNum: {fields.ClassNum}</p>
         )}
-        <p className="text-[10px] text-gray-600 font-mono">res: {decodeLatin1ToEucKr(fields.identifiedResourceName) || '—'}</p>
+        <p className="text-[10px] text-gray-600 font-mono">res: {fields.identifiedResourceName || '—'}</p>
       </div>
     </div>
   );
@@ -350,6 +350,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
   };
 
   const iconSrc = `${API_URL}/api/images/item/${item.Id}?_bust=${iconBust}`;
+  const collectionSrc = `${API_URL}/api/images/collection/${item.Id}?_bust=${iconBust}`;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-[#0f0f14] text-gray-200">
@@ -519,7 +520,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
               />
               {fields.identifiedResourceName && (
                 <p className="text-[10px] text-gray-500 mt-1 font-sans">
-                  Korean Name / Nome Coreano: <span className="text-cyan-400 font-medium">{decodeLatin1ToEucKr(fields.identifiedResourceName)}</span>
+                  Korean Name / Nome Coreano: <span className="text-cyan-400 font-medium">{fields.identifiedResourceName}</span>
                 </p>
               )}
             </div>
@@ -554,7 +555,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
               />
               {fields.unIdentifiedResourceName && (
                 <p className="text-[10px] text-gray-500 mt-1 font-sans">
-                  Korean Name / Nome Coreano: <span className="text-cyan-400 font-medium">{decodeLatin1ToEucKr(fields.unIdentifiedResourceName)}</span>
+                  Korean Name / Nome Coreano: <span className="text-cyan-400 font-medium">{fields.unIdentifiedResourceName}</span>
                 </p>
               )}
             </div>
@@ -634,7 +635,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
                   </div>
                   <p className="text-[10px] font-mono flex items-center gap-1.5">
                     <span className={`w-1.5 h-1.5 rounded-full ${assetsStatus.icon_exists ? 'bg-green-400' : 'bg-red-400'}`} />
-                    <span className="text-gray-500">data/texture/유저인터페이스/item/{decodeLatin1ToEucKr(fields.identifiedResourceName) || '?'}.bmp</span>
+                    <span className="text-gray-500">data/texture/유저인터페이스/item/{fields.identifiedResourceName || '?'}.bmp</span>
                     <span className={assetsStatus.icon_exists ? 'text-green-400' : 'text-red-400'}>
                       ({assetsStatus.icon_exists ? t('client_item_detail.status.exists') : t('client_item_detail.status.missing')})
                     </span>
@@ -648,7 +649,15 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
               <Label text={t('client_item_detail.labels.collection_illustration')} />
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-[#0f0f14] border border-white/10 rounded-lg flex items-center justify-center p-1 shrink-0">
-                  <Monitor size={20} className="text-gray-700" />
+                  <img
+                    src={collectionSrc}
+                    alt="collection"
+                    className="max-w-full max-h-full"
+                    onError={(e) => { 
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='20' height='14' x='2' y='3' rx='2'/><line x1='8' x2='16' y1='21' y2='21'/><line x1='12' x2='12' y1='17' y2='21'/></svg>`;
+                    }}
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -669,7 +678,7 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
                   </div>
                   <p className="text-[10px] font-mono flex items-center gap-1.5">
                     <span className={`w-1.5 h-1.5 rounded-full ${assetsStatus.collection_exists ? 'bg-green-400' : 'bg-red-400'}`} />
-                    <span className="text-gray-500">data/texture/유저인터페이스/collection/{decodeLatin1ToEucKr(fields.identifiedResourceName) || '?'}.bmp</span>
+                    <span className="text-gray-500">data/texture/유저인터페이스/collection/{fields.identifiedResourceName || '?'}.bmp</span>
                     <span className={assetsStatus.collection_exists ? 'text-green-400' : 'text-red-400'}>
                       ({assetsStatus.collection_exists ? t('client_item_detail.status.exists') : t('client_item_detail.status.missing')})
                     </span>
@@ -682,8 +691,20 @@ const ClientItemDetail: React.FC<Props> = ({ item, onSave, isNew = false, onCrea
             <div>
               <Label text={t('client_item_detail.labels.drop_sprite')} />
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-[#0f0f14] border border-white/10 rounded-lg flex items-center justify-center p-1 shrink-0">
-                  <Database size={20} className="text-gray-700" />
+                <div className="w-12 h-12 bg-[#0f0f14] border border-white/10 rounded-lg flex items-center justify-center p-1 shrink-0 overflow-hidden">
+                  <img 
+                    key={assetsStatus.drop_spr_exists ? `drop-spr-${Date.now()}` : 'drop-missing'}
+                    src={`${API_URL}/api/images/drop?resource_name=${encodeURIComponent(fields.identifiedResourceName || '')}&_bust=${Date.now()}`}
+                    alt="Drop Sprite"
+                    className="w-full h-full object-contain filter drop-shadow-md"
+                    onError={(e) => { 
+                      e.currentTarget.style.display = 'none'; 
+                      const parent = e.currentTarget.parentElement;
+                      if (parent) {
+                        parent.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>';
+                      }
+                    }}
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-2 flex-wrap">

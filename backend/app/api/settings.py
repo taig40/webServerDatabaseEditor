@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from typing import Optional
 import os
 import re
-from app.core.config import cfg, ENCODING_OPTIONS, ENV_PATH, get_env_path
+from app.core.config import cfg, ENV_PATH, get_env_path
 
 router = APIRouter()
 
@@ -122,7 +122,6 @@ async def get_settings():
         "client_encoding": env.get("CLIENT_ENCODING", "euc-kr") or "euc-kr",
         "achievements_lua_path": env.get("ACHIEVEMENTS_LUA_PATH", ""),
         "quests_lua_path": env.get("QUESTS_LUA_PATH", ""),
-        "encoding_options": ENCODING_OPTIONS,
     }
 
 

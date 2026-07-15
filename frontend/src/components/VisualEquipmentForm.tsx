@@ -50,7 +50,7 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
     };
     
     fetchVisual();
-  }, [viewId]);
+  }, [viewId, initialResourceName]);
 
   const handleSave = async () => {
     if (currentViewId <= 0) {

@@ -419,6 +419,49 @@ class GRFReader:
 
         return self.generate_dummy_png()
 
+    def get_item_collection(self, item_id: int) -> bytes:
+        """
+        Locates an item collection illustration inside the GRF(s) and returns it as a PNG stream.
+        """
+        if not self.loaded:
+            return self.generate_dummy_png()
+
+        from app.services.iteminfo_parser import iteminfo_db
+        from app.services.yaml_parser import yaml_db
+
+        resource_name = None
+        if iteminfo_db.loaded:
+            resource_name = iteminfo_db.get_resource_name(item_id)
+
+        if not resource_name:
+            resource_name = str(item_id)
+            if item_id in yaml_db.item_index:
+                filepath = yaml_db.item_index[item_id]
+                data = yaml_db.db_cache.get(filepath)
+                if data and 'Body' in data:
+                    for item in data['Body']:
+                        if item.get('Id') == item_id:
+                            resource_name = item.get('Name', str(item_id))
+                            break
+
+        paths_to_try = [
+            f"data/texture/유저인터페이스/collection/{resource_name}.bmp".lower(),
+            f"data/texture/{_KOREAN_UI_FOLDER}/collection/{resource_name}.bmp".lower(),
+            f"data/texture/userinterface/collection/{resource_name}.bmp".lower(),
+            f"data/texture/유저인터페이스/collection/{item_id}.bmp".lower(),
+            f"data/texture/{_KOREAN_UI_FOLDER}/collection/{item_id}.bmp".lower(),
+            f"data/texture/userinterface/collection/{item_id}.bmp".lower(),
+        ]
+
+        for path in paths_to_try:
+            bmp_data = self.extract_file(path)
+            if bmp_data:
+                png_data = self.convert_bmp_to_png(bmp_data)
+                if png_data:
+                    return png_data
+
+        return self.generate_dummy_png()
+
     def get_icon_by_resource_name(self, resource_name: str) -> Optional[bytes]:
         """Returns PNG bytes of item icon BMP matching resource_name."""
         if not self.loaded or not resource_name:

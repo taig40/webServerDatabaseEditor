@@ -119,21 +119,7 @@ class ItemInfoParser:
 
     def _parse(self, filepath: str):
         """Regex block parser for iteminfo.lua. Robust and fully compliant with identified/unidentified requirements."""
-        # Strictly validate client encoding first (record error if any, but do not block loading)
-        from app.core.utils import read_file_safely
-        try:
-            read_file_safely(filepath, cfg.client_encoding)
-            self.encoding_error = None
-        except Exception as e:
-            from fastapi import HTTPException
-            if isinstance(e, HTTPException) and isinstance(e.detail, dict) and e.detail.get("error_code") == "ENCODING_MISMATCH":
-                self.encoding_error = e.detail
-            else:
-                self.encoding_error = {
-                    "error_code": "ENCODING_MISMATCH",
-                    "message": f"Erro de validação de encoding no arquivo {os.path.basename(filepath)} usando '{cfg.client_encoding}': {str(e)}",
-                    "suggestion": "Vá até a aba Configurações (Settings) para ajustar o encoding."
-                }
+        self.encoding_error = None
 
         # ALWAYS read with client_encoding (EUC-KR) replacing errors.
         with open(filepath, "r", encoding=cfg.client_encoding, errors="replace") as f:

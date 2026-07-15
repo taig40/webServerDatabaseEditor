@@ -50,12 +50,7 @@ export const ClientAssetAudit: React.FC<ClientAssetAuditProps> = ({ onOpenItem }
   };
 
   const decodeLatin1ToEucKr = (str: string) => {
-    try {
-      const bytes = new Uint8Array(str.split('').map(c => c.charCodeAt(0)));
-      return new TextDecoder('euc-kr').decode(bytes);
-    } catch {
-      return str;
-    }
+    return str || '';
   };
 
   const filteredResults = useMemo(() => {
@@ -199,7 +194,7 @@ export const ClientAssetAudit: React.FC<ClientAssetAuditProps> = ({ onOpenItem }
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {slicedResults.map((item) => {
-                        const decodedRes = decodeLatin1ToEucKr(item.ResourceName);
+                        const decodedRes = item.ResourceName || '';
                         return (
                           <tr key={item.Id} className="hover:bg-white/[0.01] transition-colors">
                             <td className="py-3 px-4 font-mono font-bold text-gray-400">{item.Id}</td>

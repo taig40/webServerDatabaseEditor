@@ -55,7 +55,10 @@ async def get_client_items_list():
                 "Id": item_id,
                 "AegisName": item.get("AegisName", ""),
                 "Name": item.get("Name", ""),
-                "identifiedDisplayName": lua_name
+                "identifiedDisplayName": lua_name,
+                "identifiedResourceName": lua_entry.get("identifiedResourceName", "") if lua_entry else "",
+                "unIdentifiedResourceName": lua_entry.get("unIdentifiedResourceName", "") if lua_entry else "",
+                "ClassNum": lua_entry.get("ClassNum", 0) if lua_entry else 0
             })
             
     # 2. Pegar os itens custom que só existem no LUA
@@ -65,7 +68,10 @@ async def get_client_items_list():
                 "Id": item_id,
                 "AegisName": f"UNKNOWN_{item_id}",
                 "Name": "",
-                "identifiedDisplayName": lua_entry.get("identifiedDisplayName", "")
+                "identifiedDisplayName": lua_entry.get("identifiedDisplayName", ""),
+                "identifiedResourceName": lua_entry.get("identifiedResourceName", ""),
+                "unIdentifiedResourceName": lua_entry.get("unIdentifiedResourceName", ""),
+                "ClassNum": lua_entry.get("ClassNum", 0)
             })
 
     return {"items": result}
@@ -169,20 +175,25 @@ async def audit_assets():
             
         # Check files
         icon_exists = (
+            check_exists(f"data/texture/유저인터페이스/item/{res_name}.bmp") or
             check_exists(f"data/texture/{_KOREAN_UI_FOLDER}/item/{res_name}.bmp") or
             check_exists(f"data/texture/userinterface/item/{res_name}.bmp")
         )
         collection_exists = (
+            check_exists(f"data/texture/유저인터페이스/collection/{res_name}.bmp") or
             check_exists(f"data/texture/{_KOREAN_UI_FOLDER}/collection/{res_name}.bmp") or
             check_exists(f"data/texture/userinterface/collection/{res_name}.bmp") or
+            check_exists(f"data/sprite/아이템/{res_name}.bmp") or
             check_exists(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{res_name}.bmp") or
             check_exists(f"data/sprite/item/{res_name}.bmp")
         )
         spr_exists = (
+            check_exists(f"data/sprite/아이템/{res_name}.spr") or
             check_exists(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{res_name}.spr") or
             check_exists(f"data/sprite/item/{res_name}.spr")
         )
         act_exists = (
+            check_exists(f"data/sprite/아이템/{res_name}.act") or
             check_exists(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{res_name}.act") or
             check_exists(f"data/sprite/item/{res_name}.act")
         )
@@ -243,20 +254,25 @@ async def get_client_item(item_id: int):
         resource_name = entry.get("unIdentifiedResourceName") or str(item_id)
 
     icon_exists = (
+        grf_reader.has_file(f"data/texture/유저인터페이스/item/{resource_name}.bmp") or
         grf_reader.has_file(f"data/texture/{_KOREAN_UI_FOLDER}/item/{resource_name}.bmp") or
         grf_reader.has_file(f"data/texture/userinterface/item/{resource_name}.bmp")
     )
     collection_exists = (
+        grf_reader.has_file(f"data/texture/유저인터페이스/collection/{resource_name}.bmp") or
         grf_reader.has_file(f"data/texture/{_KOREAN_UI_FOLDER}/collection/{resource_name}.bmp") or
         grf_reader.has_file(f"data/texture/userinterface/collection/{resource_name}.bmp") or
+        grf_reader.has_file(f"data/sprite/아이템/{resource_name}.bmp") or
         grf_reader.has_file(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.bmp") or
         grf_reader.has_file(f"data/sprite/item/{resource_name}.bmp")
     )
     drop_spr_exists = (
+        grf_reader.has_file(f"data/sprite/아이템/{resource_name}.spr") or
         grf_reader.has_file(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.spr") or
         grf_reader.has_file(f"data/sprite/item/{resource_name}.spr")
     )
     drop_act_exists = (
+        grf_reader.has_file(f"data/sprite/아이템/{resource_name}.act") or
         grf_reader.has_file(f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.act") or
         grf_reader.has_file(f"data/sprite/item/{resource_name}.act")
     )
@@ -429,6 +445,8 @@ async def get_visual_equipment(view_id: int):
     Retorna a configuração visual (identity e nome do sprite) para uma View ID.
     """
     try:
+        from app.api.images import _ensure_resources_loaded
+        _ensure_resources_loaded()
         data = visuals_db.get_visual(view_id)
         if not data:
             return {"view_id": view_id, "identity": "", "name": ""}
@@ -448,6 +466,8 @@ async def update_visual_equipment(view_id: int, payload: VisualEquipmentModelUpd
         raise HTTPException(status_code=400, detail="Identity and Name are required")
         
     try:
+        from app.api.images import _ensure_resources_loaded
+        _ensure_resources_loaded()
         data = visuals_db.upsert_visual(view_id, payload.identity, payload.name)
         return data
     except Exception as e:

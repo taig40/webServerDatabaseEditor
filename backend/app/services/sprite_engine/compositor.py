@@ -232,8 +232,52 @@ def compose_character(accessory_name: str, is_male: bool, direction: int) -> byt
         logger.info("Drawing Accessory sprites...")
         draw_frame_part(canvas, acc_spr, acc_act, direction, 0, C_acc)
         
+        
     # 7. Output image bytes
     buf = io.BytesIO()
     canvas.save(buf, format="PNG")
     logger.info("Composition completed successfully.")
     return buf.getvalue()
+
+
+def render_item_drop(resource_name: str) -> bytes:
+    """
+    Renders the first frame of an item's drop sprite (action 0, frame 0).
+    Returns PNG bytes.
+    """
+    if not resource_name or resource_name.strip() in ("", "0", "None", "null"):
+        raise ValueError("Invalid resource name")
+        
+    spr_path = f"data/sprite/아이템/{resource_name}.spr"
+    act_path = f"data/sprite/아이템/{resource_name}.act"
+    
+    spr, act = load_sprite_from_grf(spr_path, act_path)
+    if not spr:
+        raise ValueError(f"Drop sprite not found: {spr_path}")
+        
+    canvas = Image.new("RGBA", (100, 100), (255, 255, 255, 0))
+    C_center = (50.0, 50.0)
+    
+    if act:
+        draw_frame_part(canvas, spr, act, 0, 0, C_center)
+    else:
+        # Fallback if no ACT file
+        src_img = spr.get_image(0, 0)
+        if src_img:
+            x = int(C_center[0] - src_img.width / 2)
+            y = int(C_center[1] - src_img.height / 2)
+            canvas.paste(src_img, (x, y), src_img)
+            
+    bbox = canvas.getbbox()
+    if bbox:
+        canvas = canvas.crop((
+            max(0, bbox[0] - 5),
+            max(0, bbox[1] - 5),
+            min(100, bbox[2] + 5),
+            min(100, bbox[3] + 5)
+        ))
+        
+    buf = io.BytesIO()
+    canvas.save(buf, format="PNG")
+    return buf.getvalue()
+

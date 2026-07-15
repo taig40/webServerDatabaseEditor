@@ -38,6 +38,13 @@ def get_cached_item_icon(item_id: int) -> Optional[bytes]:
     return png_bytes
 
 
+@lru_cache(maxsize=5000)
+def get_cached_item_collection(item_id: int) -> Optional[bytes]:
+    _ensure_resources_loaded()
+    png_bytes = grf_reader.get_item_collection(item_id)
+    return png_bytes
+
+
 @router.get("/item/{item_id}")
 async def get_item_image(item_id: int):
     png_bytes = get_cached_item_icon(item_id)
@@ -45,3 +52,27 @@ async def get_item_image(item_id: int):
         return Response(content=png_bytes, media_type="image/png")
 
     return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+
+
+@router.get("/collection/{item_id}")
+async def get_collection_image(item_id: int):
+    png_bytes = get_cached_item_collection(item_id)
+    if png_bytes:
+        return Response(content=png_bytes, media_type="image/png")
+
+    return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+
+
+@router.get("/drop")
+async def get_drop_image(resource_name: Optional[str] = None):
+    if not resource_name:
+        return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+        
+    try:
+        from app.services.sprite_engine.compositor import render_item_drop
+        _ensure_resources_loaded()
+        png_bytes = render_item_drop(resource_name)
+        return Response(content=png_bytes, media_type="image/png")
+    except Exception as e:
+        print(f"Error rendering drop sprite for {resource_name}: {e}")
+        return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")

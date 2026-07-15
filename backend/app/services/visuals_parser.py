@@ -17,6 +17,32 @@ class VisualLuaHandler:
 
     def load(self):
         if not self.filepath or not os.path.exists(self.filepath):
+            basename = os.path.basename(self.filepath) if self.filepath else ("accname.lub" if self.is_accname else "accessoryid.lub")
+            if basename.endswith(".lua"):
+                basename = basename[:-4] + ".lub"
+                
+            content_bytes = None
+            paths_to_try = [
+                f"data/luafiles514/lua files/datainfo/{basename}",
+                f"data/luafiles514/lua files/datainfo/{basename[:-4]}.lua",
+                f"data/luafiles514/lua files/datainfo/{basename[:-4]}.lub",
+                f"system/{basename}",
+                f"system/{basename[:-4]}.lua"
+            ]
+            
+            for path in paths_to_try:
+                content_bytes = grf_reader.extract_file(path)
+                if content_bytes:
+                    break
+                    
+            if content_bytes:
+                try:
+                    self.content = content_bytes.decode(cfg.client_encoding, errors='replace')
+                    self.encoding_used = cfg.client_encoding
+                    self._parse_content()
+                except Exception as e:
+                    print(f"[!] Erro ao parsear {basename} do GRF: {e}")
+            
             self.loaded = True
             return
             
@@ -27,7 +53,6 @@ class VisualLuaHandler:
         except Exception as e:
             self.encoding_error = f"Impossível ler o arquivo visual {self.filepath}: {e}"
             print(f"[!] Erro de leitura em {self.filepath}: {self.encoding_error}")
-            # Marcado como carregado para não bloquear o servidor principal com falhas de assets do cliente
             self.loaded = True
             return
             
@@ -52,7 +77,7 @@ class VisualLuaHandler:
                     print(f"[!] Erro no parse de linha do accessoryid: {match.group(0)} - {e}")
         else:
             # accname.lua -> [ACCESSORY_IDs.ACCESSORY_NAME] = "_sprite_name",
-            pattern = re.compile(r'^\s*\[\s*ACCESSORY_IDs\.([A-Za-z0-9_]+)\s*\]\s*=\s*"([^"]+)"', re.MULTILINE)
+            pattern = re.compile(r'^\s*\[\s*(?:[A-Za-z0-9_]+\.)?([A-Za-z0-9_]+)\s*\]\s*=\s*"([^"]+)"', re.MULTILINE)
             for match in pattern.finditer(self.content):
                 try:
                     identity, sprite_name = match.groups()
@@ -117,14 +142,25 @@ class VisualsDB:
         if not self.accessoryid_handler or not self.accname_handler:
             lua_path = os.environ.get("RO_LUA_FILES_PATH", "").strip()
             
+            if not lua_path:
+                iteminfo = os.environ.get("ITEMINFO_PATH", "").strip()
+                if iteminfo and os.path.exists(iteminfo):
+                    lua_path = os.path.dirname(os.path.abspath(iteminfo))
+                    # Often iteminfo is in SystemEN/LuaFiles514, and datainfo is inside lua files/datainfo
+                    # But it could also just be in the same folder or System folder.
+            
             if lua_path and os.path.exists(lua_path):
                 acc_id_path = os.path.join(lua_path, "accessoryid.lua")
                 if not os.path.exists(acc_id_path):
                     acc_id_path = os.path.join(lua_path, "accessoryid.lub")
+                    if not os.path.exists(acc_id_path) and os.path.exists(os.path.join(lua_path, "datainfo", "accessoryid.lub")):
+                        acc_id_path = os.path.join(lua_path, "datainfo", "accessoryid.lub")
                     
                 acc_name_path = os.path.join(lua_path, "accname.lua")
                 if not os.path.exists(acc_name_path):
                     acc_name_path = os.path.join(lua_path, "accname.lub")
+                    if not os.path.exists(acc_name_path) and os.path.exists(os.path.join(lua_path, "datainfo", "accname.lub")):
+                        acc_name_path = os.path.join(lua_path, "datainfo", "accname.lub")
             else:
                 override_path = grf_reader.override_path
                 sys_path = os.path.join(override_path, "System") if override_path else ""
