@@ -10,8 +10,8 @@ from app.services.sprite_engine.act_parser import ActParser
 logger = logging.getLogger("sprite_engine.compositor")
 
 # Constants for default paths in the GRF (RO Standard)
-BODY_PATH_MALE = "data/sprite/인간족/초보자/남/초보자_남"
-BODY_PATH_FEMALE = "data/sprite/인간족/초보자/여/초보자_여"
+BODY_PATH_MALE = "data/sprite/인간족/몸통/남/초보자_남"
+BODY_PATH_FEMALE = "data/sprite/인간족/몸통/여/초보자_여"
 
 HEAD_PATH_MALE = "data/sprite/인간족/머리통/남/1_남"
 HEAD_PATH_FEMALE = "data/sprite/인간족/머리통/여/1_여"
@@ -108,12 +108,12 @@ def draw_frame_part(canvas: Image.Image, spr: SprParser, act: ActParser, action_
             
         # Adjust opacity/alpha if color has transparency
         color = sprite.get('color', 0xFFFFFFFF)
-        if color != 0xFFFFFFFF:
+        if color != 0xFFFFFFFF and color != 0:
             a_tint = (color >> 24) & 0xFF
-            if a_tint < 255:
+            if a_tint < 255 and a_tint > 0:
                 # Apply alpha factor
                 r_ch, g_ch, b_ch, a_ch = img.split()
-                a_ch = a_ch.point(lambda p: int(p * a_tint / 255.0))
+                a_ch = a_ch.point(lambda p: int(p * (a_tint / 255.0)))
                 img.putalpha(a_ch)
                 
         # Compute pasting position (ACT coords are offsets from the part center)
@@ -155,23 +155,26 @@ def compose_character(accessory_name: str, is_male: bool, direction: int) -> byt
     acc_spr, acc_act = None, None
     if accessory_name and accessory_name.strip() not in ("", "0", "None", "null"):
         # No RO standard, o acessório está em data/sprite/악세사리/남 (ou 여)
-        acc_spr_path = f"data/sprite/악세사리/{gender_folder}/{accessory_name}_{gender_suffix}.spr"
-        acc_act_path = f"data/sprite/악세사리/{gender_folder}/{accessory_name}_{gender_suffix}.act"
+        # Algumas GRFs escrevem '악세서리' em vez de '악세사리'
+        acc_spr_path1 = f"data/sprite/악세사리/{gender_folder}/{accessory_name}_{gender_suffix}.spr"
+        acc_act_path1 = f"data/sprite/악세사리/{gender_folder}/{accessory_name}_{gender_suffix}.act"
+        acc_spr_path2 = f"data/sprite/악세서리/{gender_folder}/{accessory_name}_{gender_suffix}.spr"
+        acc_act_path2 = f"data/sprite/악세서리/{gender_folder}/{accessory_name}_{gender_suffix}.act"
         
         # 2. Extract and parse files from GRF
-        logger.info(f"Loading accessory '{accessory_name}' from GRF paths '{acc_spr_path}', '{acc_act_path}'...")
-        try:
-            acc_spr, acc_act = load_sprite_from_grf(acc_spr_path, acc_act_path)
+        logger.info(f"Loading accessory '{accessory_name}' from GRF paths...")
+        acc_spr, acc_act = load_sprite_from_grf(acc_spr_path1, acc_act_path1)
+        if not acc_spr or not acc_act:
+            logger.info("Accessory not found in '악세사리', trying '악세서리'...")
+            acc_spr, acc_act = load_sprite_from_grf(acc_spr_path2, acc_act_path2)
             if not acc_spr or not acc_act:
-                logger.warning(f"Accessory files not found in GRF for '{accessory_name}' (paths: {acc_spr_path}, {acc_act_path})")
-        except Exception as e:
-            logger.warning(f"Failed to load accessory '{accessory_name}' from GRF: {e}")
+                logger.warning(f"Accessory files not found in GRF for '{accessory_name}' (tried both 악세사리 and 악세서리). Continuing without accessory.")
     
     # 2b. Extract and parse body and head files from GRF
     logger.info("Loading body parts from GRF...")
     body_spr, body_act = load_sprite_from_grf(body_spr_path, body_act_path)
     if not body_spr or not body_act:
-        logger.error(f"Failed to load body sprite/act from GRF: {body_spr_path} / {body_act_path}")
+        raise ValueError(f"Failed to load body sprite/act from GRF: {body_spr_path} / {body_act_path}")
     
     logger.info("Loading head parts from GRF...")
     head_spr, head_act = load_sprite_from_grf(head_spr_path, head_act_path)

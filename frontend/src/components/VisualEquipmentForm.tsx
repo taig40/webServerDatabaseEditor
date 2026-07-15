@@ -18,6 +18,16 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
   const [currentViewId, setCurrentViewId] = useState(viewId);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  
+  // Debounced resource name to prevent excessive API calls to visualizer
+  const [debouncedName, setDebouncedName] = useState(name);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedName(name);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [name]);
 
   useEffect(() => {
     setCurrentViewId(viewId);
@@ -145,7 +155,7 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
         {/* Right Column (Fitting Room + Info) */}
         <div className="space-y-6">
           <FittingRoom
-            resourceName={name}
+            resourceName={debouncedName}
             onSelectAccessory={(spriteName, selectedViewId, selectedConstant) => {
               setName(spriteName);
               setCurrentViewId(selectedViewId);
