@@ -53,11 +53,10 @@ def load_sprite_from_grf(spr_path: str, act_path: Optional[str] = None) -> Tuple
         logger.warning("grf_reader is not initialized or loaded. Cannot extract sprite files.")
         return None, None
 
-    # Resolve paths to match latin-1 keys of GRF files
-    latin1_spr_path = to_latin1_path(spr_path)
-    
-    logger.info(f"Extracting SPR: '{spr_path}' (as latin-1: '{latin1_spr_path}')")
-    spr_data = grf_reader.extract_file(latin1_spr_path)
+        return None, None
+
+    logger.info(f"Extracting SPR: '{spr_path}'")
+    spr_data = grf_reader.extract_file(spr_path)
     
     if not spr_data:
         logger.error(f"SPR file not found in GRF archive: '{spr_path}'")
@@ -71,9 +70,8 @@ def load_sprite_from_grf(spr_path: str, act_path: Optional[str] = None) -> Tuple
         return None, None
 
     if act_path:
-        latin1_act_path = to_latin1_path(act_path)
-        logger.info(f"Extracting ACT: '{act_path}' (as latin-1: '{latin1_act_path}')")
-        act_data = grf_reader.extract_file(latin1_act_path)
+        logger.info(f"Extracting ACT: '{act_path}'")
+        act_data = grf_reader.extract_file(act_path)
         
         if not act_data:
             logger.warning(f"ACT file not found in GRF archive: '{act_path}'")

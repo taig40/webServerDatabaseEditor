@@ -190,7 +190,7 @@ def compose_character(accessory_name: str, is_male: bool, direction: int) -> byt
     C_body = (100.0, 120.0)
     
     # 4. Compute alignment of Head using attachment points (Neck anchor: id=0)
-    C_head = (100.0, 90.0) # default fallback center
+    C_head = C_body # RO sprites are usually relative to the same origin
     if body_act and head_act:
         ap_body_0 = get_attachment_point(body_act, direction, 0, 0)
         ap_head_0 = get_attachment_point(head_act, direction, 0, 0)
@@ -206,7 +206,7 @@ def compose_character(accessory_name: str, is_male: bool, direction: int) -> byt
             logger.warning("Neck anchor (id=0) missing on body or head. Using fallback placement.")
             
     # 5. Compute alignment of Accessory using attachment points (Hat anchor: id=1)
-    C_acc = (C_head[0], C_head[1] - 15.0) # default fallback center
+    C_acc = C_head # default fallback center
     if head_act and acc_act:
         ap_head_1 = get_attachment_point(head_act, direction, 0, 1)
         ap_acc_1 = get_attachment_point(acc_act, direction, 0, 1)

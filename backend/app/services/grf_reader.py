@@ -79,11 +79,10 @@ class _SingleGRF:
                     if str_end == -1:
                         break
 
-                    # ALWAYS decode as latin-1 (byte-transparent).
-                    # GRF filenames are raw EUC-KR bytes; latin-1 preserves
-                    # them exactly (each byte 0x00-0xFF maps to the same
-                    # Unicode codepoint), ensuring consistent key matching.
-                    filename = table_data[idx:str_end].decode('latin-1').lower()
+                    try:
+                        filename = table_data[idx:str_end].decode('euc-kr').lower()
+                    except Exception:
+                        filename = table_data[idx:str_end].decode('latin-1').lower()
 
                     idx = str_end + 1
 
@@ -128,6 +127,7 @@ class _SingleGRF:
                     return f.read()
 
             # Try decoding latin-1 byte representation to EUC-KR for real OS Unicode path
+            # (Just in case the filename was requested in garbled encoding)
             try:
                 os_adjusted = adjusted.encode('latin-1').decode('euc-kr')
                 full_os = os.path.join(self.path, os_adjusted).replace('\\', '/')
