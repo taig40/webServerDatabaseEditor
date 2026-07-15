@@ -3,6 +3,11 @@ import { test, expect } from '@playwright/test';
 test.describe('rAthena Web Editor E2E Tests', () => {
 
   test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    // Aumentamos o timeout dessa verificação específica para 90s,
+    // pois a carga inicial da GRF e dos YAMLs do rAthena é pesada.
+    await expect(page.getByText(/Carregando Bancos de Dados|Loading rAthena/i)).toBeHidden({ timeout: 90000 });
+
     // Cenário 4: Prevenção de Falsos Positivos - falha o teste caso qualquer requisição retorne 500
     page.on('response', response => {
       if (response.status() === 500) {
@@ -13,8 +18,6 @@ test.describe('rAthena Web Editor E2E Tests', () => {
   });
 
   test('Cenário 1: CRUD Server e Data Binding (Client DB)', async ({ page }) => {
-    await page.goto('/');
-
     // Navigate to Client Items Database
     await page.getByTestId('menu-client_items').click();
 
@@ -37,8 +40,6 @@ test.describe('rAthena Web Editor E2E Tests', () => {
   });
 
   test('Cenário 2: Validação de Encoding e Assets', async ({ page }) => {
-    await page.goto('/');
-    
     // Set up interceptor to check for fallback characters
     page.on('request', request => {
       const url = request.url();
@@ -66,7 +67,6 @@ test.describe('rAthena Web Editor E2E Tests', () => {
   });
 
   test('Cenário 3: Motor do Vestiário (Visualizer API)', async ({ page }) => {
-    await page.goto('/');
     await page.getByTestId('menu-client_items').click();
 
     const searchInput = page.getByPlaceholder(/Buscar/i).or(page.getByPlaceholder(/Search/i));
