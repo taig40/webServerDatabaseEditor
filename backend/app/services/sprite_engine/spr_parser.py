@@ -48,8 +48,8 @@ class SprParser:
 
     def parse(self):
         # 1. Header parsing
-        sig = self.stream.read(4)
-        if len(sig) < 4 or not sig.startswith(b'SP'):
+        sig = self.stream.read(2)
+        if len(sig) < 2 or not sig.startswith(b'SP'):
             logger.error(f"Invalid SPR signature: {sig}")
             raise ValueError(f"Invalid SPR signature: {sig}")
 
@@ -64,7 +64,10 @@ class SprParser:
 
         try:
             num_indexed = struct.unpack('<H', self.stream.read(2))[0]
-            num_rgba = struct.unpack('<H', self.stream.read(2))[0]
+            if self.version >= 0x0201:
+                num_rgba = struct.unpack('<H', self.stream.read(2))[0]
+            else:
+                num_rgba = 0
         except struct.error as e:
             logger.error(f"Failed to unpack frame counts: {e}")
             raise ValueError(f"Failed to unpack frame counts: {e}")

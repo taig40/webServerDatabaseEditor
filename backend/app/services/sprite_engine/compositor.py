@@ -171,7 +171,7 @@ def compose_character(accessory_name: str, is_male: bool, direction: int) -> byt
     logger.info("Loading body parts from GRF...")
     body_spr, body_act = load_sprite_from_grf(body_spr_path, body_act_path)
     if not body_spr or not body_act:
-        raise ValueError(f"Failed to load body sprite/act from GRF: {body_spr_path} / {body_act_path}")
+        logger.error(f"Failed to load body sprite/act from GRF: {body_spr_path} / {body_act_path}")
     
     logger.info("Loading head parts from GRF...")
     head_spr, head_act = load_sprite_from_grf(head_spr_path, head_act_path)

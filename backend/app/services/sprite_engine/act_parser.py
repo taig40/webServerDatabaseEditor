@@ -20,8 +20,8 @@ class ActParser:
 
     def parse(self):
         # 1. Header parsing
-        sig = self.stream.read(4)
-        if len(sig) < 4 or not sig.startswith(b'AC'):
+        sig = self.stream.read(2)
+        if len(sig) < 2 or not sig.startswith(b'AC'):
             logger.error(f"Invalid ACT signature: {sig}")
             raise ValueError(f"Invalid ACT signature: {sig}")
 
@@ -36,8 +36,9 @@ class ActParser:
 
         try:
             num_actions = struct.unpack('<H', self.stream.read(2))[0]
-            # Skip 10 reserved bytes
-            self.stream.read(10)
+            # Skip 10 reserved bytes only for version >= 0x0200
+            if self.version >= 0x0200:
+                self.stream.read(10)
         except struct.error as e:
             logger.error(f"Failed to unpack actions count: {e}")
             raise ValueError(f"Failed to unpack actions count: {e}")
@@ -52,7 +53,8 @@ class ActParser:
                 
                 for frame_idx in range(num_frames):
                     # Skip 32 reserved/range bytes (range1: 16 bytes, range2: 16 bytes)
-                    self.stream.read(32)
+                    if self.version >= 0x0200:
+                        self.stream.read(32)
                     
                     num_sprites = struct.unpack('<I', self.stream.read(4))[0]
                     sprites = []
