@@ -44,7 +44,7 @@ test.describe('rAthena Web Editor E2E Tests', () => {
     // Search for Hat (ID 2220) if necessary, or just wait for it to be rendered
     // We can use the Search input or directly click the row if it's visible. 
     // Usually, 2220 will be in the list. Let's search for it to be sure.
-    const searchInput = page.getByPlaceholder(/Buscar/i).or(page.getByPlaceholder(/Search/i));
+    const searchInput = page.getByPlaceholder(/Pesquisar/i).or(page.getByPlaceholder(/Search/i));
     await searchInput.fill('2220');
     await page.keyboard.press('Enter');
 
@@ -72,7 +72,7 @@ test.describe('rAthena Web Editor E2E Tests', () => {
 
     await page.getByTestId('menu-client_items').click();
 
-    const searchInput = page.getByPlaceholder(/Buscar/i).or(page.getByPlaceholder(/Search/i));
+    const searchInput = page.getByPlaceholder(/Pesquisar/i).or(page.getByPlaceholder(/Search/i));
     await searchInput.fill('2220');
     await page.keyboard.press('Enter');
 
@@ -89,7 +89,7 @@ test.describe('rAthena Web Editor E2E Tests', () => {
   test('Cenário 3: Motor do Vestiário (Visualizer API)', async ({ page }) => {
     await page.getByTestId('menu-client_items').click();
 
-    const searchInput = page.getByPlaceholder(/Buscar/i).or(page.getByPlaceholder(/Search/i));
+    const searchInput = page.getByPlaceholder(/Pesquisar/i).or(page.getByPlaceholder(/Search/i));
     await searchInput.fill('2220');
     await page.keyboard.press('Enter');
 
@@ -100,8 +100,10 @@ test.describe('rAthena Web Editor E2E Tests', () => {
     // Let's just type a specific one to trigger the visualizer explicitly.
     // Since we're in the visual tab, let's locate the resource name input (name). 
     // It is placeholder="Ex: _CustomWings". We can just rely on the existing one or type "_Hat"
-    // The VisualEquipmentForm has an input for Sprite Name. Let's find it by placeholder or label.
-    const spriteNameInput = page.getByLabel(/Sprite Name|Resource Name/i);
+    // The VisualEquipmentForm has an input for Sprite Name. Let's find it by data-testid.
+    const spriteNameInput = page.getByTestId('input-resourcename');
+    await spriteNameInput.waitFor({ state: 'visible' });
+    await spriteNameInput.clear();
 
     // Wait for response to /api/visualizer/preview
     const responsePromise = page.waitForResponse(response =>
@@ -109,7 +111,7 @@ test.describe('rAthena Web Editor E2E Tests', () => {
     );
 
     // Type resource name
-    await spriteNameInput.fill('모자'); // Example valid korean resource name or we can use existing
+    await spriteNameInput.fill('_HAT'); // Use '_HAT' to maintain consistency with item ID 2220
 
     const response = await responsePromise;
 
