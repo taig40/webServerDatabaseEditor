@@ -3,17 +3,30 @@ import { test, expect } from '@playwright/test';
 test.describe('rAthena Web Editor E2E Tests', () => {
 
   test.beforeEach(async ({ page }) => {
-    // Bypass da tela de Setup: Força a API a dizer que já está configurada
-    await page.route('**/api/status', async route => {
-      await route.fulfill({ json: { status: 'ok' } });
-    });
-
-    // Apenas ignora a verificação de setup, mantendo o parser real intacto
-
     await page.goto('/');
+
+    const setupInput = page.getByPlaceholder(/C:\/rAthena\/db/i);
+    const loadingScreen = page.getByText(/Carregando Bancos de Dados|Loading rAthena/i);
+
+    try {
+      await Promise.race([
+        setupInput.waitFor({ state: 'visible', timeout: 5000 }),
+        loadingScreen.waitFor({ state: 'visible', timeout: 5000 })
+      ]);
+    } catch (e) {
+      // Ignore if neither appear immediately
+    }
+
+    if (await setupInput.isVisible()) {
+      await setupInput.fill(process.env.TEST_DB_PATH || 'C:/rAthena/db');
+      await page.getByPlaceholder(/data\.grf/i).fill(process.env.TEST_GRF_PATH || 'C:/Ragnarok/data.grf');
+      await page.getByPlaceholder(/itemInfo\.lua/i).fill(process.env.TEST_LUA_PATH || 'C:/Ragnarok/System/itemInfo.lua');
+      await page.getByRole('button', { name: /Salvar|Iniciar|Save/i }).click();
+    }
+
     // Aumentamos o timeout dessa verificação específica para 90s,
     // pois a carga inicial da GRF e dos YAMLs do rAthena é pesada.
-    await expect(page.getByText(/Carregando Bancos de Dados|Loading rAthena/i)).toBeHidden({ timeout: 90000 });
+    await expect(loadingScreen).toBeHidden({ timeout: 90000 });
 
     // Cenário 4: Prevenção de Falsos Positivos - falha o teste caso qualquer requisição retorne 500
     page.on('response', response => {
