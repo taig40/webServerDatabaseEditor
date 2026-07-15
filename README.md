@@ -11,7 +11,8 @@ Historicamente, o gerenciamento de itens customizados em emuladores de Ragnarok 
 A arquitetura foi desenhada separando claramente as responsabilidades de extração de dados e interface de usuário:
 **Frontend (Client & UI)**
  * **React:** Construção de interface componentizada e reativa.
- * **TypeScript:** Tipagem estática para garantir a integridade dos dados trafegados.
+ * **TypeScript:** Tipagem estática para garantir a integridade dos dados trafegados
+
 **Backend (Engine & API)**
  * **Python 3 & FastAPI:** API RESTful de altíssima performance para roteamento de dados e streaming de arquivos binários (imagens).
  * **Pillow (PIL):** Manipulação e composição de matrizes de pixels para a montagem de sprites em tempo real.
@@ -20,7 +21,7 @@ A arquitetura foi desenhada separando claramente as responsabilidades de extraç
 A implementação seguiu princípios de segurança para garantir que dados sensíveis do ambiente de desenvolvimento e infraestrutura do servidor não sejam expostos:
  1. **Isolamento de Variáveis e Ambientes (Secrets Management):**
    * Arquivos de configuração (.conf, .env) contendo caminhos absolutos de diretórios locais e nomes de usuários do sistema operacional são estritamente ignorados pelo versionamento.
-   * Utilização de ferramentas de auditoria e reescrita profunda de histórico Git (git-filter-repo) para pulverizar commits antigos e prevenir vazamento de dados de infraestrutura via engenharia reversa do repositório público.
+
  2. **Sanitização de Inputs e Fallback de Codificação:**
    * O backend bloqueia a injeção acidental de codificações incorretas. Ao forçar o encoding estrito (EUC-KR) com rotinas de errors='ignore', o sistema previne travamentos de buffer (*Buffer Overread/Crash*) causados por caracteres especiais ocidentais não suportados pela engine do jogo.
  3. **Segurança de Rotas e Tratamento Silencioso (Fail-Safe):**
