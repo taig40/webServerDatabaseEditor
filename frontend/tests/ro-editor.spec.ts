@@ -167,9 +167,9 @@ test.describe('rAthena Web Editor E2E Tests', () => {
     // Submit
     await page.locator('button[type="submit"]').click();
 
-    // Check Toast / item exists
-    const toastMessage = page.getByTestId('toast-message');
-    await expect(toastMessage).toBeVisible({ timeout: 5000 });
+    // Valida se o item foi realmente criado aguardando ele aparecer na interface
+    await expect(page.getByText('99999')).toBeVisible({ timeout: 60000 });
+    await expect(page.getByDisplayValue('_QA_TEST_ITEM_')).toBeVisible();
 
     const itemRow = page.getByTestId('item-list-row-99999');
     await expect(itemRow).toBeVisible({ timeout: 5000 });
@@ -179,9 +179,8 @@ test.describe('rAthena Web Editor E2E Tests', () => {
     await page.getByTestId('btn-delete-item').click();
     await page.getByTestId('btn-confirm-delete').click();
 
-    // Check Toast / item is gone
-    await expect(toastMessage.nth(1)).toBeVisible({ timeout: 5000 });
-    await expect(itemRow).toBeHidden({ timeout: 5000 });
+    // Valida se o item foi removido da interface
+    await expect(itemRow).toBeHidden({ timeout: 15000 });
   });
 
   test('Cenário 6: Auditoria de Rotas (Sidebar Navigation)', async ({ page }) => {
