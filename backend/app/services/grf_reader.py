@@ -377,11 +377,6 @@ class GRFReader:
     def get_item_icon(self, item_id: int) -> bytes:
         """
         Locates an item icon inside the GRF(s) and returns it as a PNG stream.
-
-        All GRF filenames are stored as latin-1 decoded EUC-KR bytes.
-        Resource names from itemInfo.lua are also latin-1 bytes (since we
-        parse the Lua with latin-1 encoding).  This ensures the two always
-        match without any re-encoding gymnastics.
         """
         if not self.loaded:
             return self.generate_dummy_png()
@@ -389,7 +384,7 @@ class GRFReader:
         from app.services.iteminfo_parser import iteminfo_db
         from app.services.yaml_parser import yaml_db
 
-        # 1. Get the resource name (already latin-1 byte-transparent)
+        # 1. Get the resource name
         resource_name = None
         if iteminfo_db.loaded:
             resource_name = iteminfo_db.get_resource_name(item_id)
@@ -406,13 +401,18 @@ class GRFReader:
                             resource_name = item.get('Name', str(item_id))
                             break
 
-        # 3. Build search paths using the byte-transparent Korean folder constant
-        #    _KOREAN_UI_FOLDER is the EUC-KR bytes of "유저인터페이스" decoded as latin-1,
-        #    which is exactly how _SingleGRF.load() stores the GRF keys.
+        # Decode resource_name from latin-1 to EUC-KR if it was read as latin-1
+        try:
+            real_resource_name = resource_name.encode('latin-1').decode('euc-kr')
+        except Exception:
+            real_resource_name = resource_name
+
         paths_to_try = [
+            f"data/texture/유저인터페이스/item/{real_resource_name}.bmp".lower(),
             f"data/texture/{_KOREAN_UI_FOLDER}/item/{resource_name}.bmp".lower(),
+            f"data/texture/userinterface/item/{real_resource_name}.bmp".lower(),
+            f"data/texture/유저인터페이스/item/{item_id}.bmp".lower(),
             f"data/texture/{_KOREAN_UI_FOLDER}/item/{item_id}.bmp".lower(),
-            f"data/texture/userinterface/item/{resource_name}.bmp".lower(),
             f"data/texture/userinterface/item/{item_id}.bmp".lower(),
         ]
 
@@ -429,10 +429,18 @@ class GRFReader:
         """Returns PNG bytes of item icon BMP matching resource_name."""
         if not self.loaded or not resource_name:
             return None
+            
+        try:
+            real_resource_name = resource_name.encode('latin-1').decode('euc-kr')
+        except Exception:
+            real_resource_name = resource_name
+            
         paths_to_try = [
+            f"data/texture/유저인터페이스/item/{real_resource_name}.bmp".lower(),
             f"data/texture/{_KOREAN_UI_FOLDER}/item/{resource_name}.bmp".lower(),
-            f"data/texture/userinterface/item/{resource_name}.bmp".lower(),
+            f"data/texture/userinterface/item/{real_resource_name}.bmp".lower(),
         ]
+        
         for path in paths_to_try:
             bmp_data = self.extract_file(path)
             if bmp_data:
@@ -443,16 +451,25 @@ class GRFReader:
         """Returns PNG bytes of a skill icon from GRF."""
         if not self.loaded:
             return self.generate_dummy_png()
+            
+        try:
+            real_skill_name = skill_name.encode('latin-1').decode('euc-kr') if skill_name else ""
+        except Exception:
+            real_skill_name = skill_name
+            
         paths_to_try = []
         if skill_name:
             paths_to_try.extend([
+                f"data/texture/유저인터페이스/item/{real_skill_name}.bmp".lower(),
                 f"data/texture/{_KOREAN_UI_FOLDER}/item/{skill_name}.bmp".lower(),
-                f"data/texture/userinterface/item/{skill_name}.bmp".lower(),
+                f"data/texture/userinterface/item/{real_skill_name}.bmp".lower(),
+                f"data/texture/유저인터페이스/skill/{real_skill_name}.bmp".lower(),
                 f"data/texture/{_KOREAN_UI_FOLDER}/skill/{skill_name}.bmp".lower(),
-                f"data/texture/userinterface/skill/{skill_name}.bmp".lower(),
+                f"data/texture/userinterface/skill/{real_skill_name}.bmp".lower(),
             ])
         if skill_id > 0:
             paths_to_try.extend([
+                f"data/texture/유저인터페이스/item/{skill_id}.bmp".lower(),
                 f"data/texture/{_KOREAN_UI_FOLDER}/item/{skill_id}.bmp".lower(),
                 f"data/texture/userinterface/item/{skill_id}.bmp".lower(),
             ])
@@ -469,9 +486,16 @@ class GRFReader:
         """Returns PNG bytes of item collection BMP matching resource_name."""
         if not self.loaded or not resource_name:
             return None
+            
+        try:
+            real_resource_name = resource_name.encode('latin-1').decode('euc-kr')
+        except Exception:
+            real_resource_name = resource_name
+            
         paths_to_try = [
+            f"data/texture/유저인터페이스/collection/{real_resource_name}.bmp".lower(),
             f"data/texture/{_KOREAN_UI_FOLDER}/collection/{resource_name}.bmp".lower(),
-            f"data/texture/userinterface/collection/{resource_name}.bmp".lower(),
+            f"data/texture/userinterface/collection/{real_resource_name}.bmp".lower(),
             f"data/sprite/{_KOREAN_ITEM_FOLDER}/{resource_name}.bmp".lower(),
             f"data/sprite/item/{resource_name}.bmp".lower(),
         ]
@@ -505,19 +529,23 @@ class GRFReader:
         ext = ".bmp"
         if asset_type == "item_sprite":
             prefixes = [
+                f"data/sprite/아이템/".lower(),
                 f"data/sprite/{_KOREAN_ITEM_FOLDER}/".lower(),
                 "data/sprite/item/".lower(),
             ]
             ext = ".spr"
         elif asset_type == "item_collection":
             prefixes = [
+                f"data/texture/유저인터페이스/collection/".lower(),
                 f"data/texture/{_KOREAN_UI_FOLDER}/collection/".lower(),
                 "data/texture/userinterface/collection/".lower(),
+                f"data/sprite/아이템/".lower(),
                 f"data/sprite/{_KOREAN_ITEM_FOLDER}/".lower(),
                 "data/sprite/item/".lower(),
             ]
         else:
             prefixes = [
+                f"data/texture/유저인터페이스/item/".lower(),
                 f"data/texture/{_KOREAN_UI_FOLDER}/item/".lower(),
                 "data/texture/userinterface/item/".lower(),
             ]
