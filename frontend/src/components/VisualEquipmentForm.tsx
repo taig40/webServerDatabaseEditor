@@ -4,6 +4,7 @@ import { API_URL } from '../config/env';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { Save, AlertCircle } from 'lucide-react';
 import { FittingRoom } from './FittingRoom';
+import { Trans } from './Trans';
 
 interface VisualEquipmentFormProps {
   viewId: number;
@@ -166,7 +167,9 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
 
           <div className="bg-[#12121a] rounded-2xl border border-white/5 p-6 opacity-60">
              <h3 className="text-sm font-semibold text-gray-300 mb-2">{t('visual_equipment.how_it_works')}</h3>
-             <p className="text-xs text-gray-400 leading-relaxed" dangerouslySetInnerHTML={{ __html: t('visual_equipment.how_it_works_desc') }}></p>
+             <p className="text-xs text-gray-400 leading-relaxed">
+               <Trans text={t('visual_equipment.how_it_works_desc')} />
+             </p>
           </div>
         </div>
 
