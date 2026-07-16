@@ -157,6 +157,8 @@ def compose_character(accessory_name: str, robe_name: str, is_male: bool, direct
     head_act_path = f"{head_base}.act"
     
     acc_spr, acc_act = None, None
+    is_acc_actually_robe = False
+    
     if accessory_name and accessory_name.strip() not in ("", "0", "None", "null"):
         clean_name = accessory_name
         if clean_name.startswith('_'):
@@ -182,7 +184,23 @@ def compose_character(accessory_name: str, robe_name: str, is_male: bool, direct
                 break
                 
         if not acc_spr or not acc_act:
-            logger.warning(f"Accessory files not found in GRF for '{accessory_name}'. Continuing without accessory.")
+            logger.warning(f"Accessory files not found in GRF for '{accessory_name}'. Trying Robe folder as fallback...")
+            robe_paths_to_try = [
+                f"data/sprite/로브/{gender_folder}/{gender_suffix}_{clean_name}",
+                f"data/sprite/로브/{gender_folder}/{clean_name}_{gender_suffix}",
+                f"data/sprite/로브/{gender_folder}/{clean_name}",
+                f"data/sprite/로브/{gender_folder}/{accessory_name}_{gender_suffix}",
+                f"data/sprite/로브/{gender_folder}/{gender_suffix}_{accessory_name}",
+            ]
+            for path_base in robe_paths_to_try:
+                acc_spr, acc_act = load_sprite_from_grf(f"{path_base}.spr", f"{path_base}.act")
+                if acc_spr and acc_act:
+                    logger.info(f"Successfully found '{accessory_name}' in Robe folder! Treating it as a Robe.")
+                    is_acc_actually_robe = True
+                    break
+                    
+        if not acc_spr or not acc_act:
+            logger.warning(f"Could not find '{accessory_name}' in either Accessory or Robe folders.")
             
     robe_spr, robe_act = None, None
     if robe_name and robe_name.strip() not in ("", "0", "None", "null"):
@@ -206,6 +224,12 @@ def compose_character(accessory_name: str, robe_name: str, is_male: bool, direct
                 
         if not robe_spr or not robe_act:
             logger.warning(f"Robe files not found in GRF for '{robe_name}'. Continuing without robe.")
+            
+    # If the main accessory was actually a robe, and no explicit robe was provided, reassign it
+    if is_acc_actually_robe and not (robe_spr and robe_act):
+        robe_spr, robe_act = acc_spr, acc_act
+        acc_spr, acc_act = None, None
+        logger.info("Reassigned Accessory to Robe slot for rendering.")
     
     # 2b. Extract and parse body and head files from GRF
     logger.info("Loading body parts from GRF...")
