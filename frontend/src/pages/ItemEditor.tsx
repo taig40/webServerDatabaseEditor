@@ -113,6 +113,20 @@ const ItemEditor: React.FC = () => {
     });
   }, [searchText, searchTarget, searchType, sourceTab, fetchItemsPage]);
 
+  // Debounced Search on typing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (
+        searchText !== appliedSearchQuery ||
+        searchTarget !== appliedSearchTarget ||
+        searchType !== appliedSearchType
+      ) {
+        handleSearch();
+      }
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchText, searchTarget, searchType, appliedSearchQuery, appliedSearchTarget, appliedSearchType, handleSearch]);
+
   const handleSourceChange = useCallback(async (newSource: SourceTab) => {
     setSourceTab(newSource);
     setSelectedItemId(null);
@@ -192,18 +206,8 @@ const ItemEditor: React.FC = () => {
   }, [selectedItemId, items]);
 
   const displayedItems = useMemo(() => {
-    let filtered = items;
-    if (searchText.trim()) {
-      const q = searchText.trim().toLowerCase();
-      filtered = items.filter(it =>
-        String(it.Id).includes(q) ||
-        String(it.AegisName || '').toLowerCase().includes(q) ||
-        String(it.Name || '').toLowerCase().includes(q) ||
-        String(it.identifiedDisplayName || '').toLowerCase().includes(q)
-      );
-    }
-    return filtered.slice(0, 100);
-  }, [items, searchText]);
+    return items;
+  }, [items]);
 
   const handleUpdateItem = useCallback(async (itemId: number, updatedData: any, saveMode: 'import' | 'overwrite' = 'import') => {
     try {
@@ -380,13 +384,6 @@ const ItemEditor: React.FC = () => {
                   data-testid="input-search"
                 />
               </div>
-              <button
-                onClick={handleSearch}
-                className="flex items-center gap-1 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-violet-900/30 transition-all duration-150 shrink-0"
-              >
-                <Search size={13} />
-                {t('item_editor.search_btn')}
-              </button>
             </div>
           </div>
 
