@@ -103,9 +103,8 @@ class GenericYamlParser:
 
         self.loading_status = f'Lendo {os.path.basename(filepath)}...'
         try:
-            # errors='replace' previne caracteres não-UTF-8 válidos de abortarem a leitura
-            with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
-                data = self.yaml.load(f)
+            from app.core.cache_manager import load_yaml_with_cache
+            data = load_yaml_with_cache(filepath, self.yaml)
             self.db_cache[filepath] = data
 
             count = 0

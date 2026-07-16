@@ -112,10 +112,9 @@ class YamlDatabase:
         progress_tracker.update(current_db=filename, status=self.loading_status, progress=min(45.0, progress_tracker.progress + 5.0))
 
         try:
-            # ── Load com parser YAML ──
-            # errors='replace' previne caracteres não-UTF-8 válidos de abortarem a leitura
-            with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
-                data = self.yaml.load(f)
+            # ── Load com parser YAML (Cache Binario) ──
+            from app.core.cache_manager import load_yaml_with_cache
+            data = load_yaml_with_cache(filepath, self.yaml)
                 
             self.db_cache[filepath] = data
             
