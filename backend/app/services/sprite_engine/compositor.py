@@ -191,6 +191,12 @@ def compose_character(accessory_name: str, robe_name: str, is_male: bool, direct
                 f"data/sprite/로브/{gender_folder}/{clean_name}",
                 f"data/sprite/로브/{gender_folder}/{accessory_name}_{gender_suffix}",
                 f"data/sprite/로브/{gender_folder}/{gender_suffix}_{accessory_name}",
+                f"data/sprite/로브/{gender_suffix}_{clean_name}",
+                f"data/sprite/로브/{clean_name}_{gender_suffix}",
+                f"data/sprite/로브/{clean_name}",
+                f"data/sprite/로브/{gender_suffix}_{accessory_name}",
+                f"data/sprite/로브/{accessory_name}_{gender_suffix}",
+                f"data/sprite/로브/{accessory_name}",
             ]
             for path_base in robe_paths_to_try:
                 acc_spr, acc_act = load_sprite_from_grf(f"{path_base}.spr", f"{path_base}.act")
@@ -214,6 +220,12 @@ def compose_character(accessory_name: str, robe_name: str, is_male: bool, direct
             f"data/sprite/로브/{gender_folder}/{clean_robe}",
             f"data/sprite/로브/{gender_folder}/{robe_name}_{gender_suffix}",
             f"data/sprite/로브/{gender_folder}/{gender_suffix}_{robe_name}",
+            f"data/sprite/로브/{gender_suffix}_{clean_robe}",
+            f"data/sprite/로브/{clean_robe}_{gender_suffix}",
+            f"data/sprite/로브/{clean_robe}",
+            f"data/sprite/로브/{gender_suffix}_{robe_name}",
+            f"data/sprite/로브/{robe_name}_{gender_suffix}",
+            f"data/sprite/로브/{robe_name}",
         ]
         
         logger.info(f"Loading robe '{robe_name}' from GRF paths...")
