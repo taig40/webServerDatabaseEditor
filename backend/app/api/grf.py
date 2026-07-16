@@ -73,4 +73,10 @@ async def get_skill_icon(
     png_bytes = grf_reader.get_skill_icon(name, id)
     return Response(content=png_bytes, media_type="image/png")
 
+@router.get("/skill-icon/{icon_name}")
+async def get_skill_icon_by_path(icon_name: str):
+    """Returns PNG image of a skill icon from GRF."""
+    png_bytes = grf_reader.get_skill_icon(icon_name)
+    return Response(content=png_bytes, media_type="image/png")
+
 

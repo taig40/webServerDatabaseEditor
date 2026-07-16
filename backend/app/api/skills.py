@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Any, Optional
 from app.services.skill_parser import skill_db
+from app.services.progression_parser import skill_tree_db
 
 router = APIRouter()
 
@@ -65,6 +66,55 @@ async def get_skills(
         "limit": limit,
         "skills": result_skills,
     }
+
+
+@router.get("/tree/{job_name}")
+async def get_skill_tree_with_lineage(job_name: str):
+    """
+    Retorna a árvore de habilidades combinada da classe e de suas classes base (linhagem).
+    """
+    if skill_tree_db.is_loading:
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
+    
+    visited_jobs = set()
+    combined_tree = []
+    
+    def fetch_tree(current_job: str):
+        if current_job in visited_jobs:
+            return
+        visited_jobs.add(current_job)
+        
+        enriched = skill_tree_db.get_job_tree_enriched(current_job)
+        if not enriched:
+            return
+            
+        tree_nodes = enriched.get("Tree", [])
+        
+        # Inject OriginJob to each node so UI knows where it came from
+        for node in tree_nodes:
+            node["OriginJob"] = current_job
+            
+        combined_tree.extend(tree_nodes)
+        
+        inherit_data = enriched.get("Inherit")
+        if not inherit_data:
+            return
+            
+        if isinstance(inherit_data, str):
+            fetch_tree(inherit_data)
+        elif isinstance(inherit_data, dict):
+            for base_job in inherit_data.keys():
+                fetch_tree(base_job)
+        elif isinstance(inherit_data, list):
+            for base_job in inherit_data:
+                fetch_tree(base_job)
+                
+    fetch_tree(job_name)
+    
+    if not combined_tree:
+        raise HTTPException(status_code=404, detail="Tree not found")
+        
+    return {"Job": job_name, "Tree": combined_tree}
 
 
 @router.get("/{skill_id}")

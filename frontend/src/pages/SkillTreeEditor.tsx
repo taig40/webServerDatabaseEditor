@@ -42,6 +42,7 @@ interface SkillNodeData extends Record<string, unknown> {
   Description: string;
   MaxLevel: number;
   IconUrl: string;
+  OriginJob?: string;
   onDeleteNode?: (name: string) => void;
 }
 
@@ -49,7 +50,10 @@ const SkillNodeComponent = ({ data }: { data: SkillNodeData }) => {
   const [imgError, setImgError] = useState(false);
 
   return (
-    <div className="bg-[#181824]/90 border border-indigo-500/30 hover:border-indigo-500 rounded-2xl p-3.5 shadow-xl min-w-[200px] max-w-[240px] transition-all group backdrop-blur-md">
+    <div 
+      data-testid={`skill-node-${data.Name}`}
+      className="bg-[#181824]/90 border border-indigo-500/30 hover:border-indigo-500 rounded-2xl p-3.5 shadow-xl min-w-[200px] max-w-[240px] transition-all group backdrop-blur-md"
+    >
       <Handle
         type="target"
         position={Position.Top}
@@ -94,6 +98,11 @@ const SkillNodeComponent = ({ data }: { data: SkillNodeData }) => {
             <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">
               Max Lv: {data.MaxLevel}
             </span>
+            {data.OriginJob && (
+              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                {data.OriginJob}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -306,7 +315,7 @@ const SkillTreeEditor: React.FC = () => {
     setLoading(true);
     setToastMessage(null);
     try {
-      const res = await axios.get(`${API_URL}/api/progression/skill_tree/${jobName}`);
+      const res = await axios.get(`${API_URL}/api/skills/tree/${jobName}`);
       const treeList = res.data.Tree || [];
 
       // Convert tree nodes and prerequisites into React Flow nodes and edges
@@ -327,7 +336,8 @@ const SkillTreeEditor: React.FC = () => {
             Id: skill.Id || 0,
             Description: skill.Description || skill.Name,
             MaxLevel: skill.MaxLevel || 10,
-            IconUrl: skill.IconUrl || `/api/grf/skill_icon?name=${skill.Name}`,
+            IconUrl: skill.IconUrl || `/api/grf/skill-icon/${skill.Name}`,
+            OriginJob: skill.OriginJob,
             onDeleteNode: handleDeleteNode
           }
         });
@@ -441,7 +451,8 @@ const SkillTreeEditor: React.FC = () => {
         Id: skill.Id,
         Description: skill.Description || skill.Name,
         MaxLevel: skill.MaxLevel || 10,
-        IconUrl: `/api/grf/skill_icon?name=${skill.Name}&id=${skill.Id}`,
+        IconUrl: `/api/grf/skill-icon/${skill.Name}`,
+        OriginJob: selectedJob,
         onDeleteNode: handleDeleteNode
       }
     };
