@@ -19,6 +19,9 @@ HEAD_PATH_FEMALE = "data/sprite/인간족/머리통/여/1_여"
 ACCESSORY_DIR_MALE = "data/sprite/악세사리/남"
 ACCESSORY_DIR_FEMALE = "data/sprite/악세사리/여"
 
+ROBE_DIR_MALE = "data/sprite/로브/남"
+ROBE_DIR_FEMALE = "data/sprite/로브/여"
+
 
 def get_attachment_point(act: ActParser, action_idx: int, frame_idx: int, ap_id: int) -> Optional[Tuple[float, float]]:
     """
@@ -124,12 +127,13 @@ def draw_frame_part(canvas: Image.Image, spr: SprParser, act: ActParser, action_
         canvas.paste(img, (x_pos, y_pos), mask=img)
 
 
-def compose_character(accessory_name: str, is_male: bool, direction: int) -> bytes:
+def compose_character(accessory_name: str, robe_name: str, is_male: bool, direction: int) -> bytes:
     """
-    Composes a character's Body, Head, and Hat/Accessory sprites into a single PNG image.
+    Composes a character's Body, Head, Hat/Accessory, and Robe/Garment sprites into a single PNG image.
     
     Parameters:
         accessory_name (str): The name of the hat accessory (e.g. 'cap', 'ribbon')
+        robe_name (str): The name of the robe/garment (e.g. 'C_White_Angel_Wing')
         is_male (bool): True if male, False if female.
         direction (int): Direction code (0 to 7).
         
@@ -179,6 +183,29 @@ def compose_character(accessory_name: str, is_male: bool, direction: int) -> byt
                 
         if not acc_spr or not acc_act:
             logger.warning(f"Accessory files not found in GRF for '{accessory_name}'. Continuing without accessory.")
+            
+    robe_spr, robe_act = None, None
+    if robe_name and robe_name.strip() not in ("", "0", "None", "null"):
+        clean_robe = robe_name
+        if clean_robe.startswith('_'):
+            clean_robe = clean_robe[1:]
+            
+        paths_to_try = [
+            f"data/sprite/로브/{gender_folder}/{gender_suffix}_{clean_robe}",
+            f"data/sprite/로브/{gender_folder}/{clean_robe}_{gender_suffix}",
+            f"data/sprite/로브/{gender_folder}/{clean_robe}",
+            f"data/sprite/로브/{gender_folder}/{robe_name}_{gender_suffix}",
+            f"data/sprite/로브/{gender_folder}/{gender_suffix}_{robe_name}",
+        ]
+        
+        logger.info(f"Loading robe '{robe_name}' from GRF paths...")
+        for path_base in paths_to_try:
+            robe_spr, robe_act = load_sprite_from_grf(f"{path_base}.spr", f"{path_base}.act")
+            if robe_spr and robe_act:
+                break
+                
+        if not robe_spr or not robe_act:
+            logger.warning(f"Robe files not found in GRF for '{robe_name}'. Continuing without robe.")
     
     # 2b. Extract and parse body and head files from GRF
     logger.info("Loading body parts from GRF...")
@@ -231,9 +258,24 @@ def compose_character(accessory_name: str, is_male: bool, direction: int) -> byt
         else:
             logger.warning("Hat anchor (id=1) missing on head or accessory. Using fallback placement.")
             
-    # 6. Composite sprites layer-by-layer (Z-Index order: Body -> Head -> Hat)
-    logger.info("Drawing Body sprites...")
-    draw_frame_part(canvas, body_spr, body_act, direction, 0, C_body)
+    # 6. Composite sprites layer-by-layer
+    # Z-Index Rule:
+    # If facing back (3, 4, 5): Body -> Robe -> Head -> Hat
+    # If facing front/side (0, 1, 2, 6, 7): Robe -> Body -> Head -> Hat
+    if direction in (3, 4, 5):
+        logger.info("Drawing Body sprites...")
+        draw_frame_part(canvas, body_spr, body_act, direction, 0, C_body)
+        
+        if robe_spr and robe_act:
+            logger.info("Drawing Robe sprites (on top of body)...")
+            draw_frame_part(canvas, robe_spr, robe_act, direction, 0, C_body)
+    else:
+        if robe_spr and robe_act:
+            logger.info("Drawing Robe sprites (behind body)...")
+            draw_frame_part(canvas, robe_spr, robe_act, direction, 0, C_body)
+            
+        logger.info("Drawing Body sprites...")
+        draw_frame_part(canvas, body_spr, body_act, direction, 0, C_body)
     
     logger.info("Drawing Head sprites...")
     draw_frame_part(canvas, head_spr, head_act, direction, 0, C_head)

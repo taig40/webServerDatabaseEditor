@@ -14,6 +14,7 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ resourceName, onSelect
   const [isMale, setIsMale] = useState<boolean>(true);
   const [direction, setDirection] = useState<number>(0);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [robeName, setRobeName] = useState<string>('');
 
   const rotateLeft = () => {
     setDirection(prev => (prev + 1) % 8);
@@ -28,7 +29,7 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ resourceName, onSelect
   };
 
   // Build API URL for the direct preview image
-  const previewUrl = `${API_URL}/api/visualizer/preview?resource_name=${resourceName ?? ''}&is_male=${isMale}&direction=${direction}`;
+  const previewUrl = `${API_URL}/api/visualizer/preview?resource_name=${resourceName ?? ''}&robe_name=${robeName}&is_male=${isMale}&direction=${direction}`;
 
   return (
     <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl flex flex-col items-center">
@@ -49,7 +50,7 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ resourceName, onSelect
           src={previewUrl}
           alt="Character Preview"
           className="w-full h-full object-contain pixelated select-none"
-          key={`${resourceName}-${isMale}-${direction}`} // force re-render/refetch on change
+          key={`${resourceName}-${robeName}-${isMale}-${direction}`} // force re-render/refetch on change
         />
       </div>
 
@@ -92,6 +93,19 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ resourceName, onSelect
           </span>
         </button>
       </div>
+
+      {/* Robe Input */}
+      <div className="w-full mt-3">
+        <input 
+          type="text" 
+          value={robeName}
+          onChange={(e) => setRobeName(e.target.value)}
+          placeholder={t('fitting_room.robe_placeholder' as any) || 'Capa/Asa Resource Name (ex: C_White_Angel_Wing)'}
+          data-testid="input-robe-resourcename"
+          className="w-full bg-dark-900 border border-white/5 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50"
+        />
+      </div>
+
       {/* Browse Catalog button */}
       <button
         type="button"

@@ -12,6 +12,7 @@ router = APIRouter()
 @router.get("/preview")
 async def get_preview(
     resource_name: Optional[str] = Query(None, description="Nome do recurso do acessório (ex: _CustomWings)"),
+    robe_name: Optional[str] = Query(None, description="Nome do recurso da capa/asa (ex: _C_White_Angel_Wing)"),
     is_male: bool = Query(True, description="Define se o gênero do personagem é masculino"),
     direction: int = Query(0, description="Direção do personagem (0-7)")
 ):
@@ -23,9 +24,13 @@ async def get_preview(
     res_name = resource_name
     if not res_name or res_name.strip() in ("", "0", "None", "null"):
         res_name = ""
+        
+    rb_name = robe_name
+    if not rb_name or rb_name.strip() in ("", "0", "None", "null"):
+        rb_name = ""
 
     try:
-        image_bytes = compose_character(res_name, is_male, direction)
+        image_bytes = compose_character(res_name, rb_name, is_male, direction)
         return Response(content=image_bytes, media_type="image/png")
     except Exception as e:
         logger.exception(f"Failed to compose character sprite for resource '{res_name}': {e}")
