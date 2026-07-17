@@ -1371,6 +1371,11 @@
     "catalog_btn": "Navegar no Catálogo",
     "search_placeholder": "Buscar por ID, nome ou constante...",
     "no_accessories": "Nenhum acessório encontrado. Verifique os arquivos do cliente.",
-    "modal_title": "Catálogo de Acessórios"
+    "modal_title": "Catálogo de Acessórios",
+    "robe_placeholder": "Nome do arquivo da Capa/Visual (ex: C_White_Angel_Wing)"
+  },
+  "visual_equipment": {
+    "how_it_works": "Como funciona?",
+    "how_it_works_desc": "Insira o nome do arquivo de sprite (ex: C_White_Angel_Wing) correspondente na pasta do cliente. O visualizador busca a sprite diretamente na sua GRF."
   }
 }
