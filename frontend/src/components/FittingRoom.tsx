@@ -29,7 +29,7 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ resourceName, onSelect
   };
 
   // Build API URL for the direct preview image
-  const previewUrl = `${API_URL}/api/visualizer/preview?resource_name=${resourceName ?? ''}&robe_name=${robeName}&is_male=${isMale}&direction=${direction}`;
+  const previewUrl = `${API_URL}/api/visualizer/preview?resource_name=${encodeURIComponent(resourceName ?? '')}&robe_name=${encodeURIComponent(robeName)}&is_male=${isMale}&direction=${direction}`;
 
   return (
     <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl flex flex-col items-center">
