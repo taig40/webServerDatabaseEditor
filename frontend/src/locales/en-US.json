@@ -470,6 +470,7 @@
     "draft_item_id_label": "Item ID (ItemInfo ID)",
     "draft_item_id_placeholder": "e.g. 20001",
     "visual_disabled_hint": "Save the item first to configure its Visual Equipment.",
+    "save_visual": "Save Visual Identity",
     "create_btn": "Create in ItemInfo.lua",
     "create_success": "Item #{id} created successfully!",
     "create_error": "Error creating item in ItemInfo.lua.",
@@ -1383,6 +1384,7 @@
     "identity_label": "Identity (accessoryid.lua)",
     "identity_placeholder": "Ex: ACCESSORY_CustomWings",
     "sprite_name_label": "Sprite Name (accname.lua) / Resource Name",
-    "sprite_name_placeholder": "Ex: _CustomWings"
+    "sprite_name_placeholder": "Ex: _CustomWings",
+    "title": "Visual Configuration"
   }
 }

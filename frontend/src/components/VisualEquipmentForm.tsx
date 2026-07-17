@@ -46,8 +46,10 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
         const res = await axios.get(`${API_URL}/api/client_items/visuals/${viewId}`);
         setIdentity(res.data.identity || '');
         setName(res.data.name || initialResourceName || '');
+        setEquipmentType('headgear');
       } catch (err) {
         console.error('Failed to load visual data:', err);
+        setEquipmentType('garment');
       }
     };
     
