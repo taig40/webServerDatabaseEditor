@@ -137,9 +137,11 @@ class VisualsDB:
     def __init__(self):
         self.accessoryid_handler: Optional[VisualLuaHandler] = None
         self.accname_handler: Optional[VisualLuaHandler] = None
+        self.robeid_handler: Optional[VisualLuaHandler] = None
+        self.robename_handler: Optional[VisualLuaHandler] = None
         
-    def get_handlers(self) -> Tuple[VisualLuaHandler, VisualLuaHandler]:
-        if not self.accessoryid_handler or not self.accname_handler:
+    def get_handlers(self) -> Tuple[VisualLuaHandler, VisualLuaHandler, VisualLuaHandler, VisualLuaHandler]:
+        if not self.accessoryid_handler or not self.accname_handler or not self.robeid_handler or not self.robename_handler:
             lua_path = os.environ.get("RO_LUA_FILES_PATH", "").strip()
             
             if not lua_path:
@@ -167,28 +169,67 @@ class VisualsDB:
                 
                 acc_id_path = os.path.join(sys_path, "accessoryid.lua")
                 acc_name_path = os.path.join(sys_path, "accname.lua")
+                
+            robe_id_path = ""
+            robe_name_path = ""
+            if lua_path and os.path.exists(lua_path):
+                robe_id_path = os.path.join(lua_path, "spriterobeid.lua")
+                if not os.path.exists(robe_id_path):
+                    robe_id_path = os.path.join(lua_path, "spriterobeid.lub")
+                    if not os.path.exists(robe_id_path) and os.path.exists(os.path.join(lua_path, "datainfo", "spriterobeid.lub")):
+                        robe_id_path = os.path.join(lua_path, "datainfo", "spriterobeid.lub")
+                        
+                robe_name_path = os.path.join(lua_path, "spriterobename.lua")
+                if not os.path.exists(robe_name_path):
+                    robe_name_path = os.path.join(lua_path, "spriterobename.lub")
+                    if not os.path.exists(robe_name_path) and os.path.exists(os.path.join(lua_path, "datainfo", "spriterobename.lub")):
+                        robe_name_path = os.path.join(lua_path, "datainfo", "spriterobename.lub")
+            else:
+                robe_id_path = os.path.join(sys_path, "spriterobeid.lua")
+                robe_name_path = os.path.join(sys_path, "spriterobename.lua")
             
             self.accessoryid_handler = VisualLuaHandler(acc_id_path, is_accname=False)
             self.accname_handler = VisualLuaHandler(acc_name_path, is_accname=True)
+            self.robeid_handler = VisualLuaHandler(robe_id_path, is_accname=False)
+            self.robename_handler = VisualLuaHandler(robe_name_path, is_accname=True)
             
             self.accessoryid_handler.load()
             self.accname_handler.load()
+            self.robeid_handler.load()
+            self.robename_handler.load()
             
-        return self.accessoryid_handler, self.accname_handler
+        return self.accessoryid_handler, self.accname_handler, self.robeid_handler, self.robename_handler
         
     def get_visual(self, view_id: int) -> Optional[dict]:
         try:
-            acc_id, acc_name = self.get_handlers()
+            acc_id, acc_name, robe_id, robe_name = self.get_handlers()
+            
+            # Check Accessory
             identity = acc_id.ast_dict.get(view_id)
-            if not identity:
-                return None
+            if identity:
+                name = acc_name.identity_dict.get(identity.replace("ACCESSORY_", ""), "")
+                return {
+                    "view_id": view_id,
+                    "identity": identity,
+                    "name": name,
+                    "type": "headgear"
+                }
                 
-            name = acc_name.identity_dict.get(identity.replace("ACCESSORY_", ""), "")
-            return {
-                "view_id": view_id,
-                "identity": identity,
-                "name": name
-            }
+            # Check Robe
+            robe_identity = robe_id.ast_dict.get(view_id)
+            if robe_identity:
+                name = robe_name.identity_dict.get(robe_identity, "")
+                if not name:
+                    # In some clients, they strip ROBE_
+                    name = robe_name.identity_dict.get(robe_identity.replace("ROBE_", ""), "")
+                return {
+                    "view_id": view_id,
+                    "identity": robe_identity,
+                    "name": name,
+                    "type": "garment"
+                }
+                
+            return None
         except Exception:
             return None
 

@@ -46,15 +46,21 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
         const res = await axios.get(`${API_URL}/api/client_items/visuals/${viewId}`);
         const fetchedIdentity = res.data.identity || '';
         const fetchedName = res.data.name || '';
+        const fetchedType = res.data.type || '';
         
         setIdentity(fetchedIdentity);
         setName(fetchedName || initialResourceName || '');
         
-        if (!fetchedIdentity && !fetchedName) {
-          // If the accessoryid lookup returns nothing, it is likely a Garment.
+        if (fetchedType === 'garment') {
           setEquipmentType('garment');
-        } else {
+        } else if (fetchedType === 'headgear') {
           setEquipmentType('headgear');
+        } else {
+          if (!fetchedIdentity && !fetchedName) {
+            setEquipmentType('garment');
+          } else {
+            setEquipmentType('headgear');
+          }
         }
       } catch (err) {
         console.error('Failed to load visual data:', err);
@@ -198,6 +204,7 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
         <div className="space-y-6">
           <FittingRoom
             resourceName={debouncedName}
+            equipmentType={equipmentType}
             onSelectAccessory={(spriteName, selectedViewId, selectedConstant) => {
               setName(spriteName);
               setCurrentViewId(selectedViewId);
