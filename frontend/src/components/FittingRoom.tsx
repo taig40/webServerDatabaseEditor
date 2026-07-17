@@ -11,7 +11,7 @@ interface FittingRoomProps {
   onSelectAccessory?: (spriteName: string, viewId: number, constant: string) => void;
 }
 
-export const FittingRoom: React.FC<FittingRoomProps> = ({ resourceName, onSelectAccessory }) => {
+export const FittingRoom: React.FC<FittingRoomProps> = ({ resourceName, equipmentType, onSelectAccessory }) => {
   const t = useLanguageStore(state => state.t);
   const [isMale, setIsMale] = useState<boolean>(true);
   const [direction, setDirection] = useState<number>(0);
