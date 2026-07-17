@@ -304,7 +304,11 @@ async def get_mob_animation(mob_id: int):
     if not anim_data:
         raise HTTPException(status_code=404, detail="ERROR_NOT_FOUND")
         
-    return anim_data
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        content=anim_data,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"}
+    )
 
 
 @router.get("/{mob_id}/skills")

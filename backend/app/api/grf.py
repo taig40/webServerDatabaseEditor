@@ -19,7 +19,7 @@ async def get_sprite(
         except ValueError:
             png_bytes = None
         if png_bytes:
-            return Response(content=png_bytes, media_type="image/png")
+            return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
             
     elif type == "npc":
         from app.services.sprite_thumbnail import get_first_frame_png
@@ -30,7 +30,7 @@ async def get_sprite(
             # It's a string resource name, e.g. "1_M_WEAPONDEALER"
             png_bytes = get_first_frame_png(0, fallback_aegis=id)
         if png_bytes:
-            return Response(content=png_bytes, media_type="image/png")
+            return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
             
     raise HTTPException(status_code=404, detail="Sprite not found in GRF")
 
@@ -58,10 +58,10 @@ async def get_resource_image(
         png_bytes = grf_reader.get_icon_by_resource_name(name)
 
     if png_bytes:
-        return Response(content=png_bytes, media_type="image/png")
+        return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
     # Fallback to dummy png if not found
-    return Response(content=grf_reader.generate_dummy_png(), media_type="image/png")
+    return Response(content=grf_reader.generate_dummy_png(), media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @router.get("/skill_icon")
@@ -71,12 +71,12 @@ async def get_skill_icon(
 ):
     """Returns PNG image of a skill icon from GRF."""
     png_bytes = grf_reader.get_skill_icon(name, id)
-    return Response(content=png_bytes, media_type="image/png")
+    return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 @router.get("/skill-icon/{icon_name}")
 async def get_skill_icon_by_path(icon_name: str):
     """Returns PNG image of a skill icon from GRF."""
     png_bytes = grf_reader.get_skill_icon(icon_name)
-    return Response(content=png_bytes, media_type="image/png")
+    return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 

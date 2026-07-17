@@ -49,54 +49,54 @@ def get_cached_item_collection(item_id: int) -> Optional[bytes]:
 async def get_item_image(item_id: int):
     png_bytes = get_cached_item_icon(item_id)
     if png_bytes:
-        return Response(content=png_bytes, media_type="image/png")
+        return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
-    return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+    return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @router.get("/collection/{item_id}")
 async def get_collection_image(item_id: int):
     png_bytes = get_cached_item_collection(item_id)
     if png_bytes:
-        return Response(content=png_bytes, media_type="image/png")
+        return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
-    return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+    return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @router.get("/item_icon")
 async def get_item_icon_by_name(resource_name: Optional[str] = None):
     if not resource_name:
-        return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+        return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
     
     _ensure_resources_loaded()
     png_bytes = grf_reader.get_icon_by_resource_name(resource_name)
     if png_bytes:
-        return Response(content=png_bytes, media_type="image/png")
-    return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+        return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+    return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @router.get("/collection_image")
 async def get_collection_image_by_name(resource_name: Optional[str] = None):
     if not resource_name:
-        return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+        return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
     
     _ensure_resources_loaded()
     png_bytes = grf_reader.get_collection_by_resource_name(resource_name)
     if png_bytes:
-        return Response(content=png_bytes, media_type="image/png")
-    return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+        return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+    return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @router.get("/drop")
 async def get_drop_image(resource_name: Optional[str] = None):
     if not resource_name:
-        return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+        return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
         
     try:
         from app.services.sprite_engine.compositor import render_item_drop
         _ensure_resources_loaded()
         png_bytes = render_item_drop(resource_name)
-        return Response(content=png_bytes, media_type="image/png")
+        return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
     except Exception as e:
         print(f"Error rendering drop sprite for {resource_name}: {e}")
-        return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png")
+        return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})

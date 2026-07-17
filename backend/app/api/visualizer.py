@@ -31,7 +31,7 @@ async def get_preview(
 
     try:
         image_bytes = compose_character(res_name, rb_name, is_male, direction)
-        return Response(content=image_bytes, media_type="image/png")
+        return Response(content=image_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
     except Exception as e:
         logger.exception(f"Failed to compose character sprite for resource '{res_name}': {e}")
         raise HTTPException(status_code=500, detail="ERROR_COMPOSITION_FAILED")
