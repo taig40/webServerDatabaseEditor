@@ -238,6 +238,9 @@ class YamlDatabase:
         return paginated, total_count
 
     def get_item(self, item_id: int):
+        if self.cached_items_list is None:
+            self.rebuild_cache()
+            
         if item_id not in self.item_index:
             return None
         target_filepath = self.item_index[item_id]
