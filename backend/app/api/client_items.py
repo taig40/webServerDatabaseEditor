@@ -441,7 +441,7 @@ async def upload_item_drop_act(item_id: int, file: UploadFile = File(...)):
 # ─── GET /api/client_items/visuals/{view_id} ─────────────────────────────────
 
 @router.get("/visuals/{view_id}")
-async def get_visual_equipment(view_id: int, item_id: Optional[int] = Query(None)):
+async def get_visual_equipment(view_id: int, item_id: Optional[int] = Query(None), type_hint: Optional[str] = Query(None)):
     """
     Retorna a configuração visual (identity e nome do sprite) para uma View ID.
     """
@@ -449,8 +449,7 @@ async def get_visual_equipment(view_id: int, item_id: Optional[int] = Query(None
         from app.api.images import _ensure_resources_loaded
         _ensure_resources_loaded()
         
-        type_hint = None
-        if item_id:
+        if not type_hint and item_id:
             item = yaml_db.get_item(item_id)
             if item and item.get("Locations", {}).get("Garment", False):
                 type_hint = "garment"

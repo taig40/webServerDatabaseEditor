@@ -70,7 +70,20 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ itemId
     };
     
     fetchVisual();
-  }, [viewId, initialResourceName]);
+  }, [viewId, initialResourceName, itemId]);
+
+  const fetchVisualForType = async (typeHint: 'headgear' | 'garment') => {
+    if (currentViewId <= 0) return;
+    try {
+      const res = await axios.get(`${API_URL}/api/client_items/visuals/${currentViewId}?item_id=${itemId}&type_hint=${typeHint}`);
+      setIdentity(res.data.identity || '');
+      setName(res.data.name || initialResourceName || '');
+      setEquipmentType(typeHint);
+    } catch (err) {
+      console.error('Failed to load visual data for type:', err);
+      setEquipmentType(typeHint);
+    }
+  };
 
   const handleSave = async () => {
     if (currentViewId <= 0) {
@@ -135,7 +148,10 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ itemId
                 <label className="text-sm font-medium text-gray-400">{t('visual_equipment.equipment_type' as any) || 'Equipment Type'}</label>
                 <select
                   value={equipmentType}
-                  onChange={(e) => setEquipmentType(e.target.value as 'headgear' | 'garment')}
+                  onChange={(e) => {
+                    const newType = e.target.value as 'headgear' | 'garment';
+                    fetchVisualForType(newType);
+                  }}
                   className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
                 >
                   <option value="headgear">{t('visual_equipment.headgear' as any) || 'Headgear / Accessory'}</option>
