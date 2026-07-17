@@ -209,7 +209,25 @@ def compose_character(accessory_name: str, robe_name: str, is_male: bool, direct
                 f"data/sprite/로브/{accessory_name}/{gender_folder}/초보자_{gender_suffix}",
             ]
             for path_base in robe_paths_to_try:
-                acc_spr, acc_act = load_sprite_from_grf(f"{path_base}.spr", f"{path_base}.act")
+                # Some newer garments store the SPR at the root and ACT in the gender folder
+                spr_path = f"{path_base}.spr"
+                act_path = f"{path_base}.act"
+                
+                # Check if it's the "Novice" fallback, if so, the SPR might be at the folder root
+                if "초보자" in path_base:
+                    # Extracts the base name from the folder name
+                    # Ex: path_base = data/sprite/로브/Wing_Of_Angel_Move_GR/남/초보자_남
+                    parts = path_base.split('/')
+                    if len(parts) >= 4:
+                        root_robe_name = parts[3]
+                        possible_spr = f"data/sprite/로브/{root_robe_name}/{root_robe_name}.spr"
+                        acc_spr, acc_act = load_sprite_from_grf(possible_spr, act_path)
+                        if acc_spr and acc_act:
+                            logger.info(f"Successfully found '{accessory_name}' in Robe folder (Split SPR/ACT)! Treating it as a Robe.")
+                            is_acc_actually_robe = True
+                            break
+                            
+                acc_spr, acc_act = load_sprite_from_grf(spr_path, act_path)
                 if acc_spr and acc_act:
                     logger.info(f"Successfully found '{accessory_name}' in Robe folder! Treating it as a Robe.")
                     is_acc_actually_robe = True
@@ -251,7 +269,20 @@ def compose_character(accessory_name: str, robe_name: str, is_male: bool, direct
         
         logger.info(f"Loading robe '{robe_name}' from GRF paths...")
         for path_base in paths_to_try:
-            robe_spr, robe_act = load_sprite_from_grf(f"{path_base}.spr", f"{path_base}.act")
+            spr_path = f"{path_base}.spr"
+            act_path = f"{path_base}.act"
+            
+            # Check if it's the "Novice" fallback, if so, the SPR might be at the folder root
+            if "초보자" in path_base:
+                parts = path_base.split('/')
+                if len(parts) >= 4:
+                    root_robe_name = parts[3]
+                    possible_spr = f"data/sprite/로브/{root_robe_name}/{root_robe_name}.spr"
+                    robe_spr, robe_act = load_sprite_from_grf(possible_spr, act_path)
+                    if robe_spr and robe_act:
+                        break
+                        
+            robe_spr, robe_act = load_sprite_from_grf(spr_path, act_path)
             if robe_spr and robe_act:
                 break
                 
