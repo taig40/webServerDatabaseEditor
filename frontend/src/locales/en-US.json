@@ -1374,6 +1374,10 @@
   },
   "visual_equipment": {
     "how_it_works": "How it works?",
-    "how_it_works_desc": "Insert the sprite file name (e.g., C_White_Angel_Wing) corresponding to the client folder. The visualizer searches for the sprite directly inside your GRF."
+    "how_it_works_desc": "Insert the sprite file name (e.g., C_White_Angel_Wing) corresponding to the client folder. The visualizer searches for the sprite directly inside your GRF.",
+    "equipment_type": "Equipment Type",
+    "headgear": "Headgear / Accessory",
+    "garment": "Garment / Robe",
+    "garment_alert": "Garment (Robe) sprites are managed via spriterobename.lua directly in your client files. Saving from this tool is only supported for Headgears. You can still use the Fitting Room on the right to preview the Robe by typing its name."
   }
 }

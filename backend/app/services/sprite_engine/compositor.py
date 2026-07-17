@@ -204,6 +204,9 @@ def compose_character(accessory_name: str, robe_name: str, is_male: bool, direct
                 f"data/sprite/로브/{clean_name}/{gender_folder}/{clean_name}_{gender_suffix}",
                 f"data/sprite/로브/{accessory_name}/{gender_folder}/{accessory_name}_{gender_suffix}",
                 f"data/sprite/로브/{accessory_name}/{gender_folder}/{gender_suffix}_{accessory_name}",
+                # Fallback para pastas que usam o nome da classe do corpo atual (Novice / 초보자)
+                f"data/sprite/로브/{clean_name}/{gender_folder}/초보자_{gender_suffix}",
+                f"data/sprite/로브/{accessory_name}/{gender_folder}/초보자_{gender_suffix}",
             ]
             for path_base in robe_paths_to_try:
                 acc_spr, acc_act = load_sprite_from_grf(f"{path_base}.spr", f"{path_base}.act")
@@ -238,6 +241,12 @@ def compose_character(accessory_name: str, robe_name: str, is_male: bool, direct
             f"data/sprite/로브/{robe_name}/{robe_name}",
             f"data/sprite/로브/{clean_robe}/{gender_folder}/{clean_robe}",
             f"data/sprite/로브/{clean_robe}/{gender_folder}/{gender_suffix}_{clean_robe}",
+            f"data/sprite/로브/{clean_robe}/{gender_folder}/{clean_robe}_{gender_suffix}",
+            f"data/sprite/로브/{robe_name}/{gender_folder}/{robe_name}_{gender_suffix}",
+            f"data/sprite/로브/{robe_name}/{gender_folder}/{gender_suffix}_{robe_name}",
+            # Fallback para pastas que usam o nome da classe do corpo atual (Novice / 초보자)
+            f"data/sprite/로브/{clean_robe}/{gender_folder}/초보자_{gender_suffix}",
+            f"data/sprite/로브/{robe_name}/{gender_folder}/초보자_{gender_suffix}",
         ]
         
         logger.info(f"Loading robe '{robe_name}' from GRF paths...")

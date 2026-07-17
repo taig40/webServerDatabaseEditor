@@ -17,6 +17,7 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
   
   const [identity, setIdentity] = useState('');
   const [name, setName] = useState('');
+  const [equipmentType, setEquipmentType] = useState<'headgear' | 'garment'>('headgear');
   const [currentViewId, setCurrentViewId] = useState(viewId);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -112,28 +113,56 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
                 />
               </div>
               
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-400">Identity (accessoryid.lua)</label>
-                <input
-                  type="text"
-                  value={identity}
-                  onChange={(e) => setIdentity(e.target.value)}
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-gray-400">{t('visual_equipment.equipment_type' as any) || 'Equipment Type'}</label>
+                <select
+                  value={equipmentType}
+                  onChange={(e) => setEquipmentType(e.target.value as 'headgear' | 'garment')}
                   className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
-                  placeholder="Ex: ACCESSORY_CustomWings"
-                />
+                >
+                  <option value="headgear">{t('visual_equipment.headgear' as any) || 'Headgear / Accessory'}</option>
+                  <option value="garment">{t('visual_equipment.garment' as any) || 'Garment / Robe'}</option>
+                </select>
               </div>
               
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-medium text-gray-400">Sprite Name (accname.lua) / Resource Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
-                  placeholder="Ex: _CustomWings"
-                />
-              </div>
+              {equipmentType === 'headgear' && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-400">Identity (accessoryid.lua)</label>
+                    <input
+                      type="text"
+                      value={identity}
+                      onChange={(e) => setIdentity(e.target.value)}
+                      className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
+                      placeholder="Ex: ACCESSORY_CustomWings"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-medium text-gray-400">Sprite Name (accname.lua) / Resource Name</label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
+                      placeholder="Ex: _CustomWings"
+                    />
+                  </div>
+                </>
+              )}
             </div>
+            
+            {equipmentType === 'garment' && (
+              <div className="mt-4 p-4 rounded-xl flex items-start gap-3 bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                <AlertCircle size={20} className="shrink-0 mt-0.5" />
+                <div className="text-sm leading-relaxed">
+                  <Trans 
+                    i18nKey="visual_equipment.garment_alert"
+                    defaults="Garment (Robe) sprites are managed via <code className='bg-black/30 px-1 py-0.5 rounded text-blue-300'>spriterobename.lua</code> directly in your client files. Saving from this tool is only supported for Headgears. You can still use the Fitting Room on the right to preview the Robe by typing its name."
+                  />
+                </div>
+              </div>
+            )}
             
             {message && (
               <div className={`mt-6 p-4 rounded-xl flex items-start gap-3 ${message.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
@@ -142,16 +171,18 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
               </div>
             )}
 
-            <div className="mt-8 flex justify-end">
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save size={18} />
-                {isSaving ? (t('common.saving' as any) || 'Saving...') : (t('common.save' as any) || 'Save Configuration')}
-              </button>
-            </div>
+            {equipmentType === 'headgear' && (
+              <div className="flex gap-4 mt-8">
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)]"
+                >
+                  <Save size={18} />
+                  {isSaving ? (t('common.saving' as any) || 'Saving...') : (t('client_item_editor.save_visual' as any) || 'Save Visual Identity')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
