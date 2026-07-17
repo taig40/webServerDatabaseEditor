@@ -44,9 +44,18 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
     const fetchVisual = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/client_items/visuals/${viewId}`);
-        setIdentity(res.data.identity || '');
-        setName(res.data.name || initialResourceName || '');
-        setEquipmentType('headgear');
+        const fetchedIdentity = res.data.identity || '';
+        const fetchedName = res.data.name || '';
+        
+        setIdentity(fetchedIdentity);
+        setName(fetchedName || initialResourceName || '');
+        
+        if (!fetchedIdentity && !fetchedName) {
+          // If the accessoryid lookup returns nothing, it is likely a Garment.
+          setEquipmentType('garment');
+        } else {
+          setEquipmentType('headgear');
+        }
       } catch (err) {
         console.error('Failed to load visual data:', err);
         setEquipmentType('garment');

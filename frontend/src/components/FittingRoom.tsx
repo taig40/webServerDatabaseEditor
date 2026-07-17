@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, User, UserCheck } from 'lucide-react';
 import { API_URL } from '../config/env';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { VisualBrowserModal } from './VisualBrowserModal';
+import robesData from '../constants/robes.json';
 
 interface FittingRoomProps {
   resourceName: string | undefined;
@@ -98,12 +99,18 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ resourceName, onSelect
       <div className="w-full mt-3">
         <input 
           type="text" 
+          list="robe-options"
           value={robeName}
           onChange={(e) => setRobeName(e.target.value)}
           placeholder={t('fitting_room.robe_placeholder' as any) || 'Capa/Asa Resource Name (ex: C_White_Angel_Wing)'}
           data-testid="input-robe-resourcename"
           className="w-full bg-dark-900 border border-white/5 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50"
         />
+        <datalist id="robe-options">
+          {robesData.map((robe) => (
+            <option key={robe} value={robe} />
+          ))}
+        </datalist>
       </div>
 
       {/* Browse Catalog button */}

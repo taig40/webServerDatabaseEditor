@@ -1370,6 +1370,7 @@
     "rotate_right": "Girar para Direita",
     "no_sprite": "Sem pré-visualização de acessório (View ID é 0 ou vazio)",
     "catalog_btn": "Navegar no Catálogo",
+    "robe_placeholder": "Resource Name da Capa/Asa (ex: C_White_Angel_Wing)",
     "search_placeholder": "Buscar por ID, nome ou constante...",
     "no_accessories": "Nenhum acessório encontrado. Verifique os arquivos do cliente.",
     "modal_title": "Catálogo de Acessórios",
