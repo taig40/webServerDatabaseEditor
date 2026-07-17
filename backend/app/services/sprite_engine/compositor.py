@@ -233,7 +233,7 @@ def compose_character(accessory_name: str, robe_name: str, is_male: bool, direct
                     is_acc_actually_robe = True
                     break
                     
-        if not acc_spr or not acc_act:
+        if not acc_spr or not acc_act:  
             logger.warning(f"Could not find '{accessory_name}' in either Accessory or Robe folders.")
             
     robe_spr, robe_act = None, None

@@ -14,6 +14,7 @@
     "test:e2e": "playwright test --ui"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@monaco-editor/react": "^4.7.0",
     "@tanstack/react-query": "^5.0.0",
     "@types/dagre": "^0.7.54",
