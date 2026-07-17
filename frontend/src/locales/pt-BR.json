@@ -1380,6 +1380,11 @@
     "equipment_type": "Tipo de Equipamento",
     "headgear": "Equipamento para Cabeça / Acessório",
     "garment": "Capa / Asa (Garment)",
-    "garment_alert": "Os sprites de Capas/Asas (Garments) são gerenciados diretamente pelo arquivo spriterobename.lua no seu client. Salvar alterações através desta ferramenta só é suportado para Equipamentos para Cabeça. Você ainda pode usar o Vestiário ao lado para visualizar a Capa digitando seu nome."
+    "garment_alert": "Os sprites de Capas/Asas (Garments) são gerenciados diretamente pelo arquivo <code>spriterobename.lua</code> no seu client. Salvar alterações através desta ferramenta só é suportado para Equipamentos para Cabeça. Você ainda pode usar o Vestiário ao lado para visualizar a Capa digitando seu nome.",
+    "view_id_placeholder": "Ex: 2000",
+    "identity_label": "Identity (accessoryid.lua)",
+    "identity_placeholder": "Ex: ACCESSORY_CustomWings",
+    "sprite_name_label": "Nome do Sprite (accname.lua) / Resource Name",
+    "sprite_name_placeholder": "Ex: _CustomWings"
   }
 }

@@ -1378,6 +1378,11 @@
     "equipment_type": "Equipment Type",
     "headgear": "Headgear / Accessory",
     "garment": "Garment / Robe",
-    "garment_alert": "Garment (Robe) sprites are managed via spriterobename.lua directly in your client files. Saving from this tool is only supported for Headgears. You can still use the Fitting Room on the right to preview the Robe by typing its name."
+    "garment_alert": "Garment (Robe) sprites are managed via <code>spriterobename.lua</code> directly in your client files. Saving from this tool is only supported for Headgears. You can still use the Fitting Room on the right to preview the Robe by typing its name.",
+    "view_id_placeholder": "Ex: 2000",
+    "identity_label": "Identity (accessoryid.lua)",
+    "identity_placeholder": "Ex: ACCESSORY_CustomWings",
+    "sprite_name_label": "Sprite Name (accname.lua) / Resource Name",
+    "sprite_name_placeholder": "Ex: _CustomWings"
   }
 }

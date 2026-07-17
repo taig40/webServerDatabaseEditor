@@ -109,7 +109,7 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
                   value={currentViewId}
                   onChange={(e) => setCurrentViewId(parseInt(e.target.value) || 0)}
                   className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
-                  placeholder="Ex: 2000"
+                  placeholder={t('visual_equipment.view_id_placeholder' as any) || 'Ex: 2000'}
                 />
               </div>
               
@@ -128,24 +128,24 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
               {equipmentType === 'headgear' && (
                 <>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-400">Identity (accessoryid.lua)</label>
+                    <label className="text-sm font-medium text-gray-400">{t('visual_equipment.identity_label' as any) || 'Identity (accessoryid.lua)'}</label>
                     <input
                       type="text"
                       value={identity}
                       onChange={(e) => setIdentity(e.target.value)}
                       className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
-                      placeholder="Ex: ACCESSORY_CustomWings"
+                      placeholder={t('visual_equipment.identity_placeholder' as any) || 'Ex: ACCESSORY_CustomWings'}
                     />
                   </div>
                   
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-medium text-gray-400">Sprite Name (accname.lua) / Resource Name</label>
+                    <label className="text-sm font-medium text-gray-400">{t('visual_equipment.sprite_name_label' as any) || 'Sprite Name (accname.lua) / Resource Name'}</label>
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
-                      placeholder="Ex: _CustomWings"
+                      placeholder={t('visual_equipment.sprite_name_placeholder' as any) || 'Ex: _CustomWings'}
                     />
                   </div>
                 </>
@@ -155,11 +155,8 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
             {equipmentType === 'garment' && (
               <div className="mt-4 p-4 rounded-xl flex items-start gap-3 bg-blue-500/10 text-blue-400 border border-blue-500/20">
                 <AlertCircle size={20} className="shrink-0 mt-0.5" />
-                <div className="text-sm leading-relaxed">
-                  <Trans 
-                    i18nKey="visual_equipment.garment_alert"
-                    defaults="Garment (Robe) sprites are managed via <code className='bg-black/30 px-1 py-0.5 rounded text-blue-300'>spriterobename.lua</code> directly in your client files. Saving from this tool is only supported for Headgears. You can still use the Fitting Room on the right to preview the Robe by typing its name."
-                  />
+                <div className="text-sm leading-relaxed text-blue-300">
+                  <Trans text={t('visual_equipment.garment_alert' as any) || 'Garment (Robe) sprites are managed via <code>spriterobename.lua</code> directly in your client files. Saving from this tool is only supported for Headgears. You can still use the Fitting Room on the right to preview the Robe by typing its name.'} />
                 </div>
               </div>
             )}
