@@ -173,11 +173,22 @@ export const MapEngine: React.FC = () => {
   const [spawnLines, setSpawnLines] = useState<string[]>([]);
   const [spawnFilePath, setSpawnFilePath] = useState('');
   const [isInjectingSpawn, setIsInjectingSpawn] = useState(false);
+  const [validMapNames, setValidMapNames] = useState<string[]>([]);
 
   // ─── Load Map Drops ─────────────────────────────────────────────────────────
   useEffect(() => {
     fetchMapDrops();
+    fetchValidMapNames();
   }, []);
+
+  const fetchValidMapNames = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/maps/list`);
+      setValidMapNames(res.data || []);
+    } catch (err) {
+      console.error('Error fetching valid maps:', err);
+    }
+  };
 
   const fetchMapDrops = async () => {
     try {
@@ -782,10 +793,17 @@ export const MapEngine: React.FC = () => {
                 <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">{t('map_engine.spawn_map' as any)}</label>
                 <input
                   type="text"
+                  list="rathena-maps"
                   value={spawnForm.map}
                   onChange={e => setSpawnForm(f => ({ ...f, map: e.target.value }))}
                   className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono text-teal-300 focus:outline-none focus:border-teal-500"
+                  placeholder="Ex: prt_fild01"
                 />
+                <datalist id="rathena-maps">
+                  {validMapNames.map(m => (
+                    <option key={m} value={m} />
+                  ))}
+                </datalist>
               </div>
 
               {/* X / Y / RX / RY */}

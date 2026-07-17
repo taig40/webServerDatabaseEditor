@@ -55,7 +55,7 @@ if db_base_path:
 # ─── Import Application Modules (Dependent on Env Variables) ────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images, constants, progression, editor, system, divinepride, map_drops, custom_spawns, visualizer
+from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images, constants, progression, editor, system, divinepride, map_drops, custom_spawns, visualizer, maps
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
 from app.services.grf_reader import grf_reader, MAX_GRF_SLOTS
@@ -198,6 +198,7 @@ app.include_router(pets.router,         prefix="/api/pets",         tags=["pets"
 app.include_router(client_items.router, prefix="/api/client_items", tags=["client_items"])
 app.include_router(settings_api.router, prefix="/api/settings",    tags=["settings"])
 app.include_router(achievements.router,  prefix="/api/achievements", tags=["achievements"])
+app.include_router(maps.router,          prefix="/api/maps",         tags=["maps"])
 app.include_router(constants.router,     prefix="/api/constants",    tags=["constants"])
 app.include_router(randomopt.router,    prefix="/api/server/randomopt", tags=["randomopt"])
 app.include_router(randomopt.router,    prefix="/api/random-options-groups", tags=["random-options-groups"])
