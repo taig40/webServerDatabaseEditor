@@ -1,133 +1,197 @@
 import os
+import uuid
+import re
 from datetime import datetime
-from typing import List
-
+from typing import List, Dict, Any
 
 def _resolve_rathena_root() -> str:
     from app.core.config import get_rathena_root
     return get_rathena_root()
 
-
-def get_spawn_file_path() -> str:
-    """
-    Retorna o caminho absoluto para npc/custom/ui_spawns.txt.
-    """
+def get_spawn_index_path() -> str:
+    """Retorna o caminho para npc/custom/ui_spawns.txt"""
     root = _resolve_rathena_root()
     if root:
         return f"{root}/npc/custom/ui_spawns.txt"
-    # Fallback: pasta atual do processo
     return os.path.join(os.getcwd(), "ui_spawns.txt").replace("\\", "/")
 
+def get_spawn_folder() -> str:
+    """Retorna a pasta para arquivos individuais npc/custom/spawns/"""
+    root = _resolve_rathena_root()
+    if root:
+        return f"{root}/npc/custom/spawns"
+    return os.path.join(os.getcwd(), "spawns").replace("\\", "/")
 
-def ensure_spawn_file() -> str:
-    """
-    Garante que o arquivo e a pasta existam. Retorna o caminho.
-    Cria um cabeçalho padrão se o arquivo for novo.
-    """
-    path = get_spawn_file_path()
+def get_map_spawn_file(map_name: str) -> str:
+    return f"{get_spawn_folder()}/{map_name}.txt"
+
+def ensure_index_file():
+    path = get_spawn_index_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     if not os.path.exists(path):
         with open(path, "w", encoding="utf-8", newline="\n") as f:
             f.write(
                 "// ============================================================\n"
-                "// ui_spawns.txt — Custom Map Engine Spawns\n"
+                "// ui_spawns.txt — Custom Map Engine Spawns Index\n"
                 "// Gerado automaticamente pelo webServerDatabaseEditor\n"
-                "// NÃO edite manualmente — use a interface do Map Engine\n"
                 "// ============================================================\n\n"
             )
-    return path
 
+def ensure_import_in_index(map_name: str):
+    ensure_index_file()
+    path = get_spawn_index_path()
+    import_line = f"import: npc/custom/spawns/{map_name}.txt\n"
+    
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+    
+    if import_line not in content:
+        with open(path, "a", encoding="utf-8", newline="\n") as f:
+            f.write(import_line)
 
-def read_spawns() -> dict:
-    """
-    Lê o arquivo de spawns linha a linha.
-    Retorna { lines: [...], file_path: str }
-    """
-    path = ensure_spawn_file()
+def remove_import_from_index(map_name: str):
+    ensure_index_file()
+    path = get_spawn_index_path()
+    import_line = f"import: npc/custom/spawns/{map_name}.txt"
+    
     with open(path, "r", encoding="utf-8") as f:
         lines = f.readlines()
-    return {
-        "lines": [l.rstrip("\n") for l in lines],
-        "file_path": path,
-    }
+        
+    new_lines = [l for l in lines if l.strip() != import_line]
+    
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.writelines(new_lines)
 
-
-def append_spawn(snippet: str) -> dict:
-    """
-    Faz append do snippet ao final do arquivo de spawns.
-    Garante separação limpa com newline.
-    """
-    path = ensure_spawn_file()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    block = (
-        f"\n// --- Map Engine Inject [{timestamp}] ---\n"
-        f"{snippet.rstrip()}\n"
-    )
-
-    with open(path, "a", encoding="utf-8", newline="\n") as f:
-        f.write(block)
-
-    return {
-        "success": True,
-        "file_path": path,
-        "injected": block,
-    }
-
-
-def delete_spawn(line_index: int) -> dict:
-    """
-    Remove a linha (ou bloco de comentário + spawn) pelo índice de linha real no arquivo.
-
-    Estratégia:
-    - Lê todas as linhas do arquivo.
-    - Identifica a linha de spawn no índice fornecido (0-based sobre a lista retornada
-      por read_spawns(), que já remove os '\\n' finais).
-    - Se a linha imediatamente anterior for um comentário de injeção ("// ---"), remove-a também
-      para não deixar cabeçalhos de bloco órfãos.
-    - Reescreve o arquivo atomicamente via arquivo temporário.
-
-    Args:
-        line_index: Índice base-0 da linha de spawn na lista retornada por read_spawns().
-
-    Returns:
-        dict com { success, file_path, deleted_line }.
-
-    Raises:
-        IndexError: se line_index estiver fora dos limites.
-        RuntimeError: se o arquivo não existir.
-    """
-    path = ensure_spawn_file()
-
+def get_active_maps() -> List[str]:
+    """Retorna uma lista de mapas que possuem arquivos de spawn ativos lendo o index."""
+    ensure_index_file()
+    path = get_spawn_index_path()
+    maps = set()
     with open(path, "r", encoding="utf-8") as f:
-        raw_lines = f.readlines()   # preserva os '\n' originais para reescrita fiel
+        for line in f:
+            line = line.strip()
+            if line.startswith("import: "):
+                match = re.search(r'spawns/([^/\.]+)\.txt', line)
+                if match:
+                    maps.add(match.group(1))
+    return sorted(list(maps))
 
-    # Monta uma lista paralela sem o '\n' final para expor ao chamador (igual a read_spawns)
-    stripped = [l.rstrip("\n") for l in raw_lines]
+def get_map_spawns(map_name: str) -> List[Dict[str, Any]]:
+    """Parseia o arquivo de um mapa específico e retorna os spawns em formato JSON"""
+    file_path = get_map_spawn_file(map_name)
+    spawns = []
+    
+    if not os.path.exists(file_path):
+        return spawns
+        
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        
+    current_uuid = None
+    
+    for line in lines:
+        l = line.strip()
+        if l.startswith("// UUID: "):
+            current_uuid = l.replace("// UUID: ", "").strip()
+            continue
+            
+        if not l or l.startswith("//"):
+            continue
+            
+        # Formato: mapname,x,y,rx,ry<TAB>monster<TAB>mobname<TAB>mobid,amount,delay1,delay2,event
+        # prt_fild01,0,0,0,0	monster	Poring	1002,1,0,0,0
+        if "\tmonster\t" in l:
+            try:
+                parts = l.split("\t")
+                coords = parts[0].split(",")
+                mapn = coords[0]
+                x = int(coords[1])
+                y = int(coords[2])
+                rx = int(coords[3])
+                ry = int(coords[4])
+                
+                mobname = parts[2]
+                
+                rest = parts[3].split(",")
+                mobid = int(rest[0]) if rest[0].isdigit() else rest[0]
+                amount = int(rest[1])
+                delay1 = int(rest[2]) if len(rest) > 2 else 0
+                delay2 = int(rest[3]) if len(rest) > 3 else 0
+                event = rest[4] if len(rest) > 4 else ""
+                
+                spawns.append({
+                    "uuid": current_uuid or str(uuid.uuid4()),
+                    "map": mapn,
+                    "x": x,
+                    "y": y,
+                    "rx": rx,
+                    "ry": ry,
+                    "mobname": mobname,
+                    "mobid": mobid,
+                    "amount": amount,
+                    "delay1": delay1,
+                    "delay2": delay2,
+                    "event": event,
+                    "raw_line": l
+                })
+            except Exception as e:
+                print(f"[!] Erro ao dar parse no spawn {l}: {e}")
+        
+        current_uuid = None
+        
+    return spawns
 
-    if line_index < 0 or line_index >= len(stripped):
-        raise IndexError(f"Índice {line_index} fora dos limites (arquivo tem {len(stripped)} linhas).")
-
-    deleted_line = stripped[line_index]
-
-    # Conjunto de índices a remover (começamos com o spawn em si)
-    indices_to_remove: set[int] = {line_index}
-
-    # Se a linha anterior for um cabeçalho de bloco gerado pela engine, remove junto
-    if line_index > 0 and stripped[line_index - 1].startswith("// --- Map Engine Inject"):
-        indices_to_remove.add(line_index - 1)
-
-    # Filtra as linhas removendo os índices marcados
-    new_raw_lines = [l for i, l in enumerate(raw_lines) if i not in indices_to_remove]
-
-    # Reescreve atomicamente
-    tmp_path = path + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8", newline="\n") as f:
-        f.writelines(new_raw_lines)
-    os.replace(tmp_path, path)
-
+def append_spawn(map_name: str, snippet: str) -> dict:
+    folder = get_spawn_folder()
+    os.makedirs(folder, exist_ok=True)
+    
+    file_path = get_map_spawn_file(map_name)
+    spawn_uuid = str(uuid.uuid4())
+    
+    block = f"// UUID: {spawn_uuid}\n{snippet.strip()}\n"
+    
+    with open(file_path, "a", encoding="utf-8", newline="\n") as f:
+        f.write(block)
+        
+    ensure_import_in_index(map_name)
+    
     return {
         "success": True,
-        "file_path": path,
-        "deleted_line": deleted_line,
+        "uuid": spawn_uuid,
+        "file_path": file_path
     }
+
+def delete_spawn(map_name: str, spawn_uuid: str) -> dict:
+    file_path = get_map_spawn_file(map_name)
+    if not os.path.exists(file_path):
+        raise RuntimeError(f"Arquivo não encontrado: {file_path}")
+        
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        
+    new_lines = []
+    skip_next = False
+    deleted = False
+    
+    for i, line in enumerate(lines):
+        if skip_next:
+            skip_next = False
+            continue
+            
+        if line.strip() == f"// UUID: {spawn_uuid}":
+            skip_next = True
+            deleted = True
+            continue
+            
+        new_lines.append(line)
+        
+    with open(file_path, "w", encoding="utf-8", newline="\n") as f:
+        f.writelines(new_lines)
+        
+    # Autodelete check
+    if not any(not l.strip().startswith("//") and l.strip() for l in new_lines):
+        os.remove(file_path)
+        remove_import_from_index(map_name)
+        return {"success": True, "deleted": deleted, "file_removed": True}
+        
+    return {"success": True, "deleted": deleted, "file_removed": False}

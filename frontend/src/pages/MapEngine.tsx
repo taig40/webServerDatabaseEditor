@@ -3,6 +3,7 @@ import axios from 'axios';
 import { API_URL } from '../config/env';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { ReferencePicker } from '../components/ReferencePicker';
+import MonsterAnimator from '../components/MonsterAnimator';
 import {
   Map,
   Plus,
@@ -170,10 +171,12 @@ export const MapEngine: React.FC = () => {
     amount: 5,
     respawn: 5000,
   });
-  const [spawnLines, setSpawnLines] = useState<string[]>([]);
-  const [spawnFilePath, setSpawnFilePath] = useState('');
   const [isInjectingSpawn, setIsInjectingSpawn] = useState(false);
   const [validMapNames, setValidMapNames] = useState<string[]>([]);
+  const [activeSpawnMap, setActiveSpawnMap] = useState<string>('');
+  const [activeMapSpawns, setActiveMapSpawns] = useState<any[]>([]);
+  const [activeMapSpawnsLoading, setActiveMapSpawnsLoading] = useState<boolean>(false);
+  const [activeSpawnMapsList, setActiveSpawnMapsList] = useState<string[]>([]);
 
   // ─── Load Map Drops ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -210,22 +213,43 @@ export const MapEngine: React.FC = () => {
     }
   };
 
-  // ─── Load Spawn Lines ───────────────────────────────────────────────────────
   useEffect(() => {
     if (activeTab === 'spawns') {
-      fetchSpawnLines();
+      fetchActiveSpawnMaps();
     }
   }, [activeTab]);
 
-  const fetchSpawnLines = async () => {
+  const fetchActiveSpawnMaps = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/scripts/custom-spawns`);
-      setSpawnLines(res.data.lines || []);
-      setSpawnFilePath(res.data.file_path || '');
+      const res = await axios.get(`${API_URL}/api/scripts/custom-spawns/maps`);
+      setActiveSpawnMapsList(res.data.maps || []);
+      if (res.data.maps && res.data.maps.length > 0 && !activeSpawnMap) {
+        setActiveSpawnMap(res.data.maps[0]);
+        setSpawnForm(f => ({ ...f, map: res.data.maps[0] }));
+      }
     } catch (err) {
-      console.error('Error fetching spawn lines:', err);
+      console.error('Error fetching active spawn maps:', err);
     }
   };
+
+  const fetchSpawnsForMap = async (mapName: string) => {
+    if (!mapName) return;
+    try {
+      setActiveMapSpawnsLoading(true);
+      const res = await axios.get(`${API_URL}/api/scripts/custom-spawns/maps/${mapName}`);
+      setActiveMapSpawns(res.data.spawns || []);
+    } catch (err) {
+      console.error('Error fetching spawns for map:', err);
+    } finally {
+      setActiveMapSpawnsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'spawns' && activeSpawnMap) {
+      fetchSpawnsForMap(activeSpawnMap);
+    }
+  }, [activeSpawnMap, activeTab]);
 
   // ─── Derived ────────────────────────────────────────────────────────────────
 
@@ -402,31 +426,46 @@ export const MapEngine: React.FC = () => {
   // ─── Inject Spawn ────────────────────────────────────────────────────────────
 
   const handleInjectSpawn = async () => {
-    if (!spawnForm.monsterId) return;
+    if (!spawnForm.monsterId || !spawnForm.map) return;
+    
     try {
       setIsInjectingSpawn(true);
       setAlertMsg(null);
-      // Envia payload estruturado com ID numérico correto — o backend gera a linha com TABs
-      await axios.post(`${API_URL}/api/scripts/custom-spawns`, {
+      
+      await axios.post(`${API_URL}/api/scripts/custom-spawns/maps/${spawnForm.map}`, {
         mapname: spawnForm.map,
         x: spawnForm.x,
         y: spawnForm.y,
         rx: spawnForm.rx,
         ry: spawnForm.ry,
-        mobid: spawnForm.monsterId,       // ID numérico
-        mobname: spawnForm.monsterAegis,  // Nome de exibição (AegisName)
+        mobid: spawnForm.monsterId,
+        mobname: spawnForm.monsterAegis,
         amount: spawnForm.amount,
         delay1: spawnForm.respawn,
-        delay2: 0,
-        event: '',
+        event: ""
       });
+
       setAlertMsg({ text: t('map_engine.inject_success' as any) as string, type: 'success' });
-      await fetchSpawnLines();
-    } catch {
+      setActiveSpawnMap(spawnForm.map);
+      fetchActiveSpawnMaps();
+      fetchSpawnsForMap(spawnForm.map);
+
+    } catch (err) {
+      console.error('Injection error:', err);
       setAlertMsg({ text: t('map_engine.inject_error' as any) as string, type: 'error' });
     } finally {
       setIsInjectingSpawn(false);
       setTimeout(() => setAlertMsg(null), 4000);
+    }
+  };
+  const handleDeleteSpawn = async (mapName: string, uuid: string) => {
+    try {
+      await axios.delete(`${API_URL}/api/scripts/custom-spawns/maps/${mapName}/${uuid}`);
+      fetchActiveSpawnMaps();
+      fetchSpawnsForMap(mapName);
+    } catch (err) {
+      console.error('Error deleting spawn:', err);
+      alert('Error deleting spawn. See console.');
     }
   };
 
@@ -771,21 +810,44 @@ export const MapEngine: React.FC = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════ */}
-      {/* TAB 2 — CUSTOM SPAWNS                                               */}
-      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* TAB 2 — CUSTOM SPAWNS */}
       {activeTab === 'spawns' && (
-        <div className="flex flex-1 gap-4 overflow-hidden">
+        <div className="flex flex-col lg:flex-row flex-1 gap-4 overflow-hidden h-full">
 
-          {/* Left — Form */}
-          <div className="w-96 flex flex-col gap-4">
-            <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-5 space-y-4">
+          {/* Left / Top Panel: Active Maps & Injection Form */}
+          <div className="w-full lg:w-96 flex flex-col gap-4 shrink-0 overflow-y-auto pr-2 pb-16">
+            
+            {/* Active Maps List */}
+            <div className="bg-gray-900/80 border border-gray-800 rounded-xl overflow-hidden shrink-0">
+              <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/40">
+                <h3 className="text-sm font-bold text-gray-200">{t('map_engine.active_maps' as any) || 'Active Maps'}</h3>
+              </div>
+              <div className="max-h-48 overflow-y-auto">
+                {activeSpawnMapsList.length === 0 ? (
+                  <div className="p-4 text-xs text-gray-500 text-center">Nenhum mapa customizado.</div>
+                ) : (
+                  <div className="flex flex-col">
+                    {activeSpawnMapsList.map(mapName => (
+                      <button
+                        key={mapName}
+                        onClick={() => { setActiveSpawnMap(mapName); setSpawnForm(f => ({ ...f, map: mapName })); }}
+                        className={`text-left px-4 py-2.5 text-sm transition-colors border-l-2 ${activeSpawnMap === mapName ? 'bg-teal-500/10 border-teal-500 text-teal-300' : 'border-transparent text-gray-400 hover:bg-gray-800/50 hover:text-gray-200'}`}
+                      >
+                        {mapName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Injection Form */}
+            <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-5 space-y-4 shrink-0">
               <div>
                 <h2 className="text-sm font-bold text-gray-200 flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-teal-400" />
-                  {t('map_engine.spawns_title' as any)}
+                  <Plus className="w-4 h-4 text-teal-400" />
+                  {t('map_engine.inject_new_spawn' as any) || 'Inject New Spawn'}
                 </h2>
-                <p className="text-xs text-gray-500 mt-0.5">{t('map_engine.spawns_subtitle' as any)}</p>
               </div>
 
               {/* Map */}
@@ -795,7 +857,10 @@ export const MapEngine: React.FC = () => {
                   type="text"
                   list="rathena-maps"
                   value={spawnForm.map}
-                  onChange={e => setSpawnForm(f => ({ ...f, map: e.target.value }))}
+                  onChange={e => {
+                    setSpawnForm(f => ({ ...f, map: e.target.value }));
+                    setActiveSpawnMap(e.target.value);
+                  }}
                   className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono text-teal-300 focus:outline-none focus:border-teal-500"
                   placeholder="Ex: prt_fild01"
                 />
@@ -828,7 +893,7 @@ export const MapEngine: React.FC = () => {
                 <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">{t('map_engine.spawn_monster' as any)}</label>
                 <button
                   onClick={() => openPicker({ kind: 'spawn' }, 'mob')}
-                  className="w-full text-left px-3 py-2 bg-gray-950 border border-gray-700 hover:border-teal-500 rounded-lg text-sm font-medium text-purple-300 transition-colors"
+                  className="w-full text-left px-3 py-2 bg-gray-950 border border-gray-700 hover:border-teal-500 rounded-lg text-sm font-medium text-purple-300 transition-colors truncate"
                 >
                   {spawnForm.monsterName
                     ? `${spawnForm.monsterName} (ID: ${spawnForm.monsterId})`
@@ -864,7 +929,7 @@ export const MapEngine: React.FC = () => {
               {/* Inject Button */}
               <button
                 onClick={handleInjectSpawn}
-                disabled={isInjectingSpawn || !spawnForm.monsterId}
+                disabled={isInjectingSpawn || !spawnForm.monsterId || !spawnForm.map}
                 className="w-full flex items-center justify-center gap-2 py-2.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold shadow-lg shadow-teal-600/30 transition-all"
               >
                 {isInjectingSpawn
@@ -873,49 +938,95 @@ export const MapEngine: React.FC = () => {
                 {t('map_engine.inject_button' as any)}
               </button>
             </div>
-
-            {/* Live Snippet Panel */}
-            <div className="bg-gray-900/80 border border-gray-800 rounded-xl overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-800 bg-gray-950/40">
-                <Code2 className="w-4 h-4 text-teal-400" />
-                <span className="text-sm font-semibold text-gray-300">{t('map_engine.live_snippet_panel' as any)}</span>
-              </div>
-              <pre className="p-4 text-xs text-teal-300 font-mono leading-relaxed overflow-auto bg-gray-950/60 whitespace-pre-wrap">
-                {liveSnippet}
-              </pre>
-            </div>
+            
           </div>
 
-          {/* Right — Viewer */}
-          <div className="flex-1 flex flex-col bg-gray-900/80 border border-gray-800 rounded-xl overflow-hidden shadow-md">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-gray-950/40">
+          {/* Right Panel: Cards Grid */}
+          <div className="flex-1 flex flex-col bg-gray-900/40 border border-gray-800 rounded-xl overflow-hidden h-full pb-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-900/60 shadow-sm shrink-0">
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-teal-400" />
-                <span className="text-sm font-bold text-gray-200">{t('map_engine.spawns_viewer_title' as any)}</span>
+                <Target className="w-5 h-5 text-teal-400" />
+                <span className="font-bold text-gray-200">
+                  {activeSpawnMap ? `Spawns em ${activeSpawnMap}` : 'Selecione um mapa'}
+                </span>
               </div>
               <button
-                onClick={fetchSpawnLines}
-                className="flex items-center gap-1.5 px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 rounded text-xs transition-colors"
+                onClick={() => fetchSpawnsForMap(activeSpawnMap)}
+                disabled={!activeSpawnMap || activeMapSpawnsLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 border border-gray-700 rounded-md text-xs font-medium transition-colors shadow-sm"
               >
-                <RefreshCw className="w-3 h-3" />
+                <RefreshCw className={`w-3 h-3 ${activeMapSpawnsLoading ? 'animate-spin' : ''}`} />
+                Atualizar
               </button>
             </div>
 
-            {spawnFilePath && (
-              <div className="px-4 py-1.5 border-b border-gray-800/60 bg-gray-950/30 text-[10px] text-gray-500 font-mono truncate">
-                {t('map_engine.file_path_label' as any)} {spawnFilePath}
-              </div>
-            )}
-
-            <div className="flex-1 overflow-y-auto">
-              {spawnLines.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-xs text-gray-500">
-                  {t('map_engine.spawns_viewer_empty' as any)}
+            <div className="flex-1 overflow-y-auto p-6 relative">
+              {activeMapSpawnsLoading ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-teal-500 animate-spin" />
+                </div>
+              ) : activeMapSpawns.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3 opacity-50">
+                  <Globe className="w-12 h-12" />
+                  <p className="text-sm font-medium">Nenhum monstro spawnado aqui.</p>
                 </div>
               ) : (
-                <pre className="p-4 text-xs text-gray-300 font-mono leading-relaxed whitespace-pre-wrap">
-                  {spawnLines.join('\n')}
-                </pre>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {activeMapSpawns.map(spawn => (
+                    <div
+                      key={spawn.uuid}
+                      className="group relative bg-gray-900/80 border border-gray-800 hover:border-teal-500/50 rounded-xl overflow-hidden shadow-md transition-all duration-300"
+                    >
+                      {/* Delete Overlay */}
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <button
+                          data-testid="btn-delete-spawn"
+                          onClick={() => handleDeleteSpawn(spawn.map, spawn.uuid)}
+                          className="bg-red-500/90 hover:bg-red-500 text-white p-2 rounded-lg shadow-lg hover:scale-110 transition-transform"
+                          title="Remover Spawn"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Header & GIF */}
+                      <div className="h-32 bg-gray-950 flex items-center justify-center p-2 relative overflow-hidden group-hover:bg-gray-950/80 transition-colors">
+                         {/* Usa MonsterAnimator importado em MapEngine (assumindo import no topo) */}
+                         <div className="scale-75 transform origin-center">
+                           <MonsterAnimator mobId={spawn.mobid} mobName={spawn.mobname} size="md" />
+                         </div>
+                         <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-0.5 rounded text-[10px] font-mono text-gray-400 border border-white/5">
+                           ID: {spawn.mobid}
+                         </div>
+                      </div>
+
+                      {/* Info Panel */}
+                      <div className="p-4 bg-gray-900/50 border-t border-gray-800">
+                        <h4 className="font-bold text-gray-200 text-sm truncate mb-3" title={spawn.mobname}>
+                          {spawn.mobname}
+                        </h4>
+                        
+                        <div className="grid grid-cols-2 gap-y-2 gap-x-2 text-[10px] font-mono">
+                          <div className="flex flex-col bg-gray-950/50 p-1.5 rounded border border-gray-800/50">
+                            <span className="text-gray-500 mb-0.5">Qtd</span>
+                            <span className="text-emerald-400 text-xs font-bold">{spawn.amount}</span>
+                          </div>
+                          <div className="flex flex-col bg-gray-950/50 p-1.5 rounded border border-gray-800/50">
+                            <span className="text-gray-500 mb-0.5">Respawn</span>
+                            <span className="text-yellow-400 text-xs font-bold">{spawn.delay1}ms</span>
+                          </div>
+                          <div className="flex flex-col col-span-2 bg-gray-950/50 p-1.5 rounded border border-gray-800/50">
+                            <span className="text-gray-500 mb-0.5">Coordenadas</span>
+                            <span className="text-cyan-300 text-xs">
+                              ({spawn.x === 0 ? 'Random' : spawn.x}, {spawn.y === 0 ? 'Random' : spawn.y})
+                              {(spawn.rx > 0 || spawn.ry > 0) && ` ±(${spawn.rx},${spawn.ry})`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>

@@ -1,17 +1,19 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Optional
+from fastapi import APIRouter, HTTPException, Path
+from pydantic import BaseModel, Field
+from typing import Optional, Union, List, Dict, Any
 
-from app.services.custom_spawn_service import read_spawns, append_spawn, get_spawn_file_path
+from app.services.custom_spawn_service import (
+    get_active_maps, 
+    get_map_spawns, 
+    append_spawn, 
+    delete_spawn,
+    get_spawn_index_path
+)
+from app.models.item import rAthenaBaseModel
 
 router = APIRouter()
 
-
 # ─── Pydantic Models ──────────────────────────────────────────────────────────
-
-from app.models.item import rAthenaBaseModel
-from pydantic import Field
-from typing import Union, Optional
 
 class SpawnPayload(rAthenaBaseModel):
     mapname: Optional[str] = Field(None, description="Nome do mapa (ex: prontera)")
@@ -28,59 +30,65 @@ class SpawnPayload(rAthenaBaseModel):
     delay2: int = Field(0, ge=0, description="Variação aleatória do respawn (ms)")
     event: str = Field("", max_length=24, description="Label do evento (opcional)")
 
-    # Campos para suporte ao MapEngine (que envia snippet pré-formatado)
+    # Campos para suporte ao MapEngine
     snippet: Optional[str] = Field(None, description="Linha de spawn já formatada")
-    map_name: Optional[str] = None
-    monster_name: Optional[str] = None
 
-    def format_rathena_spawn(self) -> str:
+    def format_rathena_spawn(self, override_map: str = None) -> str:
         """
-        Formata a linha estritamente seguindo o padrão do emulador:
-        mapname,x,y,rx,ry<TAB>monster<TAB>mobname<TAB>mobid,amount,delay1,delay2,event
+        Formata a linha estritamente seguindo o padrão do emulador.
         """
+        map_n = override_map or self.mapname
         event_str = f",{self.event}" if self.event else ""
-        return (f"{self.mapname},{self.x},{self.y},{self.rx},{self.ry}\t"
+        return (f"{map_n},{self.x},{self.y},{self.rx},{self.ry}\t"
                 f"monster\t{self.mobname}\t"
                 f"{self.mobid},{self.amount},{self.delay1},{self.delay2}{event_str}")
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
-@router.get("")
-async def get_custom_spawns():
-    """
-    Lê o arquivo npc/custom/ui_spawns.txt e retorna suas linhas.
-    Cria o arquivo automaticamente se não existir.
-    """
+@router.get("/maps")
+async def list_active_maps():
+    """Retorna a lista de mapas que possuem arquivos de spawn ativos no ui_spawns.txt"""
     try:
-        return read_spawns()
+        return {"maps": get_active_maps(), "index_path": get_spawn_index_path()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao ler ui_spawns.txt: {e}")
 
+@router.get("/maps/{map_name}")
+async def list_spawns_for_map(map_name: str = Path(..., description="Nome do mapa, ex: prontera")):
+    """Retorna os spawns detalhados de um mapa específico (JSON)"""
+    try:
+        return {"map": map_name, "spawns": get_map_spawns(map_name)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao ler spawns de {map_name}: {e}")
 
-@router.get("/path")
-async def get_spawn_path():
-    """Retorna o caminho resolvido do arquivo de spawns."""
-    return {"file_path": get_spawn_file_path()}
-
-
-@router.post("")
-async def inject_custom_spawn(payload: SpawnPayload):
-    """
-    Faz append do snippet no final de npc/custom/ui_spawns.txt.
-    Aceita tanto envio estruturado (SpawnEditor) quanto envio de snippet (MapEngine).
-    Nunca altera arquivos de script oficiais do rAthena.
-    """
+@router.post("/maps/{map_name}")
+async def inject_map_spawn(payload: SpawnPayload, map_name: str = Path(..., description="Nome do mapa")):
+    """Adiciona um spawn no arquivo do mapa específico."""
     try:
         if payload.snippet and payload.snippet.strip():
             snippet = payload.snippet.strip()
         else:
-            if not payload.mapname or not payload.mobid or not payload.mobname:
-                raise HTTPException(status_code=422, detail="mapname, mobid e mobname são obrigatórios quando snippet não é fornecido.")
-            snippet = payload.format_rathena_spawn()
-        result = append_spawn(snippet)
+            if not payload.mobid or not payload.mobname:
+                raise HTTPException(status_code=422, detail="mobid e mobname são obrigatórios.")
+            snippet = payload.format_rathena_spawn(override_map=map_name)
+            
+        result = append_spawn(map_name, snippet)
         return result
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao injetar spawn: {e}")
+
+@router.delete("/maps/{map_name}/{spawn_uuid}")
+async def remove_map_spawn(map_name: str, spawn_uuid: str):
+    """Remove um spawn do mapa específico via UUID."""
+    try:
+        result = delete_spawn(map_name, spawn_uuid)
+        if not result.get("deleted"):
+            raise HTTPException(status_code=404, detail="Spawn não encontrado.")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao remover spawn: {e}")
