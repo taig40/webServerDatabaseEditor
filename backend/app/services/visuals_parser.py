@@ -200,23 +200,25 @@ class VisualsDB:
             
         return self.accessoryid_handler, self.accname_handler, self.robeid_handler, self.robename_handler
         
-    def get_visual(self, view_id: int) -> Optional[dict]:
+    def get_visual(self, view_id: int, type_hint: Optional[str] = None) -> Optional[dict]:
         try:
             acc_id, acc_name, robe_id, robe_name = self.get_handlers()
             
             # Check Accessory
-            identity = acc_id.ast_dict.get(view_id)
-            if identity:
-                name = acc_name.identity_dict.get(identity.replace("ACCESSORY_", ""), "")
-                return {
-                    "view_id": view_id,
-                    "identity": identity,
-                    "name": name,
-                    "type": "headgear"
-                }
+            if type_hint in (None, 'headgear'):
+                identity = acc_id.ast_dict.get(view_id)
+                if identity:
+                    name = acc_name.identity_dict.get(identity.replace("ACCESSORY_", ""), "")
+                    return {
+                        "view_id": view_id,
+                        "identity": identity,
+                        "name": name,
+                        "type": "headgear"
+                    }
                 
             # Check Robe
-            robe_identity = robe_id.ast_dict.get(view_id)
+            if type_hint in (None, 'garment'):
+                robe_identity = robe_id.ast_dict.get(view_id)
             if robe_identity:
                 name = robe_name.identity_dict.get(robe_identity, "")
                 if not name:

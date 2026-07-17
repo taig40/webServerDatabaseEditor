@@ -7,12 +7,13 @@ import { FittingRoom } from './FittingRoom';
 import { Trans } from './Trans';
 
 interface VisualEquipmentFormProps {
+  itemId: number;
   viewId: number;
   onSyncViewId: (newViewId: number) => void;
   initialResourceName?: string;
 }
 
-export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId, onSyncViewId, initialResourceName }) => {
+export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ itemId, viewId, onSyncViewId, initialResourceName }) => {
   const t = useLanguageStore((state) => state.t);
   
   const [identity, setIdentity] = useState('');
@@ -43,7 +44,7 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ viewId
 
     const fetchVisual = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/client_items/visuals/${viewId}`);
+        const res = await axios.get(`${API_URL}/api/client_items/visuals/${viewId}?item_id=${itemId}`);
         const fetchedIdentity = res.data.identity || '';
         const fetchedName = res.data.name || '';
         const fetchedType = res.data.type || '';

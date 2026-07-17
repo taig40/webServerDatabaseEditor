@@ -93,6 +93,7 @@ export const ClientItemWorkspace: React.FC<ClientItemWorkspaceProps> = ({ item, 
             </div>
           ) : (
             <VisualEquipmentForm 
+              itemId={item?.item_id || 0}
               viewId={item?.ClassNum || 0} 
               onSyncViewId={handleSyncViewId}
               initialResourceName={item?.identifiedResourceName || item?.unIdentifiedResourceName || ''}

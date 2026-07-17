@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query
+from typing import Optional
 from app.services.yaml_parser import yaml_db
 from app.services.iteminfo_parser import iteminfo_db
 from app.services.grf_reader import grf_reader, _KOREAN_UI_FOLDER, _KOREAN_ITEM_FOLDER
@@ -440,14 +441,21 @@ async def upload_item_drop_act(item_id: int, file: UploadFile = File(...)):
 # ─── GET /api/client_items/visuals/{view_id} ─────────────────────────────────
 
 @router.get("/visuals/{view_id}")
-async def get_visual_equipment(view_id: int):
+async def get_visual_equipment(view_id: int, item_id: Optional[int] = Query(None)):
     """
     Retorna a configuração visual (identity e nome do sprite) para uma View ID.
     """
     try:
         from app.api.images import _ensure_resources_loaded
         _ensure_resources_loaded()
-        data = visuals_db.get_visual(view_id)
+        
+        type_hint = None
+        if item_id:
+            item = yaml_db.get_item(item_id)
+            if item and item.get("Locations", {}).get("Garment", False):
+                type_hint = "garment"
+                
+        data = visuals_db.get_visual(view_id, type_hint=type_hint)
         if not data:
             return {"view_id": view_id, "identity": "", "name": ""}
         return data
