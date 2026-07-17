@@ -7,6 +7,7 @@ from app.services.custom_spawn_service import (
     get_map_spawns, 
     append_spawn, 
     delete_spawn,
+    update_spawn,
     get_spawn_index_path
 )
 from app.models.item import rAthenaBaseModel
@@ -92,3 +93,19 @@ async def remove_map_spawn(map_name: str, spawn_uuid: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao remover spawn: {e}")
+
+@router.put("/maps/{map_name}/{spawn_uuid}")
+async def edit_map_spawn(payload: SpawnPayload, map_name: str, spawn_uuid: str):
+    """Edita um spawn existente via UUID."""
+    try:
+        if not payload.mobid or not payload.mobname:
+            raise HTTPException(status_code=422, detail="mobid e mobname são obrigatórios.")
+        snippet = payload.format_rathena_spawn(override_map=map_name)
+        result = update_spawn(map_name, spawn_uuid, snippet)
+        if not result.get("updated"):
+            raise HTTPException(status_code=404, detail="Spawn não encontrado para atualização.")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar spawn: {e}")

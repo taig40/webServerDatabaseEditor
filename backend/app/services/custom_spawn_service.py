@@ -195,3 +195,28 @@ def delete_spawn(map_name: str, spawn_uuid: str) -> dict:
         return {"success": True, "deleted": deleted, "file_removed": True}
         
     return {"success": True, "deleted": deleted, "file_removed": False}
+
+def update_spawn(map_name: str, spawn_uuid: str, snippet: str) -> dict:
+    file_path = get_map_spawn_file(map_name)
+    if not os.path.exists(file_path):
+        raise RuntimeError(f"Arquivo não encontrado: {file_path}")
+        
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        
+    updated = False
+    
+    for i, line in enumerate(lines):
+        if line.strip() == f"// UUID: {spawn_uuid}":
+            if i + 1 < len(lines):
+                lines[i+1] = snippet.strip() + "\n"
+                updated = True
+                break
+                
+    if not updated:
+        return {"success": False, "updated": False}
+        
+    with open(file_path, "w", encoding="utf-8", newline="\n") as f:
+        f.writelines(lines)
+        
+    return {"success": True, "updated": True}

@@ -2,8 +2,103 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import axios from 'axios';
 import { API_URL } from '../../config/env';
-import { Loader2, Search, Skull, Target, Trash2, Globe, RefreshCw, AlertCircle } from 'lucide-react';
+import { Loader2, Search, Skull, Target, Trash2, Globe, RefreshCw, AlertCircle, Edit2, Save } from 'lucide-react';
 import MonsterAnimator from '../MonsterAnimator';
+
+const SpawnCard: React.FC<{ spawn: SpawnEntry, activeMap: string, deleteSpawn: (id: string) => void, fetchSpawns: (map: string) => void }> = ({ spawn, activeMap, deleteSpawn, fetchSpawns }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [form, setForm] = useState({
+    amount: spawn.amount,
+    delay1: spawn.delay1,
+    x: spawn.x,
+    y: spawn.y
+  });
+
+  const handleSave = async () => {
+    try {
+      await axios.put(`${API_URL}/api/scripts/custom-spawns/maps/${activeMap}/${spawn.uuid}`, {
+        ...spawn,
+        amount: Number(form.amount) || 1,
+        delay1: Number(form.delay1) || 0,
+        x: Number(form.x) || 0,
+        y: Number(form.y) || 0,
+      });
+      setIsEditing(false);
+      fetchSpawns(activeMap);
+    } catch (err) {
+      console.error('Error saving spawn:', err);
+    }
+  };
+
+  return (
+    <div className="group relative bg-gray-900/80 border border-gray-800 hover:border-teal-500/50 rounded-xl overflow-hidden shadow-md transition-all duration-300">
+       {/* Actions Overlay */}
+       <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+         {isEditing ? (
+           <button onClick={handleSave} className="bg-emerald-500/90 hover:bg-emerald-500 text-white p-2 rounded-lg shadow-lg hover:scale-110 transition-transform" title="Salvar">
+             <Save className="w-4 h-4" />
+           </button>
+         ) : (
+           <button onClick={() => setIsEditing(true)} className="bg-blue-500/90 hover:bg-blue-500 text-white p-2 rounded-lg shadow-lg hover:scale-110 transition-transform" title="Editar">
+             <Edit2 className="w-4 h-4" />
+           </button>
+         )}
+         <button onClick={() => deleteSpawn(spawn.uuid)} className="bg-red-500/90 hover:bg-red-500 text-white p-2 rounded-lg shadow-lg hover:scale-110 transition-transform" title="Remover Spawn">
+           <Trash2 className="w-4 h-4" />
+         </button>
+       </div>
+
+       {/* Header & GIF */}
+       <div className="h-32 bg-gray-950 flex items-center justify-center p-2 relative overflow-hidden group-hover:bg-gray-950/80 transition-colors">
+          <div className="scale-75 transform origin-center">
+            <MonsterAnimator mobId={spawn.mobid as number} mobName={spawn.mobname} size="md" />
+          </div>
+          <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-0.5 rounded text-[10px] font-mono text-gray-400 border border-white/5">
+            ID: {spawn.mobid}
+          </div>
+       </div>
+
+       {/* Info Panel */}
+       <div className="p-4 bg-gray-900/50 border-t border-gray-800">
+         <h4 className="font-bold text-gray-200 text-sm truncate mb-3" title={spawn.mobname}>
+           {spawn.mobname}
+         </h4>
+         
+         <div className="grid grid-cols-2 gap-y-2 gap-x-2 text-[10px] font-mono">
+           <div className="flex flex-col bg-gray-950/50 p-1.5 rounded border border-gray-800/50">
+             <span className="text-gray-500 mb-0.5">Amount</span>
+             {isEditing ? (
+               <input type="number" min="1" max="1000" className="bg-gray-900 border border-gray-700 rounded px-1 text-emerald-400 text-xs w-full" value={form.amount} onChange={e => setForm({...form, amount: Number(e.target.value)})} />
+             ) : (
+               <span className="text-emerald-400 text-xs font-bold">{spawn.amount}</span>
+             )}
+           </div>
+           <div className="flex flex-col bg-gray-950/50 p-1.5 rounded border border-gray-800/50">
+             <span className="text-gray-500 mb-0.5">Respawn (ms)</span>
+             {isEditing ? (
+               <input type="number" min="0" className="bg-gray-900 border border-gray-700 rounded px-1 text-yellow-400 text-xs w-full" value={form.delay1} onChange={e => setForm({...form, delay1: Number(e.target.value)})} />
+             ) : (
+               <span className="text-yellow-400 text-xs font-bold">{spawn.delay1}ms</span>
+             )}
+           </div>
+           <div className="flex flex-col col-span-2 bg-gray-950/50 p-1.5 rounded border border-gray-800/50">
+             <span className="text-gray-500 mb-0.5">Coords (0 = Random)</span>
+             {isEditing ? (
+               <div className="flex gap-2">
+                 <input type="number" min="0" className="bg-gray-900 border border-gray-700 rounded px-1 text-cyan-300 text-xs w-full" placeholder="X" value={form.x} onChange={e => setForm({...form, x: Number(e.target.value)})} />
+                 <input type="number" min="0" className="bg-gray-900 border border-gray-700 rounded px-1 text-cyan-300 text-xs w-full" placeholder="Y" value={form.y} onChange={e => setForm({...form, y: Number(e.target.value)})} />
+               </div>
+             ) : (
+               <span className="text-cyan-300 text-xs">
+                 ({spawn.x === 0 ? 'Random' : spawn.x}, {spawn.y === 0 ? 'Random' : spawn.y})
+               </span>
+             )}
+           </div>
+         </div>
+       </div>
+    </div>
+  );
+};
 
 interface MobRef {
   Id: number;
@@ -287,56 +382,7 @@ export const MapSpawnsTab: React.FC = () => {
                   ) : (
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
                         {spawns.map(spawn => (
-                           <div
-                             key={spawn.uuid}
-                             className="group relative bg-gray-900/80 border border-gray-800 hover:border-teal-500/50 rounded-xl overflow-hidden shadow-md transition-all duration-300"
-                           >
-                              {/* Delete Overlay */}
-                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                <button
-                                  data-testid="btn-delete-spawn"
-                                  onClick={() => deleteSpawn(spawn.uuid)}
-                                  className="bg-red-500/90 hover:bg-red-500 text-white p-2 rounded-lg shadow-lg hover:scale-110 transition-transform"
-                                  title="Remover Spawn"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-
-                              {/* Header & GIF */}
-                              <div className="h-32 bg-gray-950 flex items-center justify-center p-2 relative overflow-hidden group-hover:bg-gray-950/80 transition-colors">
-                                 <div className="scale-75 transform origin-center">
-                                   <MonsterAnimator mobId={spawn.mobid as number} mobName={spawn.mobname} size="md" />
-                                 </div>
-                                 <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-0.5 rounded text-[10px] font-mono text-gray-400 border border-white/5">
-                                   ID: {spawn.mobid}
-                                 </div>
-                              </div>
-
-                              {/* Info Panel */}
-                              <div className="p-4 bg-gray-900/50 border-t border-gray-800">
-                                <h4 className="font-bold text-gray-200 text-sm truncate mb-3" title={spawn.mobname}>
-                                  {spawn.mobname}
-                                </h4>
-                                
-                                <div className="grid grid-cols-2 gap-y-2 gap-x-2 text-[10px] font-mono">
-                                  <div className="flex flex-col bg-gray-950/50 p-1.5 rounded border border-gray-800/50">
-                                    <span className="text-gray-500 mb-0.5">Amount</span>
-                                    <span className="text-emerald-400 text-xs font-bold">{spawn.amount}</span>
-                                  </div>
-                                  <div className="flex flex-col bg-gray-950/50 p-1.5 rounded border border-gray-800/50">
-                                    <span className="text-gray-500 mb-0.5">Respawn</span>
-                                    <span className="text-yellow-400 text-xs font-bold">{spawn.delay1}ms</span>
-                                  </div>
-                                  <div className="flex flex-col col-span-2 bg-gray-950/50 p-1.5 rounded border border-gray-800/50">
-                                    <span className="text-gray-500 mb-0.5">Coords</span>
-                                    <span className="text-cyan-300 text-xs">
-                                      ({spawn.x === 0 ? 'Random' : spawn.x}, {spawn.y === 0 ? 'Random' : spawn.y})
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                           </div>
+                           <SpawnCard key={spawn.uuid} spawn={spawn} activeMap={activeMap} deleteSpawn={deleteSpawn} fetchSpawns={fetchSpawns} />
                         ))}
                      </div>
                   )}
