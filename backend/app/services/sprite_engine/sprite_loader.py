@@ -55,30 +55,30 @@ def load_sprite_from_grf(spr_path: str, act_path: Optional[str] = None) -> Tuple
 
         return None, None
 
-    logger.info(f"Extracting SPR: '{spr_path}'")
+    logger.debug(f"Extracting SPR: '{spr_path}'")
     spr_data = grf_reader.extract_file(spr_path)
     
     if not spr_data:
-        logger.error(f"SPR file not found in GRF archive: '{spr_path}'")
+        logger.debug(f"SPR file not found in GRF archive: '{spr_path}'")
         return None, None
         
     try:
         spr_parser = SprParser(spr_data)
-        logger.info(f"Successfully parsed SPR from GRF with version {hex(spr_parser.version)}")
+        logger.debug(f"Successfully parsed SPR from GRF with version {hex(spr_parser.version)}")
     except Exception as e:
         logger.exception(f"Failed to parse SPR file: '{spr_path}': {e}")
         return None, None
 
     if act_path:
-        logger.info(f"Extracting ACT: '{act_path}'")
+        logger.debug(f"Extracting ACT: '{act_path}'")
         act_data = grf_reader.extract_file(act_path)
         
         if not act_data:
-            logger.warning(f"ACT file not found in GRF archive: '{act_path}'")
+            logger.debug(f"ACT file not found in GRF archive: '{act_path}'")
         else:
             try:
                 act_parser = ActParser(act_data)
-                logger.info(f"Successfully parsed ACT from GRF with version {hex(act_parser.version)}")
+                logger.debug(f"Successfully parsed ACT from GRF with version {hex(act_parser.version)}")
             except Exception as e:
                 logger.exception(f"Failed to parse ACT file: '{act_path}': {e}")
 
