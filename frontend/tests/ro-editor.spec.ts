@@ -6,15 +6,11 @@ test.describe('rAthena Web Editor E2E Tests', () => {
     await page.goto('/');
 
     const setupInput = page.getByPlaceholder(/C:\/rAthena\/db/i);
-    const loadingScreen = page.getByText(/Carregando Bancos de Dados|Loading rAthena/i);
 
     try {
-      await Promise.race([
-        setupInput.waitFor({ state: 'visible', timeout: 5000 }),
-        loadingScreen.waitFor({ state: 'visible', timeout: 5000 })
-      ]);
+      await setupInput.waitFor({ state: 'visible', timeout: 3000 });
     } catch (e) {
-      // Ignore if neither appear immediately
+      // Ignore if it doesn't appear immediately (already setup)
     }
 
     if (await setupInput.isVisible()) {
@@ -24,9 +20,8 @@ test.describe('rAthena Web Editor E2E Tests', () => {
       await page.getByRole('button', { name: /Salvar e Iniciar|Save and Start/i }).click();
     }
 
-    // Aumentamos o timeout dessa verificação específica para 10 minutos,
-    // pois a carga inicial da GRF e dos YAMLs do rAthena é pesada.
-    await expect(loadingScreen).toBeHidden({ timeout: 600000 });
+    // Aguarda o Toast de sucesso indicando que os bancos de dados carregaram em background
+    await expect(page.getByText(/Bancos de dados carregados/i)).toBeVisible({ timeout: 600000 });
 
     // Cenário 4: Prevenção de Falsos Positivos - falha o teste caso qualquer requisição retorne 500
     page.on('response', response => {

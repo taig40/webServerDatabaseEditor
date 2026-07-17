@@ -4,7 +4,7 @@ import { AlertTriangle, Settings } from 'lucide-react';
 import { API_URL, getSSEUrl } from './config/env';
 import Layout, { type ModuleId } from './components/Layout';
 import { useLanguageStore } from './store/useLanguageStore';
-import GlobalLoadingOverlay from './components/GlobalLoadingOverlay';
+import { toast } from './store/useToastStore';
 import ItemEditor from './pages/ItemEditor';
 import MonsterEditor from './pages/MonsterEditor';
 import SkillEditor from './pages/SkillEditor';
@@ -48,6 +48,7 @@ function App() {
   const startCacheInitialization = () => {
     setStatusMessage(t('global_loading.readingFiles'));
     const es = new EventSource(getSSEUrl('/api/system/initialize-cache'));
+    const toastId = toast.info('Sincronizando bancos de dados em segundo plano...', 0);
 
     es.onopen = () => {
       setConnectionError(false);
@@ -60,10 +61,13 @@ function App() {
         const data = JSON.parse(event.data);
         if (data.status === 'setup_required') {
           es.close();
+          toast.dismiss(toastId);
           setSetupRequired(true);
           setIsCacheReady(true);
         } else if (data.status === 'complete') {
           es.close();
+          toast.dismiss(toastId);
+          toast.success('Bancos de dados carregados e prontos!');
           setIsCacheReady(true);
         } else if (data.status === 'loading') {
           if (data.file) setCurrentLoadingFile(data.file);
@@ -79,6 +83,8 @@ function App() {
       console.error('[App] Erro de conexão com SSE /api/system/initialize-cache:', err);
       setConnectionError(true);
       setStatusMessage(t('global_loading.connectionFailed'));
+      toast.dismiss(toastId);
+      toast.error('Erro de conexão ao carregar bancos de dados.');
       es.close();
     };
 
@@ -181,17 +187,7 @@ function App() {
     );
   }
 
-  if (!isCacheReady) {
-    return (
-      <GlobalLoadingOverlay
-        forceShow={true}
-        file={currentLoadingFile}
-        progress={loadingProgress}
-        statusMsg={statusMessage}
-        isError={connectionError}
-      />
-    );
-  }
+  // Removed GlobalLoadingOverlay to allow progressive loading
 
   return (
     <>

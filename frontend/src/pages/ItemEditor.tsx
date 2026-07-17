@@ -264,19 +264,7 @@ const ItemEditor: React.FC = () => {
   return (
     <div className="flex h-full w-full bg-dark-950 overflow-hidden font-sans">
       
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-dark-900/90 backdrop-blur-sm">
-           <div className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-            <h3 className="text-2xl text-white font-semibold mb-2">{t('item_editor.status.loading_title')}</h3>
-            <p className="text-gray-400 mb-2 font-mono text-sm">{loadingStatus}</p>
-            <div className="bg-dark-800 px-4 py-2 rounded-full border border-white/10">
-               <span className="text-violet-400 font-bold text-sm">
-                 {t('loading.entriesRead', { count: itemsLoaded })}
-               </span>
-            </div>
-        </div>
-      )}
+      {/* Loading Overlay Removed - Localized to Sidebar */}
 
       {/* Modal */}
       {isModalOpen && (
@@ -394,7 +382,20 @@ const ItemEditor: React.FC = () => {
 
         {/* Virtualized List */}
         <div className="flex-1 overflow-hidden">
-          {!isLoading && (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
+              <div className="w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+              <div>
+                <h3 className="text-gray-300 font-semibold mb-1">{t('item_editor.status.loading_title')}</h3>
+                <p className="text-gray-500 text-xs font-mono">{loadingStatus}</p>
+                <div className="mt-3 bg-dark-800 px-3 py-1.5 rounded-full border border-white/10 inline-block">
+                  <span className="text-violet-400 font-bold text-xs">
+                    {t('loading.entriesRead', { count: itemsLoaded })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
             <Virtuoso
               ref={virtuosoRef}
               data={displayedItems}

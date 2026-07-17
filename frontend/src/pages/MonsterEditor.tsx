@@ -236,19 +236,7 @@ const MonsterEditor: React.FC = () => {
   return (
     <div className="flex h-full w-full bg-dark-950 overflow-hidden font-sans relative">
 
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-dark-900/90 backdrop-blur-sm">
-          <div className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mb-6" />
-          <h3 className="text-2xl text-white font-semibold mb-2">{t('monster_editor.status.loading_title')}</h3>
-          <p className="text-gray-400 mb-2 font-mono text-sm">{loadingStatus}</p>
-          <div className="bg-dark-800 px-4 py-2 rounded-full border border-white/10">
-            <span className="text-violet-400 font-bold text-sm">
-              {t('loading.entriesRead', { count: mobsLoaded })}
-            </span>
-          </div>
-        </div>
-      )}
+      {/* Loading Overlay Removed - Localized to Sidebar */}
 
       {/* New mob modal */}
       {isModalOpen && (
@@ -328,7 +316,20 @@ const MonsterEditor: React.FC = () => {
 
         {/* Virtual list */}
         <div className="flex-1 overflow-hidden">
-          {mobs.length === 0 && !isLoading ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
+              <div className="w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+              <div>
+                <h3 className="text-gray-300 font-semibold mb-1">{t('monster_editor.status.loading_title')}</h3>
+                <p className="text-gray-500 text-xs font-mono">{loadingStatus}</p>
+                <div className="mt-3 bg-dark-800 px-3 py-1.5 rounded-full border border-white/10 inline-block">
+                  <span className="text-violet-400 font-bold text-xs">
+                    {t('loading.entriesRead', { count: mobsLoaded })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : mobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-600">
               <ShieldAlert size={32} className="opacity-20" />
               <span className="text-xs">{t('monster_editor.no_monsters_found')}</span>

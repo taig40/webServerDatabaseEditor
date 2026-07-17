@@ -8,7 +8,7 @@ export interface ToastMessage {
 
 interface ToastStore {
   toasts: ToastMessage[];
-  addToast: (text: string, type?: 'success' | 'error' | 'info', duration?: number) => void;
+  addToast: (text: string, type?: 'success' | 'error' | 'info', duration?: number) => string;
   removeToast: (id: string) => void;
 }
 
@@ -26,6 +26,7 @@ export const useToastStore = create<ToastStore>((set) => ({
         }));
       }, duration);
     }
+    return id;
   },
   removeToast: (id) =>
     set((state) => ({
@@ -37,4 +38,5 @@ export const toast = {
   success: (text: string, duration?: number) => useToastStore.getState().addToast(text, 'success', duration),
   error: (text: string, duration?: number) => useToastStore.getState().addToast(text, 'error', duration),
   info: (text: string, duration?: number) => useToastStore.getState().addToast(text, 'info', duration),
+  dismiss: (id: string) => useToastStore.getState().removeToast(id),
 };
