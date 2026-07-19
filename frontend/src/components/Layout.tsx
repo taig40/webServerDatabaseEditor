@@ -1,3 +1,7 @@
+/**
+ * Layout.tsx — Main application shell with collapsible sidebar navigation and module router.
+ */
+
 import React, { useState } from 'react';
 import { useLanguageStore } from '../store/useLanguageStore';
 import {
@@ -26,8 +30,7 @@ import {
   Map,
 } from 'lucide-react';
 
-// ─── Module definitions ─────────────────────────────────────────────────────
-
+/** Available navigation module identifiers. */
 export type ModuleId =
   | 'items'
   | 'mobs'
@@ -45,6 +48,7 @@ export type ModuleId =
   | 'skill_tree'
   | 'map_engine';
 
+/** Metadata configuration for a navigation module item. */
 interface Module {
   id: ModuleId;
   label: string;
@@ -54,8 +58,8 @@ interface Module {
   available: boolean;
 }
 
+/** Pre-configured list of all editor modules categorized by group. */
 const MODULES: Module[] = [
-  // ── Server DB ──
   { id: 'items', label: 'Itens', sublabel: 'item_db.yml', icon: Package, group: 'server', available: true },
   { id: 'mobs', label: 'Monstros', sublabel: 'mob_db.yml', icon: Skull, group: 'server', available: true },
   { id: 'skills', label: 'Habilidades', sublabel: 'skill_db.yml', icon: Zap, group: 'server', available: true },
@@ -69,9 +73,7 @@ const MODULES: Module[] = [
   { id: 'random_options', label: 'Opções Aleatórias', sublabel: 'item_randomopt_group.yml', icon: Sparkles, group: 'server', available: true },
   { id: 'map_engine', label: 'Map Engine', sublabel: 'map_drops.yml', icon: Map, group: 'server', available: true },
   { id: 'size_fix_editor', label: 'Penalidades de tamanho', sublabel: 'size_fix.yml', icon: Scale, group: 'server', available: true },
-  // ── Client DB ──
   { id: 'client_items', label: 'Itens (Cliente)', sublabel: 'iteminfo.lua', icon: BookOpen, group: 'client', available: true },
-  // ── Misc ──
   { id: 'constants', label: 'Constantes', sublabel: 'const.yml', icon: FlaskConical, group: 'misc', available: true },
 ];
 
@@ -81,8 +83,7 @@ const GROUP_LABELS: Record<string, string> = {
   misc: 'Outros',
 };
 
-// ─── Layout Props ────────────────────────────────────────────────────────────
-
+/** Props for the main application shell layout. */
 interface LayoutProps {
   children: React.ReactNode;
   activeView: ModuleId | 'settings';
@@ -90,8 +91,9 @@ interface LayoutProps {
   onSettingsClick: () => void;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
-
+/**
+ * Main application layout container rendering the sidebar, header, and content area.
+ */
 const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onSettingsClick }) => {
   const t = useLanguageStore(state => state.t);
   const [expanded, setExpanded] = useState(true);
@@ -106,13 +108,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
 
   return (
     <div className="flex h-screen w-full bg-[#0f0f14] text-gray-300 font-sans overflow-hidden">
-
-      {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside
         className="flex flex-col bg-[#12121a] border-r border-[#1e1e2e] transition-all duration-300 ease-in-out z-20 shadow-xl"
         style={{ width: expanded ? '240px' : '60px', minWidth: expanded ? '240px' : '60px' }}
       >
-        {/* Logo / Header */}
         <div className="flex items-center h-14 border-b border-[#1e1e2e] px-3 gap-3 overflow-hidden">
           {expanded ? (
             <>
@@ -144,11 +143,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
           )}
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 space-y-5">
           {groupedModules.map(({ group, modules }) => (
             <div key={group}>
-              {/* Group Label */}
               {expanded && (
                 <div className="px-4 mb-1">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-gray-600">
@@ -160,7 +157,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
                 <div className="h-px bg-[#1e1e2e] mx-3 mb-2" />
               )}
 
-              {/* Module Items */}
               <ul className="space-y-0.5 px-2">
                 {modules.map(mod => {
                   const Icon = mod.icon;
@@ -183,7 +179,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
                               : 'text-gray-400 hover:bg-[#1a1a28] hover:text-gray-200',
                         ].join(' ')}
                       >
-                        {/* Icon */}
                         <span className={[
                           'flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md transition-colors',
                           isActive ? 'bg-violet-500/20 text-violet-400' : isDisabled ? 'text-gray-700' : 'text-gray-500 group-hover:text-gray-300',
@@ -191,7 +186,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
                           <Icon size={15} />
                         </span>
 
-                        {/* Label */}
                         {expanded && (
                           <div className="flex flex-col min-w-0">
                             <span className={`text-[13px] font-medium truncate ${isActive ? 'text-white' : ''}`}>
@@ -203,12 +197,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
                           </div>
                         )}
 
-                        {/* Active indicator */}
                         {isActive && expanded && (
                           <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" />
                         )}
 
-                        {/* "em breve" badge */}
                         {isDisabled && expanded && (
                           <span className="ml-auto text-[9px] uppercase tracking-wider text-gray-700 flex-shrink-0">
                             {t('layout.coming_soon')}
@@ -223,7 +215,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
           ))}
         </nav>
 
-        {/* Footer */}
         <div className="border-t border-[#1e1e2e] p-2">
           <button
             onClick={onSettingsClick}
@@ -240,10 +231,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
         </div>
       </aside>
 
-      {/* ── Main Content ─────────────────────────────────────── */}
       <div className="flex-1 flex flex-col bg-[#0f0f14] overflow-hidden">
-
-        {/* Top Tab Bar */}
         <div className="flex h-9 bg-[#12121a] border-b border-[#1e1e2e] items-end px-0">
           <div className="flex items-center gap-2 px-4 h-9 bg-[#0f0f14] text-white text-[13px] border-t-2 border-violet-500 -mb-px shadow-sm">
             <ActiveIcon size={13} className="text-violet-400 flex-shrink-0" />
@@ -252,7 +240,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, onS
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-hidden relative">
           {children}
         </div>

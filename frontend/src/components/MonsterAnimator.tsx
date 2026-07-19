@@ -1,8 +1,13 @@
+/**
+ * MonsterAnimator.tsx — Canvas-based sprite animator for rAthena monsters using server-generated animation patches.
+ */
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { API_URL } from '../config/env';
 import { useLanguageStore } from '../store/useLanguageStore';
 
+/** Single sprite patch drawing instruction. */
 interface Patch {
   x: number;
   y: number;
@@ -16,16 +21,19 @@ interface Patch {
   h: number;
 }
 
+/** Animation frame containing layered patches. */
 interface Frame {
   patches: Patch[];
 }
 
+/** Complete spritesheet animation definition returned by the server. */
 interface AnimationData {
   spritesheet: string;
   frame_duration: number;
   frames: Frame[];
 }
 
+/** Props for the monster animation canvas component. */
 interface MonsterAnimatorProps {
   mobId: number;
   mobName: string;
@@ -33,6 +41,9 @@ interface MonsterAnimatorProps {
   spriteKey?: number;
 }
 
+/**
+ * Renders an animated monster sprite inside a dynamic canvas.
+ */
 const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size = 'md', spriteKey = 0 }) => {
   const t = useLanguageStore(state => state.t);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,7 +63,6 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
     lg: { width: 320, height: 320 },
   }[size];
 
-  // Calculate dynamic autoScale when animData changes
   useEffect(() => {
     if (!animData) return;
     let minX = 99999, maxX = -99999, minY = 99999, maxY = -99999;
@@ -80,12 +90,10 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
     const mobH = maxY - minY;
 
     if (mobW > 0 && mobH > 0) {
-      // Scale to fit 75% of the canvas height/width
       const scaleLimitX = (canvasDimensions.width * 0.75) / mobW;
       const scaleLimitY = (canvasDimensions.height * 0.75) / mobH;
       let computed = Math.min(scaleLimitX, scaleLimitY);
       
-      // Limit to keep look aesthetic (e.g. Porings not too massive, Bosses not microscopic)
       computed = Math.min(Math.max(computed, 0.35), size === 'sm' ? 1.0 : 1.5);
       setAutoScale(computed);
     } else {
@@ -105,7 +113,6 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
       animationFrameIdRef.current = null;
     }
 
-    // Call local FastAPI backend — spriteKey forces cache bust after upload
     fetch(`${API_URL}/api/mobs/${mobId}/animation?_t=${spriteKey}`)
       .then(res => {
         if (!res.ok) throw new Error(t('monster_animator.animation_not_found'));
@@ -167,7 +174,6 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
       if (frame && frame.patches) {
         frame.patches.forEach(patch => {
           ctx.save();
-          // Center anchor resting at 75% height
           ctx.translate(canvas.width / 2, canvas.height * 0.75);
 
           const scaleX = (patch.mirror === 1 ? -patch.scale_x : patch.scale_x) * autoScale;
