@@ -1,3 +1,7 @@
+/**
+ * SkillEditor.tsx — Comprehensive visual studio and editor page for rAthena skills database.
+ */
+
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { Virtuoso } from 'react-virtuoso';
@@ -12,8 +16,12 @@ import { DivinePrideImporterPanel } from '../components/DivinePrideImporterPanel
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import CreateSkillModal from '../components/CreateSkillModal';
 
+/** Available source filter tabs. */
 type SourceTab = 'rathena' | 'custom';
 
+/**
+ * Main skill editor interface allowing filtering, creation, import, and deep property modification across skill attributes.
+ */
 export const SkillEditor: React.FC = () => {
   const t = useLanguageStore(state => state.t);
   const [skills, setSkills] = useState<any[]>([]);

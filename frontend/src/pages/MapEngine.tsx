@@ -1,3 +1,7 @@
+/**
+ * MapEngine.tsx — Game design and editing workspace for map drops and custom map spawns.
+ */
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config/env';
@@ -28,8 +32,7 @@ import {
   Target,
 } from 'lucide-react';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
+/** Represents a single item drop configured inside a map drops entry. */
 interface DropEntry {
   Index: number;
   Item: string;
@@ -63,20 +66,19 @@ interface SpawnForm {
 
 type AlertMsg = { text: string; type: 'success' | 'error' } | null;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
+/**
+ * Generates exact tab-separated custom spawn string formatted for rAthena map configuration.
+ */
 const buildSpawnSnippet = (form: SpawnForm): string => {
-  // Formato exato exigido pelo rAthena (TAB como separador, sem aspas ou ponto e vírgula)
-  // {map},{x},{y},{rx},{ry}\tmonster\t{mob_display_name}\t{mob_id},{amount},{delay1},{delay2}
-  const delay2 = 0; // delay2 sempre 0 por padrão (sem variação)
+  const delay2 = 0;
   return `${form.map},${form.x},${form.y},${form.rx},${form.ry}\tmonster\t${form.monsterAegis || 'Unknown'}\t${form.monsterId},${form.amount},${form.respawn},${delay2}`;
 };
 
+/** Calculates next available sequence index for drop entries. */
 const nextIndex = (drops: DropEntry[]): number =>
   drops.length === 0 ? 0 : Math.max(...drops.map(d => d.Index)) + 1;
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
+/** Renders a configurable drop table row with item picker, drop rate, and random option assignments. */
 const DropRow: React.FC<{
   drop: DropEntry;
   optionNames: string[];
@@ -129,8 +131,9 @@ const DropRow: React.FC<{
   </div>
 );
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
+/**
+ * MapEngine component managing the editor workspace for custom map drops and spawns.
+ */
 export const MapEngine: React.FC = () => {
   const t = useLanguageStore(state => state.t);
 
