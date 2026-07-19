@@ -1,3 +1,7 @@
+/**
+ * MonsterEditor.tsx — Main view container for managing, searching, and editing rAthena monster database records.
+ */
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { Virtuoso } from 'react-virtuoso';
@@ -12,9 +16,10 @@ import NewMobModal from '../components/NewMobModal';
 import { localizeLoadingStatus } from '../utils/i18nHelpers';
 import { toast } from '../store/useToastStore';
 
+/** Available source filter tabs. */
 type SourceTab = 'rathena' | 'custom';
 
-// Element colour pills for list items
+/** Color pill mapping classes by elemental property. */
 const ELEMENT_COLORS: Record<string, string> = {
   Neutral: 'text-gray-400 bg-gray-500/20',
   Water:   'text-blue-400 bg-blue-500/20',
@@ -46,7 +51,6 @@ const MonsterEditor: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Debounce na busca
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchText);
@@ -54,7 +58,6 @@ const MonsterEditor: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchText]);
 
-  // Limpeza explícita de memória RAM na desmontagem
   useEffect(() => {
     return () => {
       setMobs([]);
@@ -90,7 +93,6 @@ const MonsterEditor: React.FC = () => {
     }
   }, [debouncedSearch, sourceTab]);
 
-  // ─── Loading poll ──────────────────────────────────────────────────────────
   useEffect(() => {
     let intervalId: any;
 
@@ -129,7 +131,6 @@ const MonsterEditor: React.FC = () => {
     [mobs, selectedMobId]
   );
 
-  // ─── Save handler ──────────────────────────────────────────────────────────
   const handleUpdate = useCallback(async (
     mobId: number,
     updatedData: any,
@@ -178,7 +179,6 @@ const MonsterEditor: React.FC = () => {
     }
   }, [t, showToast]);
 
-  // ─── Mob list item ─────────────────────────────────────────────────────────
   const MobListItem = useCallback(({ mob }: { mob: any }) => {
     const isSelected = mob.Id === selectedMobId;
     const element = mob.Element || 'Neutral';
@@ -232,7 +232,6 @@ const MonsterEditor: React.FC = () => {
     );
   }, [selectedMobId]);
 
-  // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex h-full w-full bg-dark-950 overflow-hidden font-sans relative">
 

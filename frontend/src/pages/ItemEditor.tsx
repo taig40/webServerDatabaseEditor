@@ -1,3 +1,7 @@
+/**
+ * ItemEditor.tsx — Main page container for searching, filtering, virtualized listing, and editing rAthena item entries.
+ */
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
@@ -11,8 +15,12 @@ import { ItemIcon } from '../components/ItemIcon';
 import { localizeLoadingStatus } from '../utils/i18nHelpers';
 import { toast } from '../store/useToastStore';
 
+/** Available database tabs for source filtering. */
 type SourceTab = 'rathena' | 'custom';
 
+/**
+ * Top-level view rendering the virtualized item list on the left and detail panel on the right.
+ */
 const ItemEditor: React.FC = () => {
   const t = useLanguageStore(state => state.t);
   const [items, setItems] = useState<any[]>([]);
@@ -22,11 +30,9 @@ const ItemEditor: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   
-  // Status de carregamento para arquivos YAML
   const [loadingStatus, setLoadingStatus] = useState(t('item_editor.status.connecting'));
   const [itemsLoaded, setItemsLoaded] = useState(0);
   
-  // Estado para a barra de pesquisa
   const [searchText, setSearchText] = useState("");
   const [searchTarget, setSearchTarget] = useState<"name" | "script">("name");
   const [searchType, setSearchType] = useState("all");
@@ -35,18 +41,13 @@ const ItemEditor: React.FC = () => {
   const [appliedSearchTarget, setAppliedSearchTarget] = useState<"name" | "script">("name");
   const [appliedSearchType, setAppliedSearchType] = useState("all");
   
-  // Aba de origem
   const [sourceTab, setSourceTab] = useState<SourceTab>('rathena');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Referência para rolar a lista virtualizada de volta ao topo
   const virtuosoRef = React.useRef<VirtuosoHandle>(null);
-  
-  // Item Selecionado
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
 
-  // Limpeza explícita de memória RAM na desmontagem
   useEffect(() => {
     return () => {
       setItems([]);
@@ -113,7 +114,6 @@ const ItemEditor: React.FC = () => {
     });
   }, [searchText, searchTarget, searchType, sourceTab, fetchItemsPage]);
 
-  // Debounced Search on typing
   useEffect(() => {
     const handler = setTimeout(() => {
       if (
@@ -211,19 +211,15 @@ const ItemEditor: React.FC = () => {
 
   const handleUpdateItem = useCallback(async (itemId: number, updatedData: any, saveMode: 'import' | 'overwrite' = 'import') => {
     try {
-      // Remove metadata keys before sending to backend
       const payload = { ...updatedData };
       delete payload._source;
       delete payload.Id;
 
-      // Otimisticamente atualiza o estado
       setItems(prev => prev.map(it => it.Id === itemId ? { ...it, ...updatedData } : it));
       setDetailedItem(prev => (prev && prev.Id === itemId ? { ...prev, ...updatedData } : prev));
       
-      // Salva no backend
       const res = await axios.put(`${API_URL}/api/items/${itemId}?save_mode=${saveMode}`, payload);
       
-      // Update item with exact backend response (including new _source if changed)
       if (res.data) {
         setItems(prev => prev.map(it => it.Id === itemId ? { ...it, ...res.data } : it));
         setDetailedItem(prev => (prev && prev.Id === itemId ? { ...prev, ...res.data } : prev));
