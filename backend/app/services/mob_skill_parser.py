@@ -1,14 +1,15 @@
-"""
-mob_skill_parser.py -- Parser for mob_skill_db.txt (CSV format).
+"""mob_skill_parser.py — Parser for ``mob_skill_db.txt`` (CSV format).
 
-Format per line (non-comment, non-empty):
-  MobID, DummyName, State, SkillID, SkillLv, Rate, CastTime, Delay,
-  Cancelable, Target, ConditionType, ConditionValue,
-  Val1, Val2, Val3, Val4, Val5, Emotion, Chat
+Each non-comment, non-empty line has the format::
 
-Save rules:
-  - Editing a skill of an existing rAthena mob  -> overwrite the ORIGINAL file
-  - Adding a new skill entry for a new mob       -> write to db/import/mob_skill_db.txt
+    MobID, DummyName, State, SkillID, SkillLv, Rate, CastTime, Delay,
+    Cancelable, Target, ConditionType, ConditionValue,
+    Val1, Val2, Val3, Val4, Val5, Emotion, Chat
+
+**Save rules:**
+
+- Editing a skill of an existing rAthena mob → overwrite the **original** file.
+- Adding a new skill entry for a new mob → write to ``db/import/mob_skill_db.txt``.
 """
 
 import os
@@ -30,7 +31,15 @@ _EDITABLE_FIELDS = set(FIELDS)
 
 
 def _parse_line(line: str, line_index: int) -> Optional[dict]:
-    """Parse a single CSV line into a dict. Returns None for comments/blanks."""
+    """Parses a single CSV line into a field dict.
+
+    Args:
+        line: Raw text line from the file.
+        line_index: 0-based line number (stored as ``_line_index`` for in-place updates).
+
+    Returns:
+        dict | None: Parsed entry dict, or ``None`` for comments and blank lines.
+    """
     stripped = line.rstrip('\n\r')
     if not stripped or stripped.lstrip().startswith('//'):
         return None
@@ -58,6 +67,16 @@ def _parse_line(line: str, line_index: int) -> Optional[dict]:
 
 
 def _val_str(v) -> str:
+    """Converts a numeric ``valN`` field to its CSV string representation.
+
+    Returns an empty string for ``0``, ``None``, or non-numeric values.
+
+    Args:
+        v: Raw value (int, str, or None).
+
+    Returns:
+        str: String representation, or ``""`` for zero/empty values.
+    """
     if v is None or v == 0 or v == '' or v == '0':
         return ''
     try:
@@ -67,6 +86,14 @@ def _val_str(v) -> str:
 
 
 def _entry_to_csv(e: dict) -> str:
+    """Serializes a mob skill entry dict back to its CSV line representation.
+
+    Args:
+        e: Mob skill entry dict with all ``FIELDS`` present.
+
+    Returns:
+        str: Comma-joined CSV string (without trailing newline).
+    """
     cancelable = 'yes' if e.get('cancelable') else 'no'
     emotion_raw = e.get('emotion', -1)
     try:
@@ -99,6 +126,13 @@ def _entry_to_csv(e: dict) -> str:
 
 
 class MobSkillDatabase:
+    """In-memory store for ``mob_skill_db.txt`` data from both the original file and the import override.
+
+    Keeps the original line list for every file so that in-place updates rewrite
+    exactly one line.  Edits to existing rAthena mobs overwrite the original file;
+    new mob entries are appended to the ``db/import/mob_skill_db.txt`` override.
+    """
+
     def __init__(self):
         self.rathena_root = ''
         self.original_path = ''
@@ -112,6 +146,11 @@ class MobSkillDatabase:
         self.entries_loaded = 0
 
     def load_db_async(self, filepath: str):
+        """Starts loading in a background daemon thread.  No-ops if already loading.
+
+        Args:
+            filepath: Absolute path to the main ``mob_skill_db.txt`` file.
+        """
         if self.is_loading:
             return
         self.is_loading = True
@@ -121,6 +160,7 @@ class MobSkillDatabase:
         t.start()
 
     def _load_sync(self, filepath: str):
+        """Background thread target: delegates to ``_load`` and updates status flags."""
         try:
             self._load(filepath)
         except Exception as e:
@@ -132,9 +172,18 @@ class MobSkillDatabase:
                 self.loading_status = 'Carregamento Finalizado.'
 
     def load_db(self, filepath: str):
+        """Synchronous wrapper for ``_load`` (used by the cache initializer)."""
         self._load(filepath)
 
     def _load(self, filepath: str):
+        """Loads the original file and, if present, the import override file.
+
+        Deduces ``rathena_root`` from the filepath structure and builds both the
+        raw line list and the parsed entry list for each file.
+
+        Args:
+            filepath: Absolute path to the main ``mob_skill_db.txt``.
+        """
         filepath = filepath.replace('\\', '/')
         if not os.path.exists(filepath):
             self.loading_status = f'Arquivo nao encontrado: {filepath}'
@@ -158,6 +207,14 @@ class MobSkillDatabase:
             print(f'[*] {len(self._import_entries)} mob skills customizadas carregadas.')
 
     def _read_file(self, filepath: str):
+        """Reads a single skill DB file and returns raw lines and parsed entries.
+
+        Args:
+            filepath: Absolute path to the file.
+
+        Returns:
+            tuple: ``(raw_lines, parsed_entries)``.
+        """
         lines = []
         entries = []
         with open(filepath, 'r', encoding=cfg.server_encoding, errors='replace') as f:
@@ -169,6 +226,7 @@ class MobSkillDatabase:
         return lines, entries
 
     def get_all(self) -> list:
+        """Returns all skill entries annotated with ``_source`` (``"rathena"`` or ``"custom"``)."""
         result = []
         for e in self._original_entries:
             a = dict(e); a['_source'] = 'rathena'; result.append(a)
@@ -177,12 +235,15 @@ class MobSkillDatabase:
         return result
 
     def get_by_mob(self, mob_id: int) -> list:
+        """Returns all skill entries for the given mob ID."""
         return [e for e in self.get_all() if e.get('mob_id') == mob_id]
 
     def _is_rathena_mob(self, mob_id: int) -> bool:
+        """Returns ``True`` if the mob has at least one skill in the original (non-import) file."""
         return any(e['mob_id'] == mob_id for e in self._original_entries)
 
     def _save_file(self, filepath: str, lines: list):
+        """Writes raw lines back to disk using the configured server encoding."""
         with open(filepath, 'w', encoding=cfg.server_encoding, newline='\r\n') as f:
             f.writelines(lines)
 

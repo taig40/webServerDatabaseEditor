@@ -16,9 +16,17 @@ import threading
 
 
 class GenericYamlParser:
-    """
-    Base class for rAthena YAML databases (skill_db, quest_db, pet_db, combo_db …).
-    Sub-classes only need to override `_id_key` and optionally `_import_filename`.
+    """Base class for rAthena YAML databases (``skill_db``, ``quest_db``, ``pet_db``, ``combo_db`` …).
+
+    Subclasses only need to override ``_id_key`` and optionally ``_import_filename``.  All
+    shared behaviour (async loading, recursive import-following, ``db/import/`` detection,
+    ``_source`` annotation, and safe saves that never overwrite original rAthena files) is
+    implemented here.
+
+    Class Attributes:
+        _id_key: Key used to identify each entry (e.g. ``Id``, ``Mob``, ``Index``).
+        _import_filename: Filename used inside ``db/import/`` for custom overrides (e.g. ``skill_db.yml``).
+        _label: Human-readable label used in loading progress messages.
     """
 
     # Key used to identify each entry (e.g. 'Id', 'Mob', 'Index')
@@ -31,7 +39,7 @@ class GenericYamlParser:
     _label: str = 'entradas'
 
     def __init__(self):
-        # Lock de reentrância para garantir concorrência segura nos parsers genéricos
+        # RLock prevents concurrent thread corruption in generic parsers
         self.lock = threading.RLock()
 
         self.yaml = YAML()
@@ -48,9 +56,12 @@ class GenericYamlParser:
         self.loading_status: str = 'Aguardando inicialização...'
         self.entries_loaded: int = 0
 
-    # ─── Loading ────────────────────────────────────────────────────────────
-
     def load_db_async(self, main_filepath: str):
+        """Starts loading in a background daemon thread.  No-ops if already loading.
+
+        Args:
+            main_filepath: Absolute path to the main YAML entry point.
+        """
         if self.is_loading:
             return
         self.is_loading = True
@@ -60,6 +71,7 @@ class GenericYamlParser:
         t.start()
 
     def _load_sync(self, main_filepath: str):
+        """Background thread target: delegates to ``load_db`` and updates status flags."""
         try:
             self.load_db(main_filepath)
         except Exception as e:
@@ -71,6 +83,11 @@ class GenericYamlParser:
                 self.loading_status = 'Carregamento Finalizado.'
 
     def load_db(self, main_filepath: str):
+        """Loads the main YAML file, deduces the rAthena root, and forces a load of the import override.
+
+        Args:
+            main_filepath: Absolute path to the main YAML file.
+        """
         with self.lock:
             main_filepath = main_filepath.replace('\\', '/')
             if not os.path.exists(main_filepath):
@@ -95,6 +112,13 @@ class GenericYamlParser:
                 self._load_file(import_path)
 
     def _load_file(self, filepath: str):
+        """Recursively loads a single YAML file, indexes entries, and follows Footer imports.
+
+        No-ops if the file does not exist or is already in the cache.
+
+        Args:
+            filepath: Absolute path to the YAML file to load.
+        """
         if not os.path.exists(filepath):
             print(f'[!] Import não encontrado: {filepath}')
             return
@@ -127,10 +151,8 @@ class GenericYamlParser:
         except Exception as e:
             print(f'[!] Falha ao parsear {filepath}: {e}')
 
-    # ─── Read ────────────────────────────────────────────────────────────────
-
     def get_all(self) -> list:
-        """Return all entries annotated with _source."""
+        """Returns all entries annotated with ``_source`` (``"rathena"`` or ``"custom"``)."""
         result = []
         for filepath, data in self.db_cache.items():
             if not (data and 'Body' in data and isinstance(data['Body'], list)):
@@ -144,6 +166,7 @@ class GenericYamlParser:
         return result
 
     def get_by_id(self, id_value):
+        """Returns the entry for the given ID, or ``None`` if not found."""
         filepath = self.entry_index.get(id_value)
         if not filepath:
             return None
@@ -152,9 +175,19 @@ class GenericYamlParser:
                 return entry
         return None
 
-    # ─── Write ───────────────────────────────────────────────────────────────
-
     def save_file(self, filepath: str) -> bool:
+        """Serializes the cached YAML document for ``filepath`` back to disk.
+
+        Temporarily strips metadata keys (prefixed with ``_``) before dumping and
+        restores them afterward.  Multiline strings are wrapped in ``LiteralScalarString``
+        so ruamel.yaml uses block-style pipe notation.
+
+        Args:
+            filepath: Key in ``db_cache`` — the YAML file to overwrite.
+
+        Returns:
+            bool: ``True`` on success, ``False`` if the file is not in the cache.
+        """
         with self.lock:
             if filepath not in self.db_cache:
                 return False
