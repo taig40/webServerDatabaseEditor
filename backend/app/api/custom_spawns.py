@@ -20,13 +20,13 @@ def _resolve_mob_name(mobid: Union[str, int], fallback_name: str) -> str:
     mob_id_str = str(mobid).upper()
     mob_entry = None
     
+    mobs_list = mob_db.get_mobs()
+    
     if mob_id_str.isdigit():
-        mob_entry = mob_db.get_mob(int(mob_id_str))
+        target_id = int(mob_id_str)
+        mob_entry = next((m for m in mobs_list if m.get("Id") == target_id), None)
     else:
-        for m in mob_db.mobs.values():
-            if m.get("AegisName", "").upper() == mob_id_str:
-                mob_entry = m
-                break
+        mob_entry = next((m for m in mobs_list if str(m.get("AegisName", "")).upper() == mob_id_str), None)
                 
     if mob_entry and "Name" in mob_entry:
         return mob_entry["Name"]
