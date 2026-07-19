@@ -11,6 +11,11 @@ TRANSPARENT_1X1_PNG = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\
 
 
 def _ensure_resources_loaded():
+    """Lazily loads GRF files and iteminfo if they have not been loaded yet.
+
+    Reads ``GRF_0``–``GRF_9`` / ``GRF_PATH`` and ``GRF_OVERRIDE_PATH`` from the
+    environment.  Falls back to a no-op if iteminfo loading raises an exception.
+    """
     if not grf_reader.loaded:
         grf_path = os.environ.get("GRF_PATH", "").strip()
         override_path = os.environ.get("GRF_OVERRIDE_PATH", "").strip()
@@ -33,41 +38,48 @@ def _ensure_resources_loaded():
 
 @lru_cache(maxsize=5000)
 def get_cached_item_icon(item_id: int) -> Optional[bytes]:
+    """Returns PNG bytes for an item icon from the GRF, cached for up to 5000 entries."""
     _ensure_resources_loaded()
-    png_bytes = grf_reader.get_item_icon(item_id)
-    return png_bytes
+    return grf_reader.get_item_icon(item_id)
 
 
 @lru_cache(maxsize=5000)
 def get_cached_item_collection(item_id: int) -> Optional[bytes]:
+    """Returns PNG bytes for an item collection image from the GRF, cached for up to 5000 entries."""
     _ensure_resources_loaded()
-    png_bytes = grf_reader.get_item_collection(item_id)
-    return png_bytes
+    return grf_reader.get_item_collection(item_id)
 
 
 @router.get("/item/{item_id}")
 async def get_item_image(item_id: int):
+    """Returns the PNG icon for the given item ID; falls back to a 1x1 transparent PNG.
+
+    Responses are served with 1-year immutable cache headers.
+    """
     png_bytes = get_cached_item_icon(item_id)
     if png_bytes:
         return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
-
     return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @router.get("/collection/{item_id}")
 async def get_collection_image(item_id: int):
+    """Returns the PNG collection image for the given item ID; falls back to a 1x1 transparent PNG.
+
+    Responses are served with 1-year immutable cache headers.
+    """
     png_bytes = get_cached_item_collection(item_id)
     if png_bytes:
         return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
-
     return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @router.get("/item_icon")
 async def get_item_icon_by_name(resource_name: Optional[str] = None):
+    """Returns the PNG icon for the given resource name; falls back to a 1x1 transparent PNG."""
     if not resource_name:
         return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
-    
+
     _ensure_resources_loaded()
     png_bytes = grf_reader.get_icon_by_resource_name(resource_name)
     if png_bytes:
@@ -77,9 +89,10 @@ async def get_item_icon_by_name(resource_name: Optional[str] = None):
 
 @router.get("/collection_image")
 async def get_collection_image_by_name(resource_name: Optional[str] = None):
+    """Returns the PNG collection image for the given resource name; falls back to a 1x1 transparent PNG."""
     if not resource_name:
         return Response(content=TRANSPARENT_1X1_PNG, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
-    
+
     _ensure_resources_loaded()
     png_bytes = grf_reader.get_collection_by_resource_name(resource_name)
     if png_bytes:

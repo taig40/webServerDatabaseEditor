@@ -1,11 +1,12 @@
-"""
-Settings API — Read and write the backend .env configuration at runtime.
+"""settings.py — Settings API: read and write backend ``.env`` configuration at runtime.
 
 Endpoints:
-  GET  /api/settings          → Return current configuration
-  PUT  /api/settings          → Save new configuration to .env
-  POST /api/settings/reload   → Apply new paths without restarting the server
-  GET  /api/settings/validate → Validate all paths and return status
+
+- ``GET  /api/settings``         — Return current configuration.
+- ``PUT  /api/settings``         — Save new configuration to ``.env``.
+- ``POST /api/settings/reload``  — Apply new paths without restarting the server.
+- ``GET  /api/settings/validate`` — Validate all configured paths.
+- ``POST /api/settings/browse``  — Open native OS file/folder picker dialog.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -19,14 +20,20 @@ router = APIRouter()
 
 MAX_GRF_SLOTS = 10
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _get_env_path() -> str:
+    """Returns the absolute path to the backend ``.env`` configuration file."""
     return get_env_path()
 
 
 def _read_env() -> dict:
-    """Parse the .env file and return a dict of key → value."""
+    """Parses the ``.env`` file and returns a ``key → value`` dict.
+
+    Silently returns an empty dict if the file does not exist.
+
+    Returns:
+        dict: Parsed key-value pairs (comments and blank lines are skipped).
+    """
     env_path = _get_env_path()
     result = {}
     if not os.path.exists(env_path):
@@ -41,17 +48,22 @@ def _read_env() -> dict:
 
 
 def _write_env(data: dict):
-    """Write key-value pairs back to the .env file, preserving comments."""
+    """Writes ``key=value`` pairs back to the ``.env`` file, preserving existing comments.
+
+    Keys already present in the file are updated in-place.  New keys are appended
+    at the end of the file.
+
+    Args:
+        data: Dict of ``{KEY: value}`` pairs to persist.
+    """
     env_path = _get_env_path()
     existing_lines = []
     if os.path.exists(env_path):
         with open(env_path, "r", encoding="utf-8") as f:
             existing_lines = f.readlines()
 
-    # Build a set of keys we want to manage
     managed_keys = set(data.keys())
 
-    # Rewrite existing lines, updating values for managed keys
     new_lines = []
     written_keys = set()
     for line in existing_lines:
@@ -64,7 +76,6 @@ def _write_env(data: dict):
                 continue
         new_lines.append(line)
 
-    # Append keys that weren't already in the file
     for key, val in data.items():
         if key not in written_keys:
             new_lines.append(f"{key}={val}\n")
@@ -73,10 +84,10 @@ def _write_env(data: dict):
         f.writelines(new_lines)
 
 
-# ── Models ─────────────────────────────────────────────────────────────────────
-
 class GRFEntry(BaseModel):
-    priority: int   # 0 = highest, 9 = lowest
+    """A single GRF file slot with a load priority."""
+
+    priority: int  # 0 = highest priority; 9 = lowest priority
     path: str
 
 
@@ -92,21 +103,24 @@ class SettingsPayload(BaseModel):
     quests_lua_path: Optional[str] = ""
 
 
-# ── Endpoints ──────────────────────────────────────────────────────────────────
-
 @router.get("")
 async def get_settings():
-    """Return the current settings from .env."""
+    """Returns the current settings object built from the ``.env`` file.
+
+    Supports both the current multi-slot ``GRF_0``–``GRF_9`` format and the
+    legacy ``GRF_PATH`` key for backwards-compatibility.
+
+    Returns:
+        dict: Current configuration values.
+    """
     env = _read_env()
 
-    # Collect GRF list from GRF_0 ... GRF_9
     grf_list = []
     for i in range(MAX_GRF_SLOTS):
         val = env.get(f"GRF_{i}", "").strip()
         if val:
             grf_list.append({"priority": i, "path": val})
 
-    # Migration: if old GRF_PATH exists and no GRF_0, expose as priority 0
     if not grf_list:
         old_grf = env.get("GRF_PATH", "").strip()
         if old_grf:
@@ -127,19 +141,27 @@ async def get_settings():
 
 @router.put("")
 async def save_settings(payload: SettingsPayload):
-    """Save new settings to .env (does NOT reload — call /reload after)."""
+    """Saves new settings to ``.env``.
+
+    Args:
+        payload: New settings payload.
+
+    Returns:
+        dict: ``{"status": "saved"}``.
+
+    Raises:
+        HTTPException: 400 if more than 10 GRF files are provided.
+    """
     if len(payload.grf_list) > MAX_GRF_SLOTS:
         raise HTTPException(
             status_code=400,
-            detail=f"Maximum {MAX_GRF_SLOTS} GRF files allowed (matching the official RO client DATA.INI limit)."
+            detail=f"Maximum {MAX_GRF_SLOTS} GRF files allowed."
         )
 
-    # Validate client encoding
     if payload.iteminfo_path and os.path.exists(payload.iteminfo_path):
         from app.core.utils import read_file_safely
         read_file_safely(payload.iteminfo_path, payload.client_encoding or "euc-kr")
 
-    # Validate server encoding
     db_base = payload.server_db_base_path or ""
     if db_base:
         mob_skill_path = os.path.join(db_base, "re/mob_skill_db.txt").replace("\\", "/")
@@ -163,7 +185,6 @@ async def save_settings(payload: SettingsPayload):
         "QUESTS_LUA_PATH": payload.quests_lua_path or "",
     }
 
-    # Clear all GRF slots first, then write only the ones provided
     for i in range(MAX_GRF_SLOTS):
         updates[f"GRF_{i}"] = ""
 
@@ -171,18 +192,15 @@ async def save_settings(payload: SettingsPayload):
         p = max(0, min(MAX_GRF_SLOTS - 1, entry.priority))
         updates[f"GRF_{p}"] = entry.path.strip()
 
-    # Remove the old single-path key if migrating
     env = _read_env()
     if "GRF_PATH" in env:
-        updates["GRF_PATH"] = ""  # blank it out (keep the key so we don't orphan comments)
+        updates["GRF_PATH"] = ""
 
     _write_env(updates)
 
-    # Apply to os.environ so they take effect in the current process
     for key, val in updates.items():
         os.environ[key] = val
 
-    # Apply encoding changes immediately to the live config object
     cfg.reload_from_env()
 
     return {"status": "saved"}
@@ -190,32 +208,24 @@ async def save_settings(payload: SettingsPayload):
 
 @router.post("/reload")
 async def reload_settings():
-    """
-    Reload all services from the current .env settings without restarting.
-    This re-initialises the GRF reader, DB parsers and iteminfo.
-    """
+    """Reloads all services from the current ``.env`` settings."""
     env = _read_env()
     from app.core.utils import read_file_safely
 
-    # Validate client encoding
     iteminfo_path = env.get("ITEMINFO_PATH", "").strip()
     if iteminfo_path and os.path.exists(iteminfo_path):
         read_file_safely(iteminfo_path, env.get("CLIENT_ENCODING", "euc-kr") or "euc-kr")
 
-    # Validate server encoding
     db_base = env.get("SERVER_DB_BASE_PATH", "").strip()
     mob_skill_path = os.path.join(db_base, "re/mob_skill_db.txt").replace("\\", "/") if db_base else ""
     if mob_skill_path and os.path.exists(mob_skill_path):
         read_file_safely(mob_skill_path, env.get("SERVER_ENCODING", "utf-8") or "utf-8")
 
-    # Apply to os.environ
     for key, val in env.items():
         os.environ[key] = val
 
-    # Apply encoding to live config object
     cfg.reload_from_env()
 
-    # ── GRF reload ──────────────────────────────────────────────────────
     from app.services.grf_reader import grf_reader, MAX_GRF_SLOTS as _MAX
 
     grf_list = []
@@ -229,7 +239,6 @@ async def reload_settings():
     override_path = env.get("GRF_OVERRIDE_PATH", "").strip()
     grf_reader.load_multi(grf_list, override_path=override_path)
 
-    # ── DB reload ───────────────────────────────────────────────────────
     reloaded = []
 
     db_base = env.get("SERVER_DB_BASE_PATH", "").strip()
@@ -325,7 +334,12 @@ async def reload_settings():
 
 @router.get("/validate")
 async def validate_settings():
-    """Check all configured paths and return their status."""
+    """Checks all configured paths and returns their status.
+
+    Returns:
+        dict: A ``{key: {"status": ..., "exists": bool, "path": str}}`` map for
+            each configured path key.
+    """
     env = _read_env()
     results = {}
 
@@ -348,7 +362,7 @@ async def validate_settings():
         if val:
             _check(f"GRF_{i}", val)
 
-    # Migration fallback
+    # Expose legacy GRF_PATH entry if no multi-slot keys are configured
     old_grf = env.get("GRF_PATH", "").strip()
     if old_grf and not any(env.get(f"GRF_{i}", "").strip() for i in range(MAX_GRF_SLOTS)):
         _check("GRF_PATH (legacy)", old_grf)
@@ -358,23 +372,29 @@ async def validate_settings():
 
 @router.post("/browse")
 def browse_path(payload: dict):
-    """
-    Open a native directory/file chooser dialog on the host OS.
+    """Opens a native directory or file chooser dialog on the host OS.
+
     Runs synchronously on a thread pool so it does not block the async event loop.
+    The hidden tkinter root window is destroyed immediately after selection.
+
+    Args:
+        payload: ``{"type": "dir" | "file", "initial": str, "ext": str}``.
+
+    Returns:
+        dict: ``{"path": str}`` with forward-slash separators.
     """
     import tkinter as tk
     from tkinter import filedialog
-    
-    # Hide root window
+
     root = tk.Tk()
     root.withdraw()
     root.wm_attributes("-topmost", True)
-    
+
     dialog_type = payload.get("type", "dir")
     initial_dir = payload.get("initial", "")
     if initial_dir and not os.path.exists(initial_dir):
         initial_dir = ""
-        
+
     selected_path = ""
     if dialog_type == "dir":
         selected_path = filedialog.askdirectory(
@@ -393,7 +413,7 @@ def browse_path(payload: dict):
             filetypes=filetypes,
             title="Select File / Selecionar Arquivo"
         )
-        
+
     root.destroy()
     return {"path": selected_path.replace("\\", "/")}
 

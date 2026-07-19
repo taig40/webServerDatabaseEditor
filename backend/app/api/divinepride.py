@@ -1,23 +1,22 @@
-"""
-api/divinepride.py — Router para importação de dados do Divine Pride.
+"""api/divinepride.py — Router for Divine Pride data import.
 
-Responsabilidade ÚNICA (SRP): orquestrar as chamadas entre o Client HTTP
-(divine_pride_client) e o Adapter de transformação (divine_pride_adapter),
-retornando as respostas HTTP adequadas.
+Single Responsibility: orchestrates calls between the HTTP client
+(``divine_pride_client``) and the transformation adapter (``divine_pride_adapter``),
+returning appropriate HTTP responses.  No business logic, no direct HTTP requests.
 
-ZERO lógica de negócio, ZERO requests HTTP diretos neste arquivo.
+**Preview (new) routes:**
 
-Rotas novas (Preview-to-Save):
-    GET /api/divinepride/preview/item/{id}
-    GET /api/divinepride/preview/monster/{id}
-    GET /api/divinepride/preview/skill/{id}
-    GET /api/divinepride/preview/experience
+- ``GET /api/divinepride/preview/item/{id}``
+- ``GET /api/divinepride/preview/monster/{id}``
+- ``GET /api/divinepride/preview/skill/{id}``
+- ``GET /api/divinepride/preview/experience``
 
-Rotas legadas (retrocompatibilidade — delegam para o novo adapter):
-    GET /api/divinepride/import/{resource_type}/{resource_id}
-    GET /api/divinepride/import/item/{id}
-    GET /api/divinepride/import/skill/{id}
-    GET /api/divinepride/import/experience
+**Legacy routes (backwards-compatibility):**
+
+- ``GET /api/divinepride/import/{resource_type}/{resource_id}``
+- ``GET /api/divinepride/import/item/{id}``
+- ``GET /api/divinepride/import/skill/{id}``
+- ``GET /api/divinepride/import/experience``
 """
 
 from fastapi import APIRouter, Header, HTTPException, Query
@@ -36,10 +35,16 @@ from app.services.divine_pride_adapter import dp_adapter
 
 router = APIRouter()
 
-# ─── YAML helper para geração do preview ──────────────────────────────────────
 
 def _to_yaml_preview(data: dict) -> str:
-    """Serializa um dict para YAML formatado no estilo rAthena (para o preview)."""
+    """Serializes a dict to YAML formatted in the rAthena style for the preview panel.
+
+    Args:
+        data: The dict to serialize.
+
+    Returns:
+        str: YAML string.
+    """
     yaml = YAML()
     yaml.preserve_quotes = True
     yaml.indent(mapping=2, sequence=4, offset=2)
@@ -48,12 +53,22 @@ def _to_yaml_preview(data: dict) -> str:
     return buf.getvalue()
 
 
-# ─── Helpers de autenticação e tradução de exceções ───────────────────────────
-
 def _resolve_key(
     header_key: Optional[str],
     query_key: Optional[str],
 ) -> str:
+    """Resolves the Divine Pride API key from request headers or query params.
+
+    Args:
+        header_key: Value of the ``x-divine-pride-key`` HTTP header.
+        query_key: Value of the ``apiKey`` query parameter.
+
+    Returns:
+        str: The resolved API key string.
+
+    Raises:
+        HTTPException: 400 if neither source provides a key.
+    """
     key = (header_key or query_key or "").strip()
     if not key:
         raise HTTPException(
@@ -64,7 +79,16 @@ def _resolve_key(
 
 
 def _translate_dp_error(exc: Exception, resource_type: str, resource_id) -> HTTPException:
-    """Converte exceções tipadas do Client em HTTPException do FastAPI."""
+    """Converts typed Divine Pride client exceptions into FastAPI ``HTTPException``s.
+
+    Args:
+        exc: The caught exception from the DP client.
+        resource_type: Human-readable resource label (e.g. ``"Item"``).
+        resource_id: The requested resource ID (used in the error message).
+
+    Returns:
+        HTTPException: Mapped HTTP error with an appropriate status code.
+    """
     if isinstance(exc, DPNotFoundException):
         return HTTPException(
             status_code=404,
@@ -79,19 +103,30 @@ def _translate_dp_error(exc: Exception, resource_type: str, resource_id) -> HTTP
     return HTTPException(status_code=500, detail=f"Erro inesperado: {exc}")
 
 
-# ─── NOVAS ROTAS: Preview-to-Save ────────────────────────────────────────────
-
 @router.get("/preview/item/{item_id}")
 async def preview_item(
     item_id: int,
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
 ):
-    """
-    Busca um item no Divine Pride, transforma via Adapter e retorna:
-      - mapped: dict compatível com ItemDBModel (pronto para POST /api/items/)
-      - yaml_preview: representação YAML formatada do que será escrito em disco
-      - raw: JSON bruto do Divine Pride (para debug)
+    """Fetches an item from Divine Pride, transforms it via the adapter, and returns a preview.
+
+    Response includes:
+    - ``mapped``: dict compatible with ``ItemDBModel`` (ready for ``POST /api/items/``).
+    - ``yaml_preview``: formatted YAML string of what will be written to disk.
+    - ``raw``: original JSON from Divine Pride (for debugging).
+
+    Args:
+        item_id: Numeric item ID.
+        x_divine_pride_key: API key from the ``x-divine-pride-key`` header.
+        api_key: API key from the ``apiKey`` query parameter (fallback).
+
+    Returns:
+        dict: Preview payload with ``success``, ``source``, ``resource``, ``id``,
+            ``mapped``, ``yaml_preview``, and ``raw``.
+
+    Raises:
+        HTTPException: 400 if no API key; 401/404/502/500 from Divine Pride errors.
     """
     key = _resolve_key(x_divine_pride_key, api_key)
     try:
@@ -120,11 +155,18 @@ async def preview_monster(
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
 ):
-    """
-    Busca um monstro no Divine Pride, transforma via Adapter e retorna:
-      - mapped: dict compatível com MobDBModelUpdate
-      - yaml_preview: representação YAML formatada
-      - raw: JSON bruto do Divine Pride
+    """Fetches a monster from Divine Pride, transforms it via the adapter, and returns a preview.
+
+    Args:
+        mob_id: Numeric monster ID.
+        x_divine_pride_key: API key from the ``x-divine-pride-key`` header.
+        api_key: API key from the ``apiKey`` query parameter (fallback).
+
+    Returns:
+        dict: ``{"success", "source", "resource", "id", "mapped", "yaml_preview", "raw"}``.
+
+    Raises:
+        HTTPException: 400 if no API key; 401/404/502/500 from Divine Pride errors.
     """
     key = _resolve_key(x_divine_pride_key, api_key)
     try:
@@ -151,7 +193,19 @@ async def preview_skill(
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
 ):
-    """Busca uma skill no Divine Pride e retorna o dict transformado."""
+    """Fetches a skill from Divine Pride, transforms it via the adapter, and returns a preview.
+
+    Args:
+        skill_id: Numeric skill ID.
+        x_divine_pride_key: API key from the ``x-divine-pride-key`` header.
+        api_key: API key from the ``apiKey`` query parameter (fallback).
+
+    Returns:
+        dict: ``{"success", "source", "resource", "id", "mapped", "yaml_preview", "raw"}``.
+
+    Raises:
+        HTTPException: 400 if no API key; 401/404/502/500 from Divine Pride errors.
+    """
     key = _resolve_key(x_divine_pride_key, api_key)
     try:
         raw = dp_client.fetch_skill(skill_id, key)
@@ -177,7 +231,19 @@ async def preview_experience(
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
 ):
-    """Busca a tabela de experiência no Divine Pride e retorna o dict transformado."""
+    """Fetches the experience table from Divine Pride and returns the adapted data.
+
+    Args:
+        exp_type: Experience table type (e.g. ``"normal"``, ``"premium"``).
+        x_divine_pride_key: API key from the ``x-divine-pride-key`` header.
+        api_key: API key from the ``apiKey`` query parameter (fallback).
+
+    Returns:
+        dict: ``{"success", "source", "mapped", "raw"}``.
+
+    Raises:
+        HTTPException: 400 if no API key; 401/404/502/500 from Divine Pride errors.
+    """
     key = _resolve_key(x_divine_pride_key, api_key)
     try:
         raw = dp_client.fetch_experience(key)
@@ -188,16 +254,13 @@ async def preview_experience(
     return {"success": True, "source": "divinepride", "mapped": mapped, "raw": raw}
 
 
-# ─── ROTAS LEGADAS: retrocompatibilidade ─────────────────────────────────────
-# Mantidas para não quebrar o DivinePrideImportButton.tsx existente
-
 @router.get("/import/item/{item_id}")
 async def import_item_legacy(
     item_id: int,
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
 ):
-    """[Legado] Delega para a nova rota /preview/item/."""
+    """[Legacy] Delegates to the new ``/preview/item/`` route for backwards-compatibility."""
     return await preview_item(item_id, x_divine_pride_key, api_key)
 
 
@@ -207,7 +270,7 @@ async def import_skill_legacy(
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
 ):
-    """[Legado] Delega para a nova rota /preview/skill/."""
+    """[Legacy] Delegates to the new ``/preview/skill/`` route for backwards-compatibility."""
     return await preview_skill(skill_id, x_divine_pride_key, api_key)
 
 
@@ -218,7 +281,7 @@ async def import_experience_legacy(
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
 ):
-    """[Legado] Delega para a nova rota /preview/experience/."""
+    """[Legacy] Delegates to the new ``/preview/experience/`` route for backwards-compatibility."""
     return await preview_experience(exp_type, x_divine_pride_key, api_key)
 
 
@@ -229,7 +292,17 @@ async def import_resource_legacy(
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
 ):
-    """[Legado] Rota genérica — delega para as novas rotas específicas."""
+    """[Legacy] Generic catch-all route — delegates to the appropriate typed preview route.
+
+    Args:
+        resource_type: One of ``"monster"`` / ``"mob"``, ``"item"``, or ``"skill"``.
+        resource_id: Numeric resource ID.
+        x_divine_pride_key: API key from the ``x-divine-pride-key`` header.
+        api_key: API key from the ``apiKey`` query parameter (fallback).
+
+    Raises:
+        HTTPException: 400 if ``resource_type`` is not recognized.
+    """
     rt = resource_type.lower()
     if rt in ("monster", "mob"):
         return await preview_monster(resource_id, x_divine_pride_key, api_key)

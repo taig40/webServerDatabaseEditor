@@ -1,8 +1,10 @@
-"""
-progression.py — Rotas da API para Módulos de Progressão:
-  - Job Database (job_stats & job_basepoints)
-  - Experience Tables (job_exp)
-  - Visual Skill Tree (skill_tree)
+"""progression.py — API routes for Progression modules.
+
+Covers:
+
+- **Job Database** (``job_stats``, ``job_basepoints``, ``job_aspd``, ``job_outfits``)
+- **Experience Tables** (``job_exp``)
+- **Visual Skill Tree** (``skill_tree``)
 """
 
 from fastapi import APIRouter, HTTPException, Query, Body
@@ -55,9 +57,15 @@ class SkillTreeUpdatePayload(BaseModel):
 
 @router.get("/jobs")
 async def get_all_jobs():
-    """
-    Retorna a lista combinada de classes com atributos básicos, pontos base,
-    ASPD e outfits alternativos, enriquecida com categorias e trajes alternativos.
+    """Returns the combined list of all job classes with stats, basepoints, ASPD, and outfit data.
+
+    Each entry is enriched with:
+    - ``is_alternate_sprite``: ``True`` if the class only has alternate sprite names.
+    - ``has_alternate_sprite``: ``True`` if any base job in this entry has alternate outfits.
+    - ``category``: Job tier/category string from ``classify_job_category``.
+
+    Returns:
+        dict: ``{"job_stats", "job_basepoints", "job_aspd", "job_outfits", "is_loading"}``.
     """
     stats_list = job_stats_db.get_all()
     basepoints_list = job_basepoints_db.get_all()
@@ -106,8 +114,16 @@ async def get_all_jobs():
 
 @router.get("/jobs/{job_name}")
 async def get_job_details(job_name: str):
-    """
-    Retorna os detalhes de uma classe específica em todos os arquivos de configuração de classes.
+    """Returns all configuration details for a specific job class.
+
+    Args:
+        job_name: rAthena job constant name (e.g. ``Knight``).
+
+    Returns:
+        dict: ``{"job_name", "stats", "basepoints", "aspd", "outfits"}``.
+
+    Raises:
+        HTTPException: 404 if the job is not found in any configuration file.
     """
     stats_entry = job_stats_db.get_by_job(job_name)
     bp_entry = job_basepoints_db.get_by_job(job_name)
@@ -128,8 +144,16 @@ async def get_job_details(job_name: str):
 
 @router.put("/jobs/stats")
 async def update_job_stats(payload: JobStatsUpdatePayload):
-    """
-    Atualiza uma entrada em job_stats.yml pelo índice.
+    """Updates a job stats entry in ``job_stats.yml`` by index.
+
+    Args:
+        payload: ``{index, data}`` where index is the 0-based entry position.
+
+    Returns:
+        dict: The updated job stats entry.
+
+    Raises:
+        HTTPException: 400 if the update fails.
     """
     updated = job_stats_db.update_entry(payload.index, payload.data)
     if not updated:
@@ -138,8 +162,16 @@ async def update_job_stats(payload: JobStatsUpdatePayload):
 
 @router.put("/jobs/basepoints")
 async def update_job_basepoints(payload: JobBasepointsUpdatePayload):
-    """
-    Atualiza uma entrada em job_basepoints.yml pelo índice.
+    """Updates a job basepoints entry in ``job_basepoints.yml`` by index.
+
+    Args:
+        payload: ``{index, data}`` where index is the 0-based entry position.
+
+    Returns:
+        dict: The updated job basepoints entry.
+
+    Raises:
+        HTTPException: 400 if the update fails.
     """
     updated = job_basepoints_db.update_entry(payload.index, payload.data)
     if not updated:
@@ -148,8 +180,16 @@ async def update_job_basepoints(payload: JobBasepointsUpdatePayload):
 
 @router.put("/jobs/aspd")
 async def update_job_aspd(payload: JobAspdUpdatePayload):
-    """
-    Atualiza uma entrada em job_aspd.yml pelo índice.
+    """Updates a job ASPD entry in ``job_aspd.yml`` by index.
+
+    Args:
+        payload: ``{index, data}`` where index is the 0-based entry position.
+
+    Returns:
+        dict: The updated ASPD entry.
+
+    Raises:
+        HTTPException: 400 if the update fails.
     """
     updated = job_aspd_db.update_entry(payload.index, payload.data)
     if not updated:
@@ -158,8 +198,16 @@ async def update_job_aspd(payload: JobAspdUpdatePayload):
 
 @router.put("/jobs/outfits")
 async def update_job_outfits(payload: JobOutfitsUpdatePayload):
-    """
-    Atualiza uma entrada em job_outfits.yml pelo índice.
+    """Updates a job outfits entry in ``job_outfits.yml`` by index.
+
+    Args:
+        payload: ``{index, data}`` where index is the 0-based entry position.
+
+    Returns:
+        dict: The updated outfits entry.
+
+    Raises:
+        HTTPException: 400 if the update fails.
     """
     updated = job_outfits_db.update_entry(payload.index, payload.data)
     if not updated:
@@ -172,8 +220,10 @@ async def update_job_outfits(payload: JobOutfitsUpdatePayload):
 
 @router.get("/exp")
 async def get_experience_tables():
-    """
-    Retorna as tabelas de experiência agregadas e mescladas por classe.
+    """Returns all experience tables aggregated and merged by job class.
+
+    Returns:
+        dict: ``{"tables": [...], "is_loading": bool}``.
     """
     aggregated_tables = job_exp_db.get_aggregated_tables()
     print(f"[progression] GET /exp - aggregated tables: {len(aggregated_tables)}")
@@ -184,8 +234,20 @@ async def get_experience_tables():
 
 @router.put("/exp")
 async def update_experience_table(payload: ExpGroupUpdatePayload):
-    """
-    Atualiza uma ou ambas as curvas de experiência em job_exp.yml.
+    """Updates one or both experience curves in ``job_exp.yml``.
+
+    Accepts two modes:
+    - **Aggregated mode**: provide ``className`` + ``base_index``/``job_index`` + ``base_exp``/``job_exp``.
+    - **Direct mode**: provide ``index`` + ``data`` for a raw group update.
+
+    Args:
+        payload: Update payload (see ``ExpGroupUpdatePayload`` for full schema).
+
+    Returns:
+        dict: ``{"status": "success", "className": str}`` or the updated group entry.
+
+    Raises:
+        HTTPException: 400 if payload is invalid or the update fails.
     """
     if payload.className is not None and (payload.base_index is not None or payload.job_index is not None):
         success = job_exp_db.update_aggregated_exp(
@@ -210,8 +272,13 @@ async def update_experience_table(payload: ExpGroupUpdatePayload):
 
 @router.get("/skill_tree")
 async def get_all_skill_trees():
-    """
-    Retorna um resumo de todas as classes configuradas na árvore de habilidades.
+    """Returns a summary of all job classes configured in ``skill_tree.yml``.
+
+    Alternate sprite variants are excluded from the summary.  Each entry is
+    enriched with ``SkillCount`` and ``category``.
+
+    Returns:
+        dict: ``{"jobs": [...], "is_loading": bool}``.
     """
     trees = skill_tree_db.get_all_raw()
     summary = []
@@ -233,8 +300,15 @@ async def get_all_skill_trees():
 
 @router.get("/skill_tree/{job_name}")
 async def get_job_skill_tree(job_name: str):
-    """
-    Retorna a árvore de habilidades de uma classe, enriquecida com IDs, descrições e ícones do skill_db.
+    """Returns the skill tree for a specific job class, enriched with IDs, descriptions, and icons.
+
+    Returns an empty tree structure if the job has no entries in ``skill_tree.yml``.
+
+    Args:
+        job_name: rAthena job constant name.
+
+    Returns:
+        dict: ``{"Job", "Inherit", "Tree": [{...skill info...}]}``.
     """
     enriched = skill_tree_db.get_job_tree_enriched(job_name)
     if not enriched:
@@ -248,8 +322,17 @@ async def get_job_skill_tree(job_name: str):
 
 @router.put("/skill_tree/{job_name}")
 async def update_job_skill_tree(job_name: str, payload: SkillTreeUpdatePayload):
-    """
-    Atualiza a árvore de habilidades e pré-requisitos de uma classe no skill_tree.yml.
+    """Updates the skill tree and prerequisites for a job class in ``skill_tree.yml``.
+
+    Args:
+        job_name: rAthena job constant name.
+        payload: ``{tree: [...], inherit: {...}}``.
+
+    Returns:
+        dict: The updated skill tree entry.
+
+    Raises:
+        HTTPException: 400 if the update fails.
     """
     updated = skill_tree_db.update_job_tree(job_name, payload.tree, payload.inherit)
     if not updated:

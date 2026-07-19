@@ -9,26 +9,29 @@ router = APIRouter()
 
 @router.get("/load-progress")
 async def get_load_progress():
-    """
-    Endpoint SSE (Server-Sent Events) que transmite o progresso em tempo real (0.0% a 100.0%)
-    do carregamento e parseamento das bases YAML no servidor.
+    """SSE endpoint that streams YAML database loading progress in real time (0%–100%).
+
+    Emits ``data: <JSON>\n\n`` events while loading is in progress.  Sends one final
+    event when ``is_loading`` becomes ``False``, then closes the stream.
+
+    Returns:
+        StreamingResponse: ``text/event-stream`` of progress snapshots.
     """
     async def event_generator():
         last_sent = None
         while True:
             snapshot = progress_tracker.get_snapshot()
             snapshot_str = json.dumps(snapshot, ensure_ascii=False)
-            
-            # Só envia se mudou ou na primeira iteração para não sobrecarregar
+
+            # Only emit when the snapshot changes to avoid redundant network traffic
             if snapshot_str != last_sent:
                 yield f"data: {snapshot_str}\n\n"
                 last_sent = snapshot_str
-            
+
             if not snapshot["is_loading"]:
-                # Envia o evento final indicando 100% concluído e encerra o stream
                 yield f"data: {snapshot_str}\n\n"
                 break
-                
+
             await asyncio.sleep(0.2)
 
     return StreamingResponse(
@@ -43,16 +46,24 @@ async def get_load_progress():
 
 @router.get("/status")
 async def get_system_status():
-    """
-    Retorna o status atual como JSON simples para verificação rápida.
+    """Returns the current loading status snapshot as JSON for quick health checks.
+
+    Returns:
+        dict: Current progress snapshot from ``progress_tracker``.
     """
     return progress_tracker.get_snapshot()
 
 @router.get("/initialize-cache")
 async def initialize_cache():
-    """
-    Endpoint SSE que monitora e envia eventos sequencialmente durante o cache
-    dos arquivos YAML principais sob demanda, sem bloquear o event loop.
+    """SSE endpoint that sequentially loads all primary YAML databases on demand.
+
+    Loads each database listed in ``db_tasks`` using a background thread so the
+    async event loop is not blocked.  Secondary databases (randomopt, sizefix,
+    progressions, GRF files) are initialized concurrently via a single background
+    task after the initial SSE handshake.
+
+    Returns:
+        StreamingResponse: ``text/event-stream`` of ``{status, file, progress}`` events.
     """
     from app.services.yaml_parser import yaml_db
     from app.services.mob_parser import mob_db
@@ -89,7 +100,7 @@ async def initialize_cache():
             yield f"data: {json.dumps({'status': 'setup_required', 'progress': 100.0}, ensure_ascii=False)}\n\n"
             return
 
-        # 1. Yield inicial imediato para confirmar abertura do stream no front-end
+        # Initial event confirms the stream is open before any blocking work starts
         initial_payload = {
             "status": "loading",
             "file": "item_db.yml",
@@ -98,7 +109,7 @@ async def initialize_cache():
         yield f"data: {json.dumps(initial_payload, ensure_ascii=False)}\n\n"
         await asyncio.sleep(0.05)
 
-        # 2. Inicializa bases rápidas secundárias e GRFs em background sem travar o stream principal
+        # Secondary DBs and GRF files load concurrently without blocking the main stream
         def init_secondary():
             randomopt_db.initialize()
             sizefix_db.initialize()
