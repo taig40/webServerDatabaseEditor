@@ -7,36 +7,54 @@ from app.services.generic_parser import GenericYamlParser
 from app.core.config import cfg
 
 def get_quests_lua_path() -> str:
-    # Check if configured in environment / config object
+    """Resolves the absolute path to the client-side quest Lua file.
+
+    Checks the configured path first, then attempts to auto-discover common
+    filenames (``OngoingQuests.lub``, ``questid2display.lua``, etc.) relative
+    to the ``ITEMINFO_PATH`` environment variable.
+
+    Returns:
+        str: Absolute path to the Lua file, or ``""`` if not found.
+    """
     path = cfg.quests_lua_path
     if path and os.path.exists(path):
         return path
-        
+
     iteminfo = os.environ.get("ITEMINFO_PATH", "").strip()
     if iteminfo:
-        system_dir = os.path.dirname(os.path.dirname(iteminfo)) # goes up to System/ or SystemEN/
+        system_dir = os.path.dirname(os.path.dirname(iteminfo))
         filenames = (
-            "OngoingQuests.lub", "OngoingQuests.lua", 
-            "OngoingQuestInfoList.lub", "OngoingQuestInfoList.lua", 
+            "OngoingQuests.lub", "OngoingQuests.lua",
+            "OngoingQuestInfoList.lub", "OngoingQuestInfoList.lua",
             "questid2display.lua", "questid2display.lub"
         )
         for fn in filenames:
             p = os.path.join(system_dir, fn).replace("\\", "/")
             if os.path.exists(p):
                 return p
-                
-        # Try checking in System/ if parent was SystemEN/ or vice versa
+
+        # Try the sibling System/ directory if the first search was in SystemEN/
         game_root = os.path.dirname(system_dir)
         for fn in filenames:
             p = os.path.join(game_root, "System", fn).replace("\\", "/")
             if os.path.exists(p):
                 return p
-                
-        # Default fallback (create OngoingQuests.lub in system_dir)
+
         return os.path.join(system_dir, "OngoingQuests.lub").replace("\\", "/")
     return ""
 
 def extract_lua_string(key: str, block: str) -> str:
+    """Extracts a string value assigned to ``key`` in a Lua table block.
+
+    Supports double-quoted, single-quoted, and ``[[long bracket]]`` string literals.
+
+    Args:
+        key: Lua table field name (e.g. ``"Title"``).
+        block: Raw Lua source text of a table block.
+
+    Returns:
+        str: The extracted string value, or ``""`` if not found.
+    """
     m = re.search(key + r"\s*=\s*\"([^\"]*)\"", block)
     if m: return m.group(1)
     m = re.search(key + r"\s*=\s*'([^']*)'", block)
@@ -46,6 +64,17 @@ def extract_lua_string(key: str, block: str) -> str:
     return ""
 
 def extract_brace_content(key: str, block: str) -> str:
+    """Extracts the content inside the outermost ``{}`` braces assigned to ``key``.
+
+    Handles nested braces correctly by counting depth.
+
+    Args:
+        key: Lua table field name.
+        block: Raw Lua source text.
+
+    Returns:
+        str: Content between the braces (exclusive), or ``""`` if not found.
+    """
     pattern = re.compile(key + r"\s*=\s*\{")
     m = pattern.search(block)
     if not m: return ""
@@ -61,6 +90,17 @@ def extract_brace_content(key: str, block: str) -> str:
     return "".join(content_chars)
 
 def parse_quest_lua_block(block: str) -> dict:
+    """Parses a single quest Lua table block into a structured dict.
+
+    Extracts ``Title``, ``Summary``, ``Info`` (aggregated Description lines),
+    and ``QuickInfo`` entries from the Lua block text.
+
+    Args:
+        block: Raw Lua source text for one quest entry.
+
+    Returns:
+        dict: ``{"Title": str, "Summary": str, "Info": str, "QuickInfo": list}``.
+    """
     data = {
         "Title": "",
         "Summary": "",

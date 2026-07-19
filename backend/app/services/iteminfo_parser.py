@@ -1,3 +1,10 @@
+"""iteminfo_parser.py — Parser and writer for the client-side ``iteminfo.lua`` file.
+
+Maintains an in-memory dict keyed by item ID.  Supports background loading,
+in-place updates to existing blocks, and insertion of new blocks using a
+Lua block template.
+"""
+
 import os
 import re
 import threading
@@ -5,7 +12,6 @@ from typing import Optional
 from app.core.config import cfg
 from app.repositories import lua_repository
 
-# ─── Default block template ────────────────────────────────────────────────────
 # Used when generating a brand-new entry that didn't previously exist in the Lua.
 _BLOCK_TEMPLATE = """\t[{id}] = {{
 \t\tunidentifiedDisplayName = "{unIdentifiedDisplayName}",
@@ -54,17 +60,17 @@ def _render_block(item_id: int, fields: dict) -> str:
 # ─── Parser ────────────────────────────────────────────────────────────────────
 
 class ItemInfoParser:
-    """
-    Parses and writes back Ragnarok Online's iteminfo.lua / itemInfo.lua.
+    """Parser and writer for the client-side ``iteminfo.lua`` / ``itemInfo.lua`` file.
 
-    The internal store is a dict keyed by item ID:
+    The internal store is a ``dict`` keyed by numeric item ID::
+
         {
           501: {
-            "identifiedDisplayName":     "Red Potion",
-            "identifiedResourceName":    "»¡°£Æ÷¼Ç",
-            "identifiedDescriptionName": ["A potion...", "..."],
-            "unIdentifiedDisplayName":   "Red Potion",
-            "unIdentifiedResourceName":  "»¡°£Æ÷¼Ç",
+            "identifiedDisplayName":       "Red Potion",
+            "identifiedResourceName":      "»¡°£Æ÷¼Ç",
+            "identifiedDescriptionName":   ["A potion...", "..."],
+            "unIdentifiedDisplayName":     "Red Potion",
+            "unIdentifiedResourceName":    "»¡°£Æ÷¼Ç",
             "unIdentifiedDescriptionName": [],
             "slotCount":  0,
             "ClassNum":   0,

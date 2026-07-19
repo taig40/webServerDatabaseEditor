@@ -1,16 +1,16 @@
-"""
-services/divine_pride_adapter.py — Adapter (ETL Transform) para o Divine Pride.
+"""services/divine_pride_adapter.py — ETL adapter for Divine Pride API data.
 
-Responsabilidade ÚNICA (SRP): receber JSON bruto do Divine Pride e transformá-lo
-em dicts compatíveis com nossos DTOs Pydantic V2 (ItemDBModel, MobDBModelUpdate).
+Single Responsibility: receive raw JSON from Divine Pride and transform it into
+dicts compatible with the Pydantic V2 DTOs (``ItemDBModel``, ``MobDBModelUpdate``).
 
-Regras críticas obedecidas:
-  1. Omissão de Defaults: campos com valor igual ao default do rAthena são
-     silenciosamente omitidos — o dump final usará exclude_defaults=True.
-  2. LiteralScalarString: scripts são envoltos para forçar pipe | no YAML.
-  3. exclude_none implícito: nenhum campo None é incluído no resultado.
-  4. Correção de Locations: bitmask do DP → dict ItemLocations do rAthena.
-  5. MobSkills: apenas as chaves internas do nosso editor (sem duplicação CamelCase).
+**Critical rules enforced:**
+
+1. **Default omission**: fields whose value equals the rAthena engine default are
+   silently dropped — the final dump applies ``exclude_defaults=True``.
+2. **LiteralScalarString**: scripts are wrapped to force pipe (``|``) block-style YAML.
+3. **Implicit ``exclude_none``**: no ``None`` field is ever included in the result.
+4. **Location correction**: DP bitmask → ``ItemLocations`` dict (official iRO/kRO table).
+5. **MobSkills**: only the internal editor keys are emitted (no CamelCase duplication).
 """
 
 import re
@@ -39,8 +39,7 @@ _ITEM_TYPE_MAP: Dict[int, str] = {
     9: "Ammo",       10: "Consumable",
 }
 
-# Bitmask de localização do cliente RO → chaves do ItemLocations do rAthena
-# Baseado na tabela oficial iRO/kRO
+# Location bitmask (RO client) → rAthena ItemLocations keys (official iRO/kRO table)
 _LOCATION_BITS: Dict[int, str] = {
     0x0001: "Head_Low",
     0x0002: "Right_Hand",
@@ -60,7 +59,7 @@ _LOCATION_BITS: Dict[int, str] = {
     0x8000: "Shadow_Armor",
 }
 
-# Defaults oficiais do rAthena (valores que NÃO devem ser escritos no YAML)
+# rAthena official defaults: fields with these values are NOT written to YAML
 _ITEM_DEFAULTS: Dict[str, Any] = {
     "Type":          "Etc",
     "Defense":       0,
@@ -98,6 +97,7 @@ _MOB_DEFAULTS: Dict[str, Any] = {
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _safe_int(val: Any, default: int = 0) -> int:
+    """Safely converts input to integer; returns default on failure."""
     try:
         return int(val if val is not None else default)
     except (ValueError, TypeError):
