@@ -1,3 +1,7 @@
+/**
+ * MonsterDetail.tsx — Comprehensive editing form, sprite manager, and details panel for a single rAthena monster.
+ */
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
@@ -12,8 +16,9 @@ import { useItemLookupStore } from '../store/useItemLookupStore';
 import { DivinePrideImporterPanel } from './DivinePrideImporterPanel';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 
-// ─── DropItemInput Component (ID <-> AegisName Hybrid Lookup) ─────────────────
-
+/**
+ * Hybrid input component allowing item selection by ID or AegisName with validation feedback.
+ */
 const DropItemInput: React.FC<{
   value: string | number | undefined;
   onChange: (newValue: string) => void;
@@ -59,8 +64,7 @@ const DropItemInput: React.FC<{
   );
 };
 
-// ─── Element & Race definitions ───────────────────────────────────────────────
-
+/** Valid elemental affinities. */
 const ELEMENTS = ['Neutral', 'Water', 'Earth', 'Fire', 'Wind', 'Poison', 'Holy', 'Dark', 'Ghost', 'Undead'];
 const ELEMENT_COLORS: Record<string, string> = {
   Neutral: 'text-gray-400', Water: 'text-blue-400', Earth: 'text-yellow-700',
@@ -93,8 +97,7 @@ const AI_BASE_TYPES = [
   '21', '24', '25', '26', '27'
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
+/** Renders a form row container with labeled label text and child elements. */
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
@@ -163,16 +166,16 @@ const getConditionBadgeClass = (cond: string) => {
   return 'bg-slate-700/40 border border-white/10 text-gray-300';
 };
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
+/** Props for the MonsterDetail component. */
 interface MonsterDetailProps {
   mob: any;
   onUpdate: (mobId: number, data: any, saveMode?: 'import' | 'overwrite') => Promise<boolean | void>;
   onDelete?: (mobId: number) => Promise<boolean>;
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
+/**
+ * Editor interface for modifying monster attributes, combat stats, skills, drops, and AI settings.
+ */
 const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }) => {
   const t = useLanguageStore(state => state.t);
   const [local, setLocal] = useState<any>(mob);
@@ -193,7 +196,6 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
   const sprInputRef = useRef<HTMLInputElement>(null);
   const actInputRef = useRef<HTMLInputElement>(null);
 
-  // Skill lookup cache & Add Modal State
   const [allSkillsMap, setAllSkillsMap] = useState<Record<number, { Name: string; Description?: string }>>({});
   const [allSkillsList, setAllSkillsList] = useState<any[]>([]);
   const [showAddSkillModal, setShowAddSkillModal] = useState(false);
@@ -226,7 +228,6 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
     setTimeout(() => setDpMessage(null), 6000);
   };
 
-  // Sync when mob changes
   useEffect(() => {
     setLocal(mob);
     setSpriteKey(k => k + 1);
@@ -234,7 +235,6 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
     setActiveTab('status');
   }, [mob.Id, mob]);
 
-  // Load skills on tab switch if needed + load global skills cache
   useEffect(() => {
     if (activeTab !== 'skills') return;
     if (!local.MobSkills && skills.length === 0) {
@@ -363,8 +363,6 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
   const elementLevel = local.ElementLevel ?? 1;
   const isMvp = local.Class === 'Boss' || (local.MvpDrops && local.MvpDrops.length > 0);
 
-  // ─── Drops helpers ────────────────────────────────────────────────────────
-
   const updateDrop = (type: 'Drops' | 'MvpDrops', idx: number, field: string, val: any) => {
     const arr = [...(local[type] || [])];
     arr[idx] = { ...arr[idx], [field]: field === 'Rate' ? Math.round(Number(val) * 100) : val };
@@ -380,8 +378,6 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
     const arr = (local[type] || []).filter((_: any, i: number) => i !== idx);
     set(type, arr);
   };
-
-  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-dark-900 text-gray-200">

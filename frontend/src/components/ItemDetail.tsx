@@ -1,3 +1,7 @@
+/**
+ * ItemDetail.tsx — Comprehensive editing form and details view for a single rAthena item.
+ */
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Package, Shield, Sword, Box, Save, Plus, X, Users, Store, DownloadCloud, Loader2, AlertCircle, Trash2 } from 'lucide-react';
@@ -12,7 +16,7 @@ import { DivinePrideImporterPanel } from './DivinePrideImporterPanel';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import Select from 'react-select';
 
-
+/** Pre-defined list of valid equipment locations for react-select. */
 const LOCATION_OPTIONS = [
   'Head_Top', 'Head_Mid', 'Head_Low', 'Armor', 'Right_Hand', 'Left_Hand', 'Garment', 
   'Shoes', 'Right_Accessory', 'Left_Accessory', 'Costume_Head_Top', 'Costume_Head_Mid', 
@@ -21,6 +25,7 @@ const LOCATION_OPTIONS = [
   'Both_Hand', 'Both_Accessory'
 ].map(l => ({ value: l, label: l }));
 
+/** Pre-defined list of class/job restrictions for react-select multi-tag selection. */
 const JOB_OPTIONS = [
   'All', 'Acolyte', 'Alchemist', 'Archer', 'Assassin', 'BardDancer', 'Blacksmith', 
   'Crusader', 'Gunslinger', 'Hunter', 'KagerouOboro', 'Knight', 'Mage', 'Merchant', 
@@ -28,6 +33,7 @@ const JOB_OPTIONS = [
   'StarGladiator', 'Summoner', 'SuperNovice', 'Swordman', 'Taekwon', 'Thief', 'Wizard'
 ].map(j => ({ value: j, label: j }));
 
+/** Dark mode styling overrides for react-select components. */
 const customSelectStyles = {
   control: (base: any) => ({
     ...base,
@@ -62,12 +68,16 @@ const customSelectStyles = {
   input: (base: any) => ({ ...base, color: '#e5e7eb' }),
 };
 
+/** Props for the ItemDetail component. */
 interface ItemDetailProps {
   item: any;
   onUpdate: (itemId: number, updatedData: any, saveMode?: 'import' | 'overwrite') => Promise<boolean | void>;
   onDelete?: (itemId: number) => Promise<boolean>;
 }
 
+/**
+ * Renders the item editor panel with form controls, script editor, and drop listings.
+ */
 const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => {
   const t = useLanguageStore(state => state.t);
   const [drops, setDrops] = useState<any[]>([]);
@@ -94,7 +104,6 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
   useEffect(() => {
     setLocalItem(item);
     
-    // Fetch drops for this item
     const fetchDrops = async () => {
       setIsLoadingDrops(true);
       try {
