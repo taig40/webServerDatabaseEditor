@@ -1,11 +1,13 @@
-"""
-progression_parser.py — Parsers e gerenciadores para:
-  - job_stats.yml (Atributos e modificadores de classes)
-  - job_basepoints.yml (Pontos base HP/SP/AP de classes)
-  - job_exp.yml (Tabelas de experiência Base/Job)
-  - skill_tree.yml (Árvore de habilidades e pré-requisitos)
+"""progression_parser.py — Parsers and managers for the rAthena job/progression YAML files.
 
-Utiliza ruamel.yaml para preservar comentários e formatação original do servidor rAthena.
+Handles:
+
+- ``job_stats.yml``: Job attribute modifiers.
+- ``job_basepoints.yml``: HP/SP/AP base points per job.
+- ``job_exp.yml``: Base and Job experience tables.
+- ``skill_tree.yml``: Skill tree and prerequisites.
+
+All parsers use ``ruamel.yaml`` to preserve original comments and formatting.
 """
 
 import os
@@ -26,9 +28,16 @@ TRANSCENDENT_JOBS = {
 }
 
 def is_alternate_sprite(job_name: str) -> bool:
-    """
-    Identifica se a classe é uma Roupa Secundária / Traje Alternativo.
-    Exemplos: _2nd, _3rd, _Alternate, _Alt.
+    """Returns ``True`` if the job class is an alternate outfit/secondary costume variant.
+
+    Alternate sprites are identified by the suffixes ``_2nd``, ``_3rd``,
+    ``_Alternate``, or ``_Alt``.
+
+    Args:
+        job_name: rAthena job constant string.
+
+    Returns:
+        bool: ``True`` for alternate sprites, ``False`` otherwise.
     """
     if not job_name or not isinstance(job_name, str):
         return False
@@ -37,11 +46,19 @@ def is_alternate_sprite(job_name: str) -> bool:
     return False
 
 def classify_job_category(job_name: str) -> str:
-    """
-    Classifica a classe em uma das 3 categorias principais:
-    - 'Baby': classes Baby ou Super_Baby
-    - 'Transcendent': classes renascidas (High, Transcendent, 4ª Classe Transcendente)
-    - 'Non-Transcendent': classes normais e iniciais
+    """Classifies a job class into one of three tier categories.
+
+    Categories:
+
+    - ``"Baby"``: Baby or Super_Baby classes.
+    - ``"Transcendent"``: High/rebirth classes, Transcendent suffixed jobs, and 4th-gen trans.
+    - ``"Non-Transcendent"``: All other job classes.
+
+    Args:
+        job_name: rAthena job constant string.
+
+    Returns:
+        str: One of ``"Baby"``, ``"Transcendent"``, or ``"Non-Transcendent"``.
     """
     if not job_name or not isinstance(job_name, str):
         return "Non-Transcendent"
@@ -52,6 +69,19 @@ def classify_job_category(job_name: str) -> str:
     return "Non-Transcendent"
 
 class BaseProgressionParser:
+    """Base class for progression and job YAML parsers.
+
+    Configures ``ruamel.yaml`` to preserve quotes, comments, and original server
+    formatting while allowing duplicate keys where needed by rAthena syntax.
+
+    Attributes:
+        default_filename: Target YAML filename (e.g. ``job_stats.yml``).
+        filepath: Resolved absolute path to the loaded YAML file.
+        raw_data: Parsed top-level dictionary from ``ruamel.yaml``.
+        is_loading: Whether a background loading thread is currently active.
+        loading_status: Human-readable status string for UI reporting.
+    """
+
     def __init__(self, default_filename: str):
         self.yaml = YAML()
         self.yaml.preserve_quotes = True

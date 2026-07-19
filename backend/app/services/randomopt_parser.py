@@ -1,8 +1,35 @@
+"""randomopt_parser.py — Parser and writer for rAthena Random Option YAML databases.
+
+Manages three related files:
+
+- ``item_randomopt_db.yml``: Option definitions.
+- ``item_randomopt_group.yml``: Option groups (weighted random pools).
+- ``laphine_upgrade.yml``: Laphine upgrade option tables.
+
+All files are lazily loaded via ``initialize()`` and kept in raw ruamel.yaml objects
+for lossless in-place updates.
+"""
+
 import os
 from ruamel.yaml import YAML
 from typing import List, Dict, Any, Optional
 
 class RandomOptParser:
+    """Parser and in-place writer for the three Random Option YAML databases.
+
+    All three YAML files are loaded lazily on the first call to ``initialize()``
+    and kept as live ``ruamel.yaml`` objects so that saves preserve comments and
+    original formatting.
+
+    Attributes:
+        db_base_path: Resolved rAthena ``db/`` root path.
+        options_file_path: Path to ``item_randomopt_db.yml``.
+        groups_file_path: Path to ``item_randomopt_group.yml``.
+        laphine_file_path: Path to ``laphine_upgrade.yml``.
+        options_data: Parsed flat list of option entries.
+        groups_data: Parsed flat list of group entries with linked option details.
+    """
+
     def __init__(self):
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
@@ -21,6 +48,13 @@ class RandomOptParser:
         self.raw_laphine_yaml = None
 
     def initialize(self, force=False):
+        """Lazily loads all three YAML files and populates the in-memory data stores.
+
+        No-ops if data is already loaded and ``force`` is ``False``.
+
+        Args:
+            force: If ``True``, reloads all files unconditionally.
+        """
         if self.groups_data and not force:
             return
 
@@ -31,27 +65,25 @@ class RandomOptParser:
                 db_base = item_db.replace("\\", "/").split("/re/")[0]
             elif item_db and "/pre-re/" in item_db.replace("\\", "/"):
                 db_base = item_db.replace("\\", "/").split("/pre-re/")[0]
-        
+
         if not db_base:
             return
-            
+
         self.db_base_path = db_base.replace("\\", "/")
-        
-        # Paths
+
+        # Detect the correct db mode (re vs pre-re)
         mode = "re" if os.path.exists(f"{self.db_base_path}/re/item_randomopt_db.yml") else ("pre-re" if os.path.exists(f"{self.db_base_path}/pre-re/item_randomopt_db.yml") else "re")
         self.options_file_path = f"{self.db_base_path}/{mode}/item_randomopt_db.yml"
         self.groups_file_path = f"{self.db_base_path}/{mode}/item_randomopt_group.yml"
         self.laphine_file_path = f"{self.db_base_path}/{mode}/laphine_upgrade.yml"
-        
-        # Load options
+
         if os.path.exists(self.options_file_path):
             try:
                 with open(self.options_file_path, "r", encoding="utf-8") as f:
                     self.raw_options_yaml = self.yaml.load(f)
             except Exception as e:
                 print(f"[!] Error reading options YAML: {e}")
-                
-        # Load groups
+
         if os.path.exists(self.groups_file_path):
             try:
                 with open(self.groups_file_path, "r", encoding="utf-8") as f:
@@ -59,21 +91,26 @@ class RandomOptParser:
             except Exception as e:
                 print(f"[!] Error reading groups YAML: {e}")
 
-        # Load laphine upgrade
         if os.path.exists(self.laphine_file_path):
             try:
                 with open(self.laphine_file_path, "r", encoding="utf-8") as f:
                     self.raw_laphine_yaml = self.yaml.load(f)
             except Exception as e:
                 print(f"[!] Error reading laphine_upgrade YAML: {e}")
-                
+
         self.parse_data()
 
     def parse_data(self):
+        """Parses the loaded raw YAML objects into flat Python lists.
+
+        Populates ``options_data`` (from ``item_randomopt_db.yml``) and
+        ``groups_data`` (from ``item_randomopt_group.yml``, enriched with
+        option details from ``options_data``).
+        """
         self.options_data = []
         self.groups_data = []
-        
-        # 1. Parse Options
+
+        # 1. Parse option definitions
         if self.raw_options_yaml and "Body" in self.raw_options_yaml:
             body = self.raw_options_yaml["Body"]
             if isinstance(body, list):
