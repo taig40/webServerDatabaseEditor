@@ -5,42 +5,58 @@ import threading
 from app.services.load_progress import progress_tracker
 
 class YamlDatabase:
+    """In-memory store for ``item_db.yml`` data, loaded recursively following YAML Import headers.
+
+    Maintains a ``db_cache`` (filepath → parsed YAML) and an ``item_index`` (item_id → filepath)
+    for O(1) lookups.  An inverted ``id_to_aegisname`` index enables fast AegisName resolution for
+    the Divine Pride adapter without additional HTTP calls.
+
+    All mutations write back to the owning YAML file via ``ruamel.yaml`` so comments and formatting
+    are preserved.  Loading is performed asynchronously via ``load_db_async``.
+    """
+
     def __init__(self):
-        # Lock de reentrância para garantir que acessos paralelos não corrompam a instância de YAML
+        # RLock prevents parallel threads from corrupting the shared ruamel.yaml instance
         self.lock = threading.RLock()
-        
-        # Parser principal: preserva formatacao, aceita chaves duplicadas (ultimo valor vence)
+
+        # Main parser: preserves formatting, accepts duplicate keys (last value wins)
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
         self.yaml.allow_duplicate_keys = True
         self.yaml.indent(mapping=2, sequence=4, offset=2)
 
-        # Parser auxiliar de validacao: estrito, usado apenas para detectar chaves duplicadas
+        # Strict auxiliary parser: used only to detect duplicate keys during validation
         self._yaml_strict = YAML()
         self._yaml_strict.preserve_quotes = True
         self._yaml_strict.allow_duplicate_keys = False
-        
-        # Mapeamento de: caminho_absoluto -> objeto_yaml_parseado
+
+        # filepath → parsed YAML document
         self.db_cache = {}
-        
-        # Índice rápido para saber em qual arquivo um item mora: ID -> caminho_absoluto
+
+        # item_id → filepath of the file containing this item
         self.item_index = {}
-        
+
         self.rathena_root = ""
-        
-        # Cache em memória para buscas instantâneas
+
+        # Flat list cache for fast repeated reads
         self.cached_items_list = None
-        
-        # Índice invertido Id → AegisName (O(1) lookup para o Divine Pride Adapter)
+
+        # Inverted Id → AegisName index for O(1) lookups (Divine Pride Adapter)
         self.id_to_aegisname: dict = {}
-        
-        # Estados para a Thread de Carregamento Assíncrono
+
+        # Async loading state flags
         self.is_loading = False
         self.loading_status = "Aguardando inicialização..."
         self.items_loaded = 0
 
     def load_db_async(self, main_filepath: str):
-        """Inicia o processo de leitura em uma Thread separada para não bloquear a API."""
+        """Starts the YAML loading process in a background daemon thread.
+
+        No-ops if loading is already in progress.
+
+        Args:
+            main_filepath: Absolute path to the main ``item_db.yml`` entry point.
+        """
         if self.is_loading:
             return
             
@@ -54,7 +70,13 @@ class YamlDatabase:
         thread.start()
 
     def _load_db_sync(self, main_filepath: str):
-        """Função encapsuladora que executa na thread background."""
+        """Background thread target: calls ``load_db`` and rebuilds the flat item cache.
+
+        Updates ``loading_status`` and ``is_loading`` on completion or error.
+
+        Args:
+            main_filepath: Absolute path to the main ``item_db.yml`` entry point.
+        """
         try:
             self.load_db(main_filepath)
             self.rebuild_cache()
@@ -69,8 +91,13 @@ class YamlDatabase:
                 self.loading_status = "Carregamento Finalizado."
 
     def load_db(self, main_filepath: str):
-        """
-        Carrega o arquivo principal e extrai o root_path para resolver os imports.
+        """Loads the main item_db entry point and recursively resolves Footer imports.
+
+        Deduces the rAthena root from the filepath structure.  Always forces a load of
+        ``db/import/item_db.yml`` even when not listed in the Footer imports.
+
+        Args:
+            main_filepath: Absolute path to the main ``item_db.yml`` file.
         """
         with self.lock:
             main_filepath = main_filepath.replace("\\", "/")
@@ -78,8 +105,8 @@ class YamlDatabase:
                 self.loading_status = f"Arquivo não encontrado: {main_filepath}"
                 print(f"[!] {self.loading_status}")
                 return
-                
-            # Deduzir a pasta raiz do rAthena
+
+            # Deduce the rAthena root from the path structure
             path_parts = main_filepath.split("/")
             if 'db' in path_parts:
                 db_index = path_parts.index('db')
@@ -87,38 +114,42 @@ class YamlDatabase:
             else:
                 from app.core.config import get_rathena_root
                 self.rathena_root = get_rathena_root() or os.path.dirname(os.path.dirname(main_filepath))
-                
+
             print(f"[*] rAthena Root deduzido: {self.rathena_root}")
             self._load_file(main_filepath)
-            
-            # Garante que o item_db customizado sempre seja lido, 
-            # mesmo se o usuário tiver esquecido de configurar o Import no Footer
+
+            # Always load the custom override file, even if missing from Footer imports
             custom_import_path = f"{self.rathena_root}/db/import/item_db.yml".replace('\\', '/')
             if os.path.exists(custom_import_path) and custom_import_path not in self.db_cache:
                 print(f"[*] Forçando carregamento do arquivo customizado: {custom_import_path}")
                 self._load_file(custom_import_path)
 
     def _load_file(self, filepath: str):
-        """Função recursiva que carrega um YAML, mapeia os itens e segue os imports."""
+        """Recursively loads a YAML file, indexes its items, and follows Footer imports.
+
+        Uses the binary cache manager (``load_yaml_with_cache``) for faster repeated loads.
+        No-ops if the file does not exist or is already in the cache.
+
+        Args:
+            filepath: Absolute path to the YAML file to load.
+        """
         if not os.path.exists(filepath):
             print(f"[!] Aviso: Import não encontrado no disco: {filepath}")
             return
 
         if filepath in self.db_cache:
             return
-            
+
         filename = os.path.basename(filepath)
         self.loading_status = f"Lendo arquivo: {filename}..."
         progress_tracker.update(current_db=filename, status=self.loading_status, progress=min(45.0, progress_tracker.progress + 5.0))
 
         try:
-            # ── Load com parser YAML (Cache Binario) ──
             from app.core.cache_manager import load_yaml_with_cache
             data = load_yaml_with_cache(filepath, self.yaml)
-                
+
             self.db_cache[filepath] = data
-            
-            # Indexar os itens no nosso item_index global
+
             count = 0
             if data and 'Body' in data and isinstance(data['Body'], list):
                 for item in data['Body']:
@@ -128,21 +159,26 @@ class YamlDatabase:
                         self.item_index[item['Id']] = filepath
                         count += 1
                         self.items_loaded += 1
-            
+
             print(f"[*] {count} itens carregados de: {filename}")
-            
-            # Seguir as ramificações de Imports
+
+            # Follow Footer → Imports to load referenced files recursively
             if data and 'Footer' in data and 'Imports' in data['Footer']:
                 for imp in data['Footer']['Imports']:
                     if 'Path' in imp:
                         import_rel_path = imp['Path'].replace('\\', '/')
                         import_abs_path = f"{self.rathena_root}/{import_rel_path}"
                         self._load_file(import_abs_path)
-                        
+
         except Exception as e:
             print(f"[!] Falha ao fazer parse de {filepath}: {e}")
 
     def rebuild_cache(self):
+        """Rebuilds the flat ``cached_items_list`` and ``id_to_aegisname`` index from all cached documents.
+
+        Annotates each item with ``_source`` (``"custom"`` or ``"rathena"``) based on whether its
+        file lives under ``db/import/``.  Result is sorted by ``Id``.
+        """
         all_items = []
         for filepath, data in self.db_cache.items():
             if data and 'Body' in data and isinstance(data['Body'], list):
@@ -154,7 +190,7 @@ class YamlDatabase:
                     all_items.append(annotated)
         all_items.sort(key=lambda x: x.get('Id', 0))
         self.cached_items_list = all_items
-        # Reconstrói o índice invertido Id → AegisName junto com o cache
+        # Rebuild the inverted Id → AegisName index alongside the main cache
         self.id_to_aegisname = {
             item.get('Id'): item.get('AegisName')
             for item in all_items
@@ -162,17 +198,27 @@ class YamlDatabase:
         }
 
     def get_aegisname_by_id(self, item_id: int) -> 'Optional[str]':
-        """
-        Lookup O(1) de AegisName pelo ID numérico do item.
-        Retorna None se o item não existir no banco local.
-        Usado pelo DivinePrideAdapter para traduzir drops sem requisições HTTP adicionais.
+        """O(1) AegisName lookup by numeric item ID.
+
+        Used by the Divine Pride Adapter to translate item drops without
+        making additional HTTP requests.
+
+        Args:
+            item_id: Numeric rAthena item ID.
+
+        Returns:
+            str | None: The AegisName string, or ``None`` if not found.
         """
         if self.cached_items_list is None:
             self.rebuild_cache()
         return self.id_to_aegisname.get(item_id)
 
     def get_items(self):
-        """Retorna a lista em cache com TODOS os itens de TODOS os arquivos."""
+        """Returns the flat list of all items, rebuilding the cache if necessary.
+
+        Returns:
+            list: All item entries from all loaded YAML files, sorted by ``Id``.
+        """
         if self.cached_items_list is None:
             self.rebuild_cache()
         return self.cached_items_list
@@ -188,22 +234,43 @@ class YamlDatabase:
         search_target: str = "name",
         item_type: str = ""
     ):
+        """Filters and paginates the item list with multi-target search support.
+
+        Filter priority:
+        1. ``source`` filter (``"rathena"`` / ``"custom"``).
+        2. ``item_type`` filter (matched against the ``Type`` field).
+        3. Text search via ``search_query`` / ``search`` against ``search_target``
+           (``"name"`` or ``"script"``).  Legacy ``[script]:`` prefix is also supported.
+
+        Args:
+            page: 1-based page number (ignored if ``skip`` is provided).
+            limit: Maximum entries per page.
+            search: Fallback search string (superseded by ``search_query``).
+            source: Optional source filter (``"rathena"`` or ``"custom"``).
+            skip: If provided, overrides ``page`` as the start offset.
+            search_query: Primary search string.
+            search_target: Search mode — ``"name"`` or ``"script"``.
+            item_type: Optional ``Type`` field filter.
+
+        Returns:
+            tuple: ``(paginated_list, total_count)``.
+        """
         items = self.get_items()
         filtered = items
 
-        # 1. Filtro por origem (_source)
+        # 1. Source filter
         if source and source in ('rathena', 'custom'):
             filtered = [i for i in filtered if i.get('_source') == source]
 
-        # 2. Filtro por tipo de item (item_type)
+        # 2. Item type filter
         if item_type and item_type.strip() and item_type.strip().lower() not in ('all', 'todos', ''):
             target_type = item_type.strip().lower()
             filtered = [i for i in filtered if str(i.get('Type', '')).lower() == target_type]
 
-        # 3. Filtro por texto de busca (search_query ou search) e alvo (search_target)
+        # 3. Text search: effective_query resolved from search_query or search
         effective_query = (search_query or search).strip().lower()
         if effective_query:
-            # Compatibilidade com prefixo antigo [script] se não for passado explicitamente search_target="script"
+            # Support legacy [script]: prefix when search_target is not explicitly set
             if effective_query.startswith('[script]'):
                 search_target = "script"
                 effective_query = effective_query[8:].strip()
@@ -219,7 +286,7 @@ class YamlDatabase:
                     or (i.get('UnequipScript') and effective_query in str(i.get('UnequipScript')).lower())
                     or (i.get('OnUnequipScript') and effective_query in str(i.get('OnUnequipScript')).lower())
                 ]
-            else:  # padrão: "name" (ID, Name, AegisName ou identifiedDisplayName)
+            else:  # default: "name" (ID, Name, AegisName or identifiedDisplayName)
                 filtered = [
                     i for i in filtered
                     if effective_query in str(i.get('Id', ''))
@@ -251,20 +318,20 @@ class YamlDatabase:
         return None
 
     def _wrap_scripts_for_dump(self, obj):
-        """
-        Percorre recursivamente o objeto YAML e converte qualquer string de
-        script multilinhas em LiteralScalarString, forçando o ruamel.yaml a
-        serializar com o estilo de bloco (pipe |) em vez de uma linha só.
+        """Converts multiline script strings to ``LiteralScalarString`` so ruamel.yaml uses block-style pipe (``|``).
 
-        Chamado temporariamente antes do dump e revertido em seguida (os objetos
-        LiteralScalarString são subclasses de str, por isso não afetam a memória).
+        Traverses the object tree recursively.  Called temporarily before ``yaml.dump()`` —
+        ``LiteralScalarString`` is a ``str`` subclass so in-memory objects are unaffected.
+
+        Args:
+            obj: Any Python dict or list (in-place mutation).
         """
         SCRIPT_KEYS = {'Script', 'EquipScript', 'UnEquipScript', 'OnEquipScript', 'OnUnequipScript'}
         if isinstance(obj, dict):
             for key in list(obj.keys()):
                 val = obj[key]
                 if key in SCRIPT_KEYS and isinstance(val, str) and val.strip():
-                    # Garante que termina com \n (exigido pelo block scalar do YAML)
+                    # Ensure trailing newline required by YAML block scalar
                     normalized = val if val.endswith('\n') else val + '\n'
                     obj[key] = LiteralScalarString(normalized)
                 else:
@@ -274,10 +341,25 @@ class YamlDatabase:
                 self._wrap_scripts_for_dump(item)
 
     def sanitize_item_for_yaml(self, item: dict) -> dict:
-        """
-        Sanitiza e higieniza os dados do item ANTES da serialização para YAML via ruamel.yaml.
-        Garante que regras do rAthena (EquipLevel, ArmorLevel, remoção de nulos/zeros indesejados)
-        sejam aplicadas rigorosamente para que o console do map-server não reporte avisos.
+        """Sanitizes item data before YAML serialization.
+
+        Enforces rAthena's strict field rules so the map-server does not report
+        warnings.  Main corrections applied:
+
+        1. **EquipLevel** normalization: collapses ``{Min, Max}`` dicts into scalars
+           when ``Max == 0`` or ``Max < Min``; removes when both are zero.
+        2. **ArmorLevel** enforcement: sets to ``1`` when ``Type`` is ``Armor``;
+           removes from non-armor items.
+        3. **WeaponLevel** enforcement: sets to ``1`` when ``Type`` is ``Weapon``;
+           removes from non-weapon items.
+        4. **Zero-default cleanup**: removes numeric fields whose value matches
+           the rAthena engine default (to keep YAML minimal).
+
+        Args:
+            item: Mutable item dict (modified in place and returned).
+
+        Returns:
+            dict: The sanitized item dict.
         """
         if not isinstance(item, dict):
             return item
