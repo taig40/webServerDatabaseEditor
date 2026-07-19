@@ -5,25 +5,25 @@ from typing import Any, Dict, List, Optional
 
 
 class MapDropParser:
-    """
-    Parser para map_drops.yml do rAthena.
+    """Parser and writer for ``map_drops.yml`` in the rAthena database.
 
-    Estrutura do arquivo:
-      Header: { Type: MAP_DROP_DB, Version: 2 }
-      Body:
-        - Map: <nome_do_mapa>
-          GlobalDrops:            # opcional
-            - Index: <int>
-              Item: <AegisName>
-              Rate: <int>  # n/100000
-              RandomOptionGroup: <str>  # opcional
-          SpecificDrops:          # opcional
-            - Monster: <AegisName>
-              Drops:
-                - Index: <int>
-                  Item: <AegisName>
-                  Rate: <int>
-                  RandomOptionGroup: <str>  # opcional
+    Expected file structure::
+
+        Header: { Type: MAP_DROP_DB, Version: 2 }
+        Body:
+          - Map: <map_name>
+            GlobalDrops:            # optional
+              - Index: <int>
+                Item: <AegisName>
+                Rate: <int>         # n/100000
+                RandomOptionGroup: <str>  # optional
+            SpecificDrops:          # optional
+              - Monster: <AegisName>
+                Drops:
+                  - Index: <int>
+                    Item: <AegisName>
+                    Rate: <int>
+                    RandomOptionGroup: <str>  # optional
     """
 
     def __init__(self):
@@ -34,10 +34,15 @@ class MapDropParser:
         self.file_path: str = ""
         self._raw_yaml = None
 
-    # ─── Path Resolution ──────────────────────────────────────────────────────
-
     def _resolve_path(self) -> str:
-        """Resolve o caminho do map_drops.yml a partir das variáveis de ambiente."""
+        """Resolves the absolute path to ``map_drops.yml`` from environment variables.
+
+        Checks ``SERVER_DB_BASE_PATH`` first, then falls back to deriving the
+        base from ``ITEM_DB_PATH``.  Prefers the ``re/`` variant over ``pre-re/``.
+
+        Returns:
+            str: Absolute path to the file, or ``""`` if not resolvable.
+        """
         db_base = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
         if not db_base:
             item_db = os.environ.get("ITEM_DB_PATH", "").strip()
@@ -56,14 +61,16 @@ class MapDropParser:
         return ""
 
     def _resolve_rathena_root(self) -> str:
-        """Resolve a raiz do rAthena para localizar npc/custom."""
+        """Returns the rAthena installation root using the shared config helper."""
         from app.core.config import get_rathena_root
         return get_rathena_root()
 
-    # ─── Load ─────────────────────────────────────────────────────────────────
-
     def load(self) -> Dict[str, Any]:
-        """Carrega e retorna o conteúdo de map_drops.yml como dict serializável."""
+        """Loads and returns ``map_drops.yml`` as a serializable dict.
+
+        Returns:
+            dict: ``{"maps": list, "file_path": str}``.
+        """
         self.file_path = self._resolve_path()
         if not self.file_path or not os.path.exists(self.file_path):
             return {"maps": [], "file_path": self.file_path or ""}
