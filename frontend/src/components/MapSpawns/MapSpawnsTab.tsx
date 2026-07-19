@@ -1,3 +1,7 @@
+/**
+ * MapSpawnsTab.tsx — Visual drag-and-drop management tab for custom map spawns.
+ */
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import axios from 'axios';
@@ -5,6 +9,9 @@ import { API_URL } from '../../config/env';
 import { Loader2, Search, Skull, Target, Trash2, Globe, RefreshCw, AlertCircle, Edit2, Save } from 'lucide-react';
 import MonsterAnimator from '../MonsterAnimator';
 
+/**
+ * Renders an editable spawn card showing monster animation, coordinates, amount, and respawn delay.
+ */
 const SpawnCard: React.FC<{ spawn: SpawnEntry, activeMap: string, deleteSpawn: (id: string) => void, fetchSpawns: (map: string) => void }> = ({ spawn, activeMap, deleteSpawn, fetchSpawns }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState({
@@ -100,6 +107,7 @@ const SpawnCard: React.FC<{ spawn: SpawnEntry, activeMap: string, deleteSpawn: (
   );
 };
 
+/** Lightweight reference object for monster lookup entries. */
 interface MobRef {
   Id: number;
   AegisName: string;
@@ -107,6 +115,7 @@ interface MobRef {
   is_custom?: boolean;
 }
 
+/** Data contract representing a single custom spawn row inside a map file. */
 interface SpawnEntry {
   uuid: string;
   map: string;
@@ -123,6 +132,9 @@ interface SpawnEntry {
   raw_line: string;
 }
 
+/**
+ * Main management interface for drag-and-drop custom monster spawns on active maps.
+ */
 export const MapSpawnsTab: React.FC = () => {
   const [mobList, setMobList] = useState<MobRef[]>([]);
   const [loadingMobs, setLoadingMobs] = useState(false);
@@ -135,7 +147,6 @@ export const MapSpawnsTab: React.FC = () => {
   const [spawns, setSpawns] = useState<SpawnEntry[]>([]);
   const [loadingSpawns, setLoadingSpawns] = useState(false);
 
-  // ─── INIT ───
   useEffect(() => {
     fetchMaps();
     fetchMobs();
@@ -184,7 +195,7 @@ export const MapSpawnsTab: React.FC = () => {
 
   const filteredMobs = useMemo(() => {
     const q = mobSearch.toLowerCase().trim();
-    if (!q) return mobList.slice(0, 50); // limit empty search to 50 for performance
+    if (!q) return mobList.slice(0, 50);
     return mobList.filter(m => 
       String(m.Id).includes(q) || 
       (m.Name && m.Name.toLowerCase().includes(q)) || 
@@ -199,7 +210,6 @@ export const MapSpawnsTab: React.FC = () => {
       const mob = mobList.find(m => String(m.Id) === mobIdStr);
       if (!mob || !activeMap) return;
 
-      // Call API to inject spawn
       try {
         await axios.post(`${API_URL}/api/scripts/custom-spawns/maps/${activeMap}`, {
           mapname: activeMap,
