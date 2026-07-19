@@ -7,7 +7,6 @@ from app.services.map_drop_parser import map_drop_db
 router = APIRouter()
 
 
-# ─── Pydantic Models ──────────────────────────────────────────────────────────
 
 class DropEntry(BaseModel):
     Index: int = 0
@@ -35,12 +34,15 @@ class PreviewPayload(BaseModel):
     maps: List[MapEntry]
 
 
-# ─── Endpoints ────────────────────────────────────────────────────────────────
-
 @router.get("")
 async def get_map_drops():
-    """
-    Faz o parse completo de map_drops.yml e retorna como JSON.
+    """Parses ``map_drops.yml`` and returns the full content as structured JSON.
+
+    Returns:
+        dict: Parsed map drops data.
+
+    Raises:
+        HTTPException: 500 on file read/parse error.
     """
     try:
         data = map_drop_db.load()
@@ -51,8 +53,16 @@ async def get_map_drops():
 
 @router.put("")
 async def save_map_drops(payload: MapDropsPayload):
-    """
-    Recebe o JSON modificado e sobrescreve map_drops.yml mantendo a estrutura.
+    """Serializes the modified map drops payload and overwrites ``map_drops.yml``.
+
+    Args:
+        payload: Full map drops payload.
+
+    Returns:
+        dict: ``{"success": True, "message": "..."}``.`
+
+    Raises:
+        HTTPException: 404 if the file does not exist; 500 on write error.
     """
     try:
         maps_raw = [m.dict() for m in payload.maps]
@@ -66,8 +76,18 @@ async def save_map_drops(payload: MapDropsPayload):
 
 @router.post("/preview")
 async def preview_yaml(payload: PreviewPayload):
-    """
-    Retorna o YAML gerado pelo payload sem salvar no disco (para o painel Raw Code).
+    """Returns the YAML string generated from the payload without writing to disk.
+
+    Used to drive the Raw Code preview panel in the Map Drops Editor.
+
+    Args:
+        payload: Map drops payload to convert.
+
+    Returns:
+        dict: ``{"yaml": "..."}``.`
+
+    Raises:
+        HTTPException: 500 on serialization error.
     """
     try:
         maps_raw = [m.dict() for m in payload.maps]

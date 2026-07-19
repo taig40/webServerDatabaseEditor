@@ -19,6 +19,11 @@ class ComboCreate(BaseModel):
 
 @router.get("/status")
 async def get_combo_status():
+    """Returns the current background loading status for the combo database.
+
+    Returns:
+        dict: Keys ``is_loading``, ``message``, and ``combos_loaded``.
+    """
     return {
         "is_loading": combo_db.is_loading,
         "message": combo_db.loading_status,
@@ -31,6 +36,18 @@ async def get_combos(
     skip: int = Query(0),
     limit: int = Query(50000),
 ):
+    """Returns a paginated list of all item combos.
+
+    Args:
+        skip: Number of entries to skip.
+        limit: Maximum number of entries to return.
+
+    Returns:
+        dict: ``total``, ``skip``, ``limit``, and ``combos`` list.
+
+    Raises:
+        HTTPException: 503 if the database is still loading.
+    """
     if combo_db.is_loading:
         raise HTTPException(status_code=503, detail="Combo DB ainda carregando.")
     combos = combo_db.get_combos()
@@ -44,12 +61,24 @@ async def get_combos(
 
 @router.put("/{index}")
 async def update_combo(index: str, body: ComboUpdate):
+    """Updates an existing item combo entry.
+
+    Unknown keys from the frontend are discarded by ``exclude_none=True`` on the model.
+
+    Args:
+        index: String index key identifying the combo.
+        body: Partial combo payload.
+
+    Returns:
+        dict: The updated combo object.
+
+    Raises:
+        HTTPException: 503 if loading; 404 if not found.
+    """
     if combo_db.is_loading:
         raise HTTPException(status_code=503, detail="Combo DB ainda carregando.")
-    
-    # Validação estrita: descarta chaves inválidas vindas do front-end e ignora campos nulos
+
     validated_data = body.data.model_dump(exclude_none=True)
-    
     result = combo_db.update_combo(index, validated_data)
     if result is None:
         raise HTTPException(status_code=404, detail="Combo não encontrado.")
@@ -58,24 +87,38 @@ async def update_combo(index: str, body: ComboUpdate):
 
 @router.post("/")
 async def create_combo(body: ComboCreate):
+    """Creates a new item combo entry in ``db/import/item_combos.yml``.
+
+    Args:
+        body: Full combo payload.
+
+    Returns:
+        dict: The newly created combo object.
+
+    Raises:
+        HTTPException: 503 if the database is still loading.
+    """
     if combo_db.is_loading:
         raise HTTPException(status_code=503, detail="Combo DB ainda carregando.")
-    
-    # Validação estrita: descarta chaves inválidas e ignora campos nulos
+
     validated_data = body.data.model_dump(exclude_none=True)
-    
     result = combo_db.add_combo(validated_data)
     return result
 
 
 @router.delete("/{index}", status_code=200)
 async def delete_combo(index: str):
-    """
-    Remove permanentemente um combo de db/import/item_combos.yml.
+    """Permanently removes an item combo from ``db/import/item_combos.yml``.
 
-    Retorna 403 se o combo pertencer ao banco oficial do rAthena (db/re/ ou db/pre-re/).
-    Retorna 404 se o combo não existir no índice.
-    Retorna 200 { deleted: true, index } em caso de sucesso.
+    Args:
+        index: String index key identifying the combo.
+
+    Returns:
+        dict: ``{"deleted": True, "index": index}`` on success.
+
+    Raises:
+        HTTPException: 503 if loading; 403 if the combo belongs to the official
+            rAthena database; 404 if not found.
     """
     if combo_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando.")

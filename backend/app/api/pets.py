@@ -18,6 +18,11 @@ class PetCreate(BaseModel):
 
 @router.get("/status")
 async def get_pet_status():
+    """Returns the current background loading status for the pet database.
+
+    Returns:
+        dict: Keys ``is_loading``, ``message``, and ``pets_loaded``.
+    """
     return {
         "is_loading": pet_db.is_loading,
         "message": pet_db.loading_status,
@@ -30,6 +35,18 @@ async def get_pets(
     skip: int = Query(0),
     limit: int = Query(50000),
 ):
+    """Returns a paginated list of all pets from the in-memory database.
+
+    Args:
+        skip: Number of entries to skip.
+        limit: Maximum number of entries to return.
+
+    Returns:
+        dict: ``total``, ``skip``, ``limit``, and ``pets`` list.
+
+    Raises:
+        HTTPException: 503 if the database is still loading.
+    """
     if pet_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     pets = pet_db.get_pets()
@@ -43,6 +60,17 @@ async def get_pets(
 
 @router.get("/{mob}")
 async def get_pet(mob: str):
+    """Returns the full pet entry for a given mob AegisName or ID string.
+
+    Args:
+        mob: Pet mob AegisName or numeric ID as a string.
+
+    Returns:
+        dict: Complete pet object.
+
+    Raises:
+        HTTPException: 503 if loading; 404 if not found.
+    """
     if pet_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     pet = pet_db.get_pet(mob)
@@ -53,6 +81,18 @@ async def get_pet(mob: str):
 
 @router.put("/{mob}")
 async def update_pet(mob: str, body: PetUpdate):
+    """Updates an existing pet entry.
+
+    Args:
+        mob: Pet mob AegisName or numeric ID as a string.
+        body: Updated pet data dict.
+
+    Returns:
+        dict: The updated pet object.
+
+    Raises:
+        HTTPException: 503 if loading; 404 if not found.
+    """
     if pet_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     result = pet_db.update_pet(mob, body.data)
@@ -63,6 +103,17 @@ async def update_pet(mob: str, body: PetUpdate):
 
 @router.post("/")
 async def create_pet(body: PetCreate):
+    """Creates a new pet entry in ``db/import/pet_db.yml``.
+
+    Args:
+        body: Full pet data dict.
+
+    Returns:
+        dict: The newly created pet object.
+
+    Raises:
+        HTTPException: 503 if the database is still loading.
+    """
     if pet_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     result = pet_db.add_pet(body.data)

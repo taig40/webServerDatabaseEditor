@@ -5,43 +5,67 @@ import threading
 from app.services.load_progress import progress_tracker
 
 class MobDatabase:
+    """In-memory store for ``mob_db.yml`` data, loaded recursively following YAML Import headers.
+
+    Maintains a ``db_cache`` (filepath → parsed YAML) and a ``mob_index`` (mob_id → filepath)
+    for O(1) lookups.  All mutations write back to the owning YAML file via ``ruamel.yaml``
+    so comments are preserved.
+
+    Loading is performed asynchronously via ``load_db_async`` to avoid blocking the API.
+    Use ``is_loading`` / ``loading_status`` to poll readiness.
+    """
+
     def __init__(self):
-        # Configure ruamel.yaml to preserve formatting and comments
+        # RLock prevents parallel threads from corrupting the shared ruamel.yaml instance
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
         self.yaml.allow_duplicate_keys = True
         self.yaml.indent(mapping=2, sequence=4, offset=2)
-        
-        # Absolute path -> Parsed YAML object
+
+        # filepath → parsed YAML document
         self.db_cache = {}
-        
-        # ID -> Absolute path of the file containing the mob
+
+        # mob_id → filepath of the file containing this mob
         self.mob_index = {}
-        
+
         self.rathena_root = ""
-        
-        # Cache em memória para buscas instantâneas
+
+        # Flat list cache for fast repeated reads
         self.cached_mobs_list = None
-        
-        # Async loading state
+
+        # Async loading state flags
         self.is_loading = False
         self.loading_status = "Aguardando inicialização..."
         self.mobs_loaded = 0
 
     def load_db_async(self, main_filepath: str):
+        """Starts the YAML loading process in a background daemon thread.
+
+        No-ops if loading is already in progress.
+
+        Args:
+            main_filepath: Absolute path to the main ``mob_db.yml`` file.
+        """
         if self.is_loading:
             return
-            
+
         self.is_loading = True
         self.mobs_loaded = 0
         self.loading_status = "Iniciando engine de parse de monstros YAML..."
         progress_tracker.update(current_db="mob_db.yml", status=self.loading_status, progress=50.0)
-        
+
         thread = threading.Thread(target=self._load_db_sync, args=(main_filepath,))
         thread.daemon = True
         thread.start()
 
     def _load_db_sync(self, main_filepath: str):
+        """Background thread target: calls ``load_db`` and rebuilds the flat mob cache.
+
+        Updates ``loading_status`` and ``is_loading`` on completion or error.
+
+        Args:
+            main_filepath: Absolute path to the main ``mob_db.yml`` file.
+        """
         try:
             self.load_db(main_filepath)
             self.rebuild_cache()
@@ -56,13 +80,20 @@ class MobDatabase:
                 self.loading_status = "Carregamento Finalizado."
 
     def load_db(self, main_filepath: str):
+        """Loads the main mob_db entry point and recursively resolves Footer imports.
+
+        Deduces the rAthena root from the filepath structure.  Always forces a load of
+        ``db/import/mob_db.yml`` even when not listed in the Footer imports.
+
+        Args:
+            main_filepath: Absolute path to the main ``mob_db.yml`` file.
+        """
         main_filepath = main_filepath.replace("\\", "/")
         if not os.path.exists(main_filepath):
             self.loading_status = f"Arquivo não encontrado: {main_filepath}"
             print(f"[!] {self.loading_status}")
             return
-            
-        # Deduce rAthena root path
+
         path_parts = main_filepath.split("/")
         if 'db' in path_parts:
             db_index = path_parts.index('db')
@@ -70,11 +101,11 @@ class MobDatabase:
         else:
             from app.core.config import get_rathena_root
             self.rathena_root = get_rathena_root() or os.path.dirname(os.path.dirname(main_filepath))
-            
+
         print(f"[*] rAthena Root deduzido para monstros: {self.rathena_root}")
         self._load_file(main_filepath)
-        
-        # Ensure custom mob_db is always loaded
+
+        # Always load the custom override file, even if missing from Footer imports
         custom_import_path = f"{self.rathena_root}/db/import/mob_db.yml".replace('\\', '/')
         if os.path.exists(custom_import_path) and custom_import_path not in self.db_cache:
             print(f"[*] Forçando carregamento do arquivo de monstros customizados: {custom_import_path}")
@@ -105,10 +136,10 @@ class MobDatabase:
                         self.mob_index[mob['Id']] = filepath
                         count += 1
                         self.mobs_loaded += 1
-            
+
             print(f"[*] {count} monstros carregados de: {filename}")
-            
-            # Follow imports
+
+            # Follow Footer → Imports to load referenced files recursively
             if data and 'Footer' in data and 'Imports' in data['Footer']:
                 for imp in data['Footer']['Imports']:
                     if 'Path' in imp:
@@ -120,6 +151,11 @@ class MobDatabase:
             print(f"[!] Falha ao fazer parse de {filepath}: {e}")
 
     def rebuild_cache(self):
+        """Rebuilds the flat ``cached_mobs_list`` from all entries in ``db_cache``.
+
+        Annotates each mob with ``_source`` (``"custom"`` or ``"rathena"``) based on
+        whether its file lives under ``db/import/``.  Result is sorted by ``Id``.
+        """
         all_mobs = []
         for filepath, data in self.db_cache.items():
             if data and 'Body' in data and isinstance(data['Body'], list):
@@ -133,11 +169,31 @@ class MobDatabase:
         self.cached_mobs_list = all_mobs
 
     def get_mobs(self):
+        """Returns the flat list of all mobs, rebuilding the cache if necessary.
+
+        Returns:
+            list: All mob entries from all loaded YAML files, sorted by ``Id``.
+        """
         if self.cached_mobs_list is None:
             self.rebuild_cache()
         return self.cached_mobs_list
 
     def search_mobs(self, page: int = 1, limit: int = 50, search: str = "", source: str = "", skip: int = None):
+        """Filters and paginates the mob list.
+
+        Filters by ``source`` (``"rathena"`` / ``"custom"``) and by a search string
+        matched against ``Id``, ``Name``, ``AegisName``, and ``JapaneseName`` (case-insensitive).
+
+        Args:
+            page: 1-based page number (ignored if ``skip`` is provided).
+            limit: Maximum entries per page.
+            search: Optional substring filter.
+            source: Optional source filter (``"rathena"`` or ``"custom"``).
+            skip: If provided, overrides ``page`` as the start offset.
+
+        Returns:
+            tuple: ``(paginated_list, total_count)``.
+        """
         mobs = self.get_mobs()
         filtered = mobs
 
@@ -164,9 +220,13 @@ class MobDatabase:
         return paginated, total_count
 
     def _wrap_scripts_for_dump(self, obj):
-        """
-        Converte strings de script multilinhas para LiteralScalarString,
-        forçando o ruamel.yaml a usar o estilo de bloco (pipe |) no YAML.
+        """Converts multiline script strings to ``LiteralScalarString`` so ruamel.yaml
+        uses the block-style pipe (``|``) notation when serializing to YAML.
+
+        Applies recursively to all dicts and lists in the object tree.
+
+        Args:
+            obj: Any Python dict or list (in-place mutation).
         """
         SCRIPT_KEYS = {'Script', 'OnKillScript', 'CaptureScript'}
         if isinstance(obj, dict):
@@ -182,12 +242,23 @@ class MobDatabase:
                 self._wrap_scripts_for_dump(item)
 
     def save_file(self, filepath: str):
+        """Serializes the cached YAML document back to disk for the given filepath.
+
+        Temporarily strips all ``_``-prefixed metadata keys before dumping and
+        restores them afterwards to keep the in-memory state intact.  Script strings
+        are wrapped in ``LiteralScalarString`` to preserve the block-pipe style.
+
+        Args:
+            filepath: Absolute path to the YAML file to write.
+
+        Returns:
+            bool: ``True`` on success, ``False`` if the path is not in the cache.
+        """
         if filepath not in self.db_cache:
             return False
-        
-        # Temporarily strip metadata keys (starting with '_') from the cached data before dumping
+
         removed_keys = []
-        
+
         def strip_metadata(obj):
             if isinstance(obj, dict):
                 to_remove = [k for k in obj.keys() if isinstance(k, str) and k.startswith('_')]
@@ -199,32 +270,44 @@ class MobDatabase:
             elif isinstance(obj, list):
                 for item in obj:
                     strip_metadata(item)
-                    
+
         data = self.db_cache[filepath]
         strip_metadata(data)
-        # Converte scripts para LiteralScalarString antes do dump → pipe | no YAML
         self._wrap_scripts_for_dump(data)
-        
+
         try:
             with open(filepath, 'w', encoding='utf-8') as f:
                 self.yaml.dump(data, f)
         finally:
-            # Restore the keys back to their original dictionary objects
             for obj, k, val in removed_keys:
                 obj[k] = val
-                
+
         return True
 
 
     def update_mob(self, mob_id: int, updated_data: dict, save_mode: str = 'import'):
-        if mob_id not in self.mob_index:
-            return None
+        """Updates a mob entry in the YAML database.
+
+        **Save modes:**
+        - ``'import'`` (default): If the mob lives in the official rAthena db, writes an
+          override entry to ``db/import/mob_db.yml``.  If it already has an entry there,
+          merges the changes in place.
+        - ``'overwrite'``: Writes directly into whatever file currently owns the mob.
+
+        Args:
+            mob_id: Numeric mob ID.
+            updated_data: Dict of field values to apply.  ``None`` / empty-string values
+                delete the corresponding field.
+            save_mode: ``'import'`` or ``'overwrite'``.
+
+        Returns:
+            dict: The updated mob entry annotated with ``_source``, or ``None`` if not found.
+        """
 
         target_filepath = self.mob_index[mob_id]
         norm_path = target_filepath.replace('\\', '/')
         import_db_path = f"{self.rathena_root}/db/import/mob_db.yml".replace('\\', '/')
 
-        # --- If the mob lives in the original rAthena db ---
         if '/db/import/' not in norm_path:
             original_data = self.db_cache[target_filepath]
             original_mob = None
@@ -236,7 +319,6 @@ class MobDatabase:
                 return None
 
             if save_mode == 'overwrite':
-                # Write directly into the original file
                 for key, value in updated_data.items():
                     if value == "" or value is None:
                         original_mob.pop(key, None)
@@ -247,7 +329,7 @@ class MobDatabase:
                 result['_source'] = 'rathena'
                 return result
 
-            # Default: 'import' mode — write override to db/import/
+            # 'import' mode: write override to db/import/mob_db.yml
             override_mob = dict(original_mob)
             for key, value in updated_data.items():
                 if value == "" or value is None:
@@ -255,7 +337,7 @@ class MobDatabase:
                 else:
                     override_mob[key] = value
 
-            # Ensure the import file is loaded in cache
+            # Load import file into cache if not present
             if import_db_path not in self.db_cache:
                 if os.path.exists(import_db_path):
                     self._load_file(import_db_path)
@@ -290,7 +372,7 @@ class MobDatabase:
             self.rebuild_cache()
             return saved_mob
 
-        # --- Mob already lives in db/import/: update in place ---
+        # Mob already lives in db/import/: update in place
         data = self.db_cache[target_filepath]
         for mob in data.get('Body', []):
             if mob.get('Id') == mob_id:
@@ -309,6 +391,16 @@ class MobDatabase:
 
 
     def add_custom_mob(self, mob_data: dict):
+        """Adds a new mob entry to ``db/import/mob_db.yml``.
+
+        Creates the file with a minimal YAML header if it does not exist.
+
+        Args:
+            mob_data: Complete mob dict (must include ``Id``).
+
+        Returns:
+            dict: The added mob entry.
+        """
         import_db_path = f"{self.rathena_root}/db/import/mob_db.yml".replace("\\", "/")
         
         if import_db_path not in self.db_cache:
@@ -333,15 +425,20 @@ class MobDatabase:
         return mob_data
 
     def delete_mob(self, mob_id: int) -> bool:
-        """
-        Remove permanentemente um monstro do arquivo YAML em que reside.
+        """Permanently removes a mob from the YAML file it resides in.
 
-        Guard de Segurança (SRP):
-        - Apenas monstros que vivem em db/import/ podem ser excluídos.
-        - Monstros do banco oficial do rAthena (db/re/ ou db/pre-re/) lançam
-          PermissionError que a rota da API converte em HTTP 403.
+        **Security guard:** only mobs residing under ``db/import/`` can be deleted.
+        Mobs from the official rAthena database (``db/re/`` or ``db/pre-re/``) raise
+        ``PermissionError``, which the API route converts to HTTP 403.
 
-        Retorna True em caso de sucesso, False se o monstro não foi encontrado.
+        Args:
+            mob_id: Numeric mob ID.
+
+        Returns:
+            bool: ``True`` on success, ``False`` if the mob was not found.
+
+        Raises:
+            PermissionError: If the mob belongs to the official rAthena database.
         """
         if mob_id not in self.mob_index:
             return False
@@ -370,7 +467,7 @@ class MobDatabase:
 
         self.save_file(filepath)
         del self.mob_index[mob_id]
-        self.cached_mobs_list = None   # Invalida o cache para a listagem refletir a remoção
+        self.cached_mobs_list = None  # Invalidate to reflect the removal on next read
         return True
 
 

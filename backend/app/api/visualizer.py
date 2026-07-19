@@ -16,15 +16,27 @@ async def get_preview(
     is_male: bool = Query(True, description="Define se o gênero do personagem é masculino"),
     direction: int = Query(0, description="Direção do personagem (0-7)")
 ):
-    """
-    Retorna a imagem composta do personagem (Corpo + Cabeça + Acessório/Chapéu)
-    diretamente como uma resposta de imagem PNG.
-    Aceita 'resource_name' para a resolução do chapéu.
+    """Returns a composite character preview image (Body + Head + Headgear/Robe) as PNG.
+
+    Empty, ``"0"``, ``"None"``, or ``"null"`` resource names are treated as no accessory.
+    The response is served with 1-year immutable cache headers.
+
+    Args:
+        resource_name: Headgear sprite resource name (e.g. ``_CustomWings``).
+        robe_name: Robe/wing sprite resource name (e.g. ``_C_White_Angel_Wing``).
+        is_male: Character gender flag.
+        direction: Sprite direction index (0–7).
+
+    Returns:
+        Response: PNG composite image bytes.
+
+    Raises:
+        HTTPException: 500 if sprite composition fails.
     """
     res_name = resource_name
     if not res_name or res_name.strip() in ("", "0", "None", "null"):
         res_name = ""
-        
+
     rb_name = robe_name
     if not rb_name or rb_name.strip() in ("", "0", "None", "null"):
         rb_name = ""
@@ -41,17 +53,18 @@ from functools import lru_cache
 
 @lru_cache(maxsize=1)
 def get_cached_accessories_list():
-    """
-    Retorna a lista completa de acessórios com cache para evitar
-    reprocessar os arquivos LUA a cada chamada.
-    """
+    """Returns the full accessories list with LRU caching to avoid re-parsing Lua files on every call."""
     return visuals_db.get_all_accessories()
 
 
 @router.get("/accessories")
 def get_accessories():
-    """
-    Retorna a lista completa de acessórios mapeados do cliente (view_id, sprite_name, constant).
+    """Returns the full list of accessories mapped from the client (``view_id``, ``sprite_name``, ``constant``).
+
+    Results are LRU-cached to avoid re-parsing the Lua source files on every request.
+
+    Returns:
+        list: All mapped accessory entries.
     """
     return get_cached_accessories_list()
 
