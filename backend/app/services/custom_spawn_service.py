@@ -9,11 +9,11 @@ def _resolve_rathena_root() -> str:
     return get_rathena_root()
 
 def get_spawn_index_path() -> str:
-    """Retorna o caminho para npc/custom/ui_spawns.txt"""
+    """Retorna o caminho para npc/custom/ui_spawns.conf"""
     root = _resolve_rathena_root()
     if root:
-        return f"{root}/npc/custom/ui_spawns.txt"
-    return os.path.join(os.getcwd(), "ui_spawns.txt").replace("\\", "/")
+        return f"{root}/npc/custom/ui_spawns.conf"
+    return os.path.join(os.getcwd(), "ui_spawns.conf").replace("\\", "/")
 
 def get_spawn_folder() -> str:
     """Retorna a pasta para arquivos individuais npc/custom/spawns/"""
@@ -32,7 +32,7 @@ def ensure_index_file():
         with open(path, "w", encoding="utf-8", newline="\n") as f:
             f.write(
                 "// ============================================================\n"
-                "// ui_spawns.txt — Custom Map Engine Spawns Index\n"
+                "// ui_spawns.conf — Custom Map Engine Spawns Index\n"
                 "// Gerado automaticamente pelo webServerDatabaseEditor\n"
                 "// ============================================================\n\n"
             )
@@ -40,7 +40,7 @@ def ensure_index_file():
 def ensure_import_in_index(map_name: str):
     ensure_index_file()
     path = get_spawn_index_path()
-    import_line = f"import: npc/custom/spawns/{map_name}.txt\n"
+    import_line = f"npc: npc/custom/spawns/{map_name}.txt\n"
     
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
@@ -52,7 +52,7 @@ def ensure_import_in_index(map_name: str):
 def remove_import_from_index(map_name: str):
     ensure_index_file()
     path = get_spawn_index_path()
-    import_line = f"import: npc/custom/spawns/{map_name}.txt"
+    import_line = f"npc: npc/custom/spawns/{map_name}.txt"
     
     with open(path, "r", encoding="utf-8") as f:
         lines = f.readlines()
@@ -70,7 +70,8 @@ def get_active_maps() -> List[str]:
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if line.startswith("import: "):
+            # Supports both import: and npc: for backwards compatibility
+            if line.startswith("import: ") or line.startswith("npc: "):
                 match = re.search(r'spawns/([^/\.]+)\.txt', line)
                 if match:
                     maps.add(match.group(1))

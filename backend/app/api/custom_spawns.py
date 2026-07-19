@@ -11,6 +11,27 @@ from app.services.custom_spawn_service import (
     get_spawn_index_path
 )
 from app.models.item import rAthenaBaseModel
+from app.services.mob_parser import mob_db
+
+def _resolve_mob_name(mobid: Union[str, int], fallback_name: str) -> str:
+    if not mobid:
+        return fallback_name
+    
+    mob_id_str = str(mobid).upper()
+    mob_entry = None
+    
+    if mob_id_str.isdigit():
+        mob_entry = mob_db.get_mob(int(mob_id_str))
+    else:
+        for m in mob_db.mobs.values():
+            if m.get("AegisName", "").upper() == mob_id_str:
+                mob_entry = m
+                break
+                
+    if mob_entry and "Name" in mob_entry:
+        return mob_entry["Name"]
+        
+    return fallback_name
 
 router = APIRouter()
 
@@ -72,6 +93,7 @@ async def inject_map_spawn(payload: SpawnPayload, map_name: str = Path(..., desc
         else:
             if not payload.mobid or not payload.mobname:
                 raise HTTPException(status_code=422, detail="mobid e mobname são obrigatórios.")
+            payload.mobname = _resolve_mob_name(payload.mobid, payload.mobname)
             snippet = payload.format_rathena_spawn(override_map=map_name)
             
         result = append_spawn(map_name, snippet)
@@ -100,6 +122,7 @@ async def edit_map_spawn(payload: SpawnPayload, map_name: str, spawn_uuid: str):
     try:
         if not payload.mobid or not payload.mobname:
             raise HTTPException(status_code=422, detail="mobid e mobname são obrigatórios.")
+        payload.mobname = _resolve_mob_name(payload.mobid, payload.mobname)
         snippet = payload.format_rathena_spawn(override_map=map_name)
         result = update_spawn(map_name, spawn_uuid, snippet)
         if not result.get("updated"):
