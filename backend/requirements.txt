@@ -5,3 +5,8 @@ ruamel.yaml.clib
 pydantic
 Pillow
 python-multipart
+
+# Dependências de Build Desktop (PyInstaller Standalone)
+pyinstaller>=6.0.0
+setuptools
+wheel
