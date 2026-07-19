@@ -9,6 +9,11 @@ router = APIRouter()
 
 @router.get("/status")
 async def get_status():
+    """Returns the current background loading status for the mob database.
+
+    Returns:
+        dict: Keys ``is_loading``, ``message``, and ``mobs_loaded``.
+    """
     return {
         "is_loading": mob_db.is_loading,
         "message": mob_db.loading_status,
@@ -45,6 +50,18 @@ RATHENA_MOB_MODES = {
 }
 
 def parse_mob_modes(modes_val) -> dict:
+    """Normalizes a rAthena Modes field to a canonical bool-keyed dict.
+
+    Accepts integer bitmasks, hexadecimal strings, decimal strings, or the
+    already-expanded dict format. Unknown integer/string formats default to all
+    modes ``False``.
+
+    Args:
+        modes_val: Raw value from the parsed YAML (``int``, ``str``, or ``dict``).
+
+    Returns:
+        dict: Mapping of each ``RATHENA_MOB_MODES`` key to a boolean.
+    """
     clean_modes = {}
     if isinstance(modes_val, int):
         for k, mask in RATHENA_MOB_MODES.items():
@@ -83,6 +100,14 @@ def parse_mob_modes(modes_val) -> dict:
     return clean_modes
 
 def encode_mob_modes(modes_dict) -> dict:
+    """Converts a bool-keyed modes dict back to rAthena YAML format (only ``True`` keys kept).
+
+    Args:
+        modes_dict: Mapping of mode name to boolean value.
+
+    Returns:
+        dict: Sparse dict containing only the modes that are active (``True``).
+    """
     if not isinstance(modes_dict, dict):
         return {}
     encoded = {}
@@ -97,6 +122,14 @@ def encode_mob_modes(modes_dict) -> dict:
     return encoded
 
 def _normalize_mob_entry(mob: dict) -> dict:
+    """Enriches a raw mob dict with normalized ``Ai``, ``Modes``, ``MobSkills``, and ``is_custom``.
+
+    Args:
+        mob: Raw mob entry from ``mob_db.db_cache``.
+
+    Returns:
+        dict: Enriched mob entry ready for API serialization.
+    """
     result = dict(mob)
     mob_id = result.get("Id")
     ai_val = result.get("Ai")
@@ -118,9 +151,15 @@ def _normalize_mob_entry(mob: dict) -> dict:
 
 @router.get("/references")
 async def get_mob_references():
-    """
-    Retorna uma lista leve de todos os monstros (Id, AegisName, Name, is_custom)
-    para o ReferencePicker / Smart Autocomplete do Front-end.
+    """Returns a lightweight list of all monsters for the ReferencePicker / Smart Autocomplete.
+
+    Each entry contains only ``Id``, ``AegisName``, ``Name``, and ``is_custom``.
+
+    Returns:
+        dict: A ``{"mobs": [...]}`` payload for the frontend autocomplete widget.
+
+    Raises:
+        HTTPException: 503 if the database is still loading.
     """
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
@@ -146,6 +185,21 @@ async def get_mobs(
     source: str = Query("", description="Filtro de origem: rathena ou custom"),
     skip: Optional[int] = Query(None, description="Opcional retrocompatibilidade com skip")
 ):
+    """Returns a paginated, normalized list of monsters from the in-memory YAML database.
+
+    Args:
+        page: 1-based page index.
+        limit: Items per page (capped at 100).
+        search: Free-text search against ID, Name, or AegisName.
+        source: Origin filter — ``"rathena"`` or ``"custom"``.
+        skip: Optional raw offset for backwards-compatible pagination.
+
+    Returns:
+        dict: Paginated response with ``total``, ``page``, ``limit``, ``has_more``, and ``mobs``.
+
+    Raises:
+        HTTPException: 503 if the database is still loading.
+    """
     limit = min(max(1, limit), 100)
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
@@ -169,6 +223,17 @@ async def get_mobs(
 
 @router.get("/{mob_id}")
 async def get_mob(mob_id: int):
+    """Returns the full, normalized mob entry for detail/edit view.
+
+    Args:
+        mob_id: Numeric rAthena mob ID.
+
+    Returns:
+        dict: Normalized mob object (``Ai``, ``Modes`` expanded, ``MobSkills`` attached).
+
+    Raises:
+        HTTPException: 503 if loading; 404 if not found.
+    """
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
         
@@ -190,18 +255,31 @@ async def update_mob(
     mob_data: MobDBModelUpdate,
     save_mode: str = Query("import", description="'import' para db/import/ ou 'overwrite' para sobrescrever o arquivo original")
 ):
+    """Updates a mob in the YAML database and persists it to disk.
+
+    Strips synthetic frontend keys (``_source``, ``MobSkills``) from the payload before
+    saving.  ``MobSkills`` are managed separately by ``mob_skill_db``.  ``Modes`` are
+    re-encoded to a sparse dict and ``Ai`` is zero-padded to two digits for rAthena
+    compatibility.
+
+    Args:
+        mob_id: Numeric rAthena mob ID.
+        mob_data: Partial mob payload.
+        save_mode: ``"import"`` copies to ``db/import/``; ``"overwrite"`` patches in place.
+
+    Returns:
+        dict: The updated, normalized mob object.
+
+    Raises:
+        HTTPException: 503 if loading; 404 if not found.
+    """
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
 
-    # exclude_none=True  → campos não preenchidos não são escritos no YAML
-    # exclude_defaults=True → defaults do rAthena não poluem o arquivo
-    # extra='ignore' no modelo → chaves sintéticas do React (_source, MobSkills) são descartadas
     updated_dict = mob_data.model_dump(exclude_none=True, exclude_defaults=True)
-
-    # A chave primária não deve sobrescrever o índice existente
     updated_dict.pop("Id", None)
 
-    # MobSkills é gerenciado por mob_skill_db (arquivo separado)
+    # MobSkills is managed by mob_skill_db (separate file — do not persist here)
     mob_skills = updated_dict.pop("MobSkills", None)
 
     if "Ai" in updated_dict and updated_dict["Ai"] is not None:
@@ -213,7 +291,7 @@ async def update_mob(
     if "Modes" in updated_dict and isinstance(updated_dict["Modes"], dict):
         updated_dict["Modes"] = encode_mob_modes(updated_dict["Modes"])
 
-    # Drops e MvpDrops: serializar sub-modelos de volta a dicts simples
+    # Serialize Drops/MvpDrops sub-models back to plain dicts, stripping None values
     for field in ("Drops", "MvpDrops"):
         if field in updated_dict and updated_dict[field] is not None:
             updated_dict[field] = [
@@ -233,10 +311,16 @@ async def update_mob(
 
 @router.post("/")
 async def create_mob(mob_data: MobDBModel):
-    """
-    Cria um novo monstro customizado em db/import/mob_db.yml.
-    Usa exclude_none=True para omitir campos não preenchidos e
-    extra='ignore' no modelo para descartar chaves desconhecidas.
+    """Creates a new custom monster and saves it to ``db/import/mob_db.yml``.
+
+    Args:
+        mob_data: Full mob payload. ``Id`` is required.
+
+    Returns:
+        dict: The newly created, normalized mob object.
+
+    Raises:
+        HTTPException: 503 if loading; 400 if ``Id`` missing; 409 if ID already exists.
     """
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
@@ -248,7 +332,6 @@ async def create_mob(mob_data: MobDBModel):
     if mob_id in mob_db.mob_index:
         raise HTTPException(status_code=409, detail="ERROR_DUPLICATE_ID")
 
-    # Serializa descartando nulos → YAML limpo, sem chaves inválidas
     clean_data = mob_data.model_dump(exclude_none=True)
     clean_data.pop("MobSkills", None)
 
@@ -261,7 +344,7 @@ async def create_mob(mob_data: MobDBModel):
     if "Modes" in clean_data and isinstance(clean_data["Modes"], dict):
         clean_data["Modes"] = encode_mob_modes(clean_data["Modes"])
 
-    # Drops e MvpDrops: garantir dicts limpos
+    # Serialize Drops/MvpDrops sub-models back to plain dicts, stripping None values
     for field in ("Drops", "MvpDrops"):
         if field in clean_data and clean_data[field] is not None:
             clean_data[field] = [
@@ -277,13 +360,27 @@ async def create_mob(mob_data: MobDBModel):
 
 @router.get("/{mob_id}/animation")
 async def get_mob_animation(mob_id: int):
+    """Returns the animation JSON data for a mob's sprite.
+
+    Resolves the mob's AegisName from the index, looks up its sprite name via
+    ``get_sprite_name_for_mob``, then returns the full animation frame data with
+    aggressive HTTP cache headers.
+
+    Args:
+        mob_id: Numeric rAthena mob ID.
+
+    Returns:
+        JSONResponse: Animation data object with 1-year immutable cache headers.
+
+    Raises:
+        HTTPException: 503 if loading; 404 if mob, sprite, or animation data not found.
+    """
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
-        
+
     if mob_id not in mob_db.mob_index:
         raise HTTPException(status_code=404, detail="ERROR_MOB_NOT_FOUND")
-        
-    # Get mob AegisName
+
     filepath = mob_db.mob_index[mob_id]
     data = mob_db.db_cache.get(filepath)
     aegis_name = None
@@ -313,7 +410,17 @@ async def get_mob_animation(mob_id: int):
 
 @router.get("/{mob_id}/skills")
 async def get_mob_skills(mob_id: int):
-    """Retorna as skills usadas por um monstro específico."""
+    """Returns the skill list for a specific monster.
+
+    Args:
+        mob_id: Numeric rAthena mob ID.
+
+    Returns:
+        dict: ``{"mob_id": ..., "skills": [...]}``.
+
+    Raises:
+        HTTPException: 503 if the mob_skill database is still loading.
+    """
     from app.services.mob_skill_parser import mob_skill_db
     if mob_skill_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
@@ -324,7 +431,14 @@ async def get_mob_skills(mob_id: int):
 from fastapi import UploadFile, File as FastAPIFile
 
 def _get_mob_aegis(mob_id: int) -> str | None:
-    """Helper: retorna o AegisName de um monstro pelo ID."""
+    """Returns the AegisName of a monster by its numeric ID.
+
+    Args:
+        mob_id: Numeric rAthena mob ID.
+
+    Returns:
+        str | None: The AegisName string, or ``None`` if not found.
+    """
     if mob_id not in mob_db.mob_index:
         return None
     filepath = mob_db.mob_index[mob_id]
@@ -342,10 +456,22 @@ async def upload_mob_sprite_spr_act(
     spr_file: UploadFile = FastAPIFile(..., description="Arquivo .spr do Ragnarok Online"),
     act_file: UploadFile = FastAPIFile(..., description="Arquivo .act do Ragnarok Online"),
 ):
-    """
-    Recebe um par de arquivos .spr + .act nativos do RO e os salva no override path do GRF
-    com o nome correto (AegisName do monstro), de forma que o sprite_parser os encontre
-    automaticamente no próximo request de animação — exatamente como o Tokeiburu faz.
+    """Receives a .spr + .act file pair and saves them to the GRF override path.
+
+    Files are persisted under the mob's AegisName so that ``sprite_parser`` discovers
+    them automatically on the next animation request — mirroring the workflow used
+    by tools like GRF Editor.
+
+    Args:
+        mob_id: Numeric rAthena mob ID.
+        spr_file: Native Ragnarok Online ``.spr`` sprite file.
+        act_file: Native Ragnarok Online ``.act`` action file.
+
+    Returns:
+        dict: Confirmation payload with ``aegis_name``, ``spr_saved``, and ``act_saved`` paths.
+
+    Raises:
+        HTTPException: 400 for invalid extensions; 404 if mob not found; 500 on I/O error.
     """
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
@@ -353,7 +479,6 @@ async def upload_mob_sprite_spr_act(
     if mob_id not in mob_db.mob_index:
         raise HTTPException(status_code=404, detail="ERROR_MOB_NOT_FOUND")
 
-    # Validate extensions
     spr_filename = (spr_file.filename or "").lower()
     act_filename = (act_file.filename or "").lower()
     if not spr_filename.endswith(".spr"):
@@ -385,16 +510,19 @@ async def upload_mob_sprite_spr_act(
         raise HTTPException(status_code=500, detail=f"Erro ao salvar sprite: {e}")
 
 
-# ─── DELETE /api/mobs/{mob_id} ────────────────────────────────────────────────
-
 @router.delete("/{mob_id}", status_code=200)
 async def delete_mob(mob_id: int):
-    """
-    Remove permanentemente um monstro de db/import/mob_db.yml.
+    """Permanently removes a monster from ``db/import/mob_db.yml``.
 
-    Retorna 403 se o monstro pertencer ao banco oficial do rAthena (db/re/ ou db/pre-re/).
-    Retorna 404 se o monstro não existir no índice.
-    Retorna 200 { deleted: true, mob_id } em caso de sucesso.
+    Args:
+        mob_id: Numeric rAthena mob ID.
+
+    Returns:
+        dict: ``{"deleted": True, "mob_id": mob_id}`` on success.
+
+    Raises:
+        HTTPException: 503 if loading; 403 if the mob belongs to the official rAthena
+            database (``db/re/`` or ``db/pre-re/``); 404 if not found.
     """
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando.")

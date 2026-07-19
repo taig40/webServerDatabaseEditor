@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+/** Shape of a single toast notification message. */
 export interface ToastMessage {
   id: string;
   text: string;
@@ -8,10 +9,32 @@ export interface ToastMessage {
 
 interface ToastStore {
   toasts: ToastMessage[];
+  /**
+   * Adds a new toast to the queue and schedules its automatic removal.
+   *
+   * @param text - The message to display.
+   * @param type - Visual variant: `"success"`, `"error"`, or `"info"`.
+   * @param duration - Auto-dismiss delay in milliseconds (0 = no auto-dismiss).
+   * @returns The generated toast ID.
+   */
   addToast: (text: string, type?: 'success' | 'error' | 'info', duration?: number) => string;
+  /** Immediately removes the toast with the given ID from the queue. */
   removeToast: (id: string) => void;
 }
 
+/**
+ * Global toast notification store.
+ *
+ * Manages a queue of transient UI messages.  Prefer the {@link toast} helper
+ * object over calling store actions directly in component code.
+ *
+ * @example
+ * ```ts
+ * import { toast } from '../store/useToastStore';
+ * toast.success(t('item.saved'));
+ * toast.error(t('error.generic'));
+ * ```
+ */
 export const useToastStore = create<ToastStore>((set) => ({
   toasts: [],
   addToast: (text, type = 'success', duration = 3000) => {
@@ -34,6 +57,17 @@ export const useToastStore = create<ToastStore>((set) => ({
     })),
 }));
 
+/**
+ * Imperative helper for firing toasts outside of React components.
+ *
+ * @example
+ * ```ts
+ * toast.success('Saved!');
+ * toast.error('Something went wrong', 5000);
+ * const id = toast.info('Loading…', 0);
+ * toast.dismiss(id);
+ * ```
+ */
 export const toast = {
   success: (text: string, duration?: number) => useToastStore.getState().addToast(text, 'success', duration),
   error: (text: string, duration?: number) => useToastStore.getState().addToast(text, 'error', duration),

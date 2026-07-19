@@ -4,7 +4,10 @@ import ptBR from '../locales/pt-BR.json';
 
 export type Language = 'pt-BR' | 'en-US';
 
-// Deep dot-notation key type extractor
+/**
+ * Constructs a union of all dot-notation key paths for a given nested object type,
+ * up to a configurable depth. Used to produce the {@link TranslationKey} union.
+ */
 type Join<K, P> = K extends string | number
   ? P extends string | number
     ? `${K}${"" extends P ? "" : "."}${P}`
@@ -23,6 +26,7 @@ type Paths<T, D extends number = 5> = [D] extends [never]
     }[keyof T]
   : "";
 
+/** Union of all valid dot-notation translation keys derived from `en-US.json`. */
 export type TranslationKey = Paths<typeof enUS>;
 
 const translations: Record<Language, any> = {
@@ -32,12 +36,33 @@ const translations: Record<Language, any> = {
 
 interface LanguageState {
   language: Language;
+  /** Updates the active language and persists the selection to localStorage. */
   setLanguage: (lang: Language) => void;
+  /**
+   * Resolves a dot-notation translation key to a localized string.
+   * Falls back to English if the key is missing in the active locale.
+   * Falls back to the raw key string if the key is missing in both locales.
+   *
+   * @param key - Dot-notation key (e.g. `"settings.database.title"`).
+   * @param variables - Optional interpolation map for `{{key}}` / `{key}` placeholders.
+   */
   t: (key: TranslationKey, variables?: Record<string, string | number>) => string;
 }
 
+/**
+ * Global i18n store.
+ *
+ * Provides the active language, a `setLanguage` action, and a `t()` translation
+ * function.  The initial language is restored from `localStorage` on first mount,
+ * defaulting to `pt-BR`.
+ *
+ * @example
+ * ```ts
+ * const { t, language, setLanguage } = useLanguageStore();
+ * console.log(t('settings.title'));
+ * ```
+ */
 export const useLanguageStore = create<LanguageState>((set, get) => {
-  // Read initial language from localStorage or default to pt-BR
   const initialLang = (localStorage.getItem('app-language') as Language) || 'pt-BR';
 
   return {
@@ -52,7 +77,7 @@ export const useLanguageStore = create<LanguageState>((set, get) => {
       const currentLang = get().language;
       const dict = translations[currentLang] || translations['pt-BR'];
 
-      // Dot-notation lookup (e.g. 'settings.database.title')
+      // Resolve the value at the given dot-notation path
       const keys = key.split('.');
       let result: any = dict;
       for (const k of keys) {
@@ -64,8 +89,8 @@ export const useLanguageStore = create<LanguageState>((set, get) => {
         }
       }
 
+      // Fall back to English if the key is not found in the active locale
       if (typeof result !== 'string') {
-        // Fallback to English if not found
         let fallbackResult: any = translations['en-US'];
         for (const k of keys) {
           if (fallbackResult && typeof fallbackResult === 'object' && k in fallbackResult) {
@@ -82,7 +107,7 @@ export const useLanguageStore = create<LanguageState>((set, get) => {
         }
       }
 
-      // Interpolate variables if provided (supporting both {{key}} and {key})
+      // Interpolate {{key}} and {key} placeholders with the provided variables
       if (variables) {
         let str = result;
         Object.entries(variables).forEach(([vKey, vVal]) => {

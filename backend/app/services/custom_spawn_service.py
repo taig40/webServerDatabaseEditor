@@ -5,27 +5,49 @@ from datetime import datetime
 from typing import List, Dict, Any
 
 def _resolve_rathena_root() -> str:
+    """Returns the rAthena server root path from the application config."""
     from app.core.config import get_rathena_root
     return get_rathena_root()
 
 def get_spawn_index_path() -> str:
-    """Retorna o caminho para npc/custom/ui_spawns.conf"""
+    """Returns the absolute path to ``npc/custom/ui_spawns.conf``.
+
+    Falls back to the current working directory if the rAthena root is not configured.
+
+    Returns:
+        str: Absolute path to the spawn index file.
+    """
     root = _resolve_rathena_root()
     if root:
         return f"{root}/npc/custom/ui_spawns.conf"
     return os.path.join(os.getcwd(), "ui_spawns.conf").replace("\\", "/")
 
+
 def get_spawn_folder() -> str:
-    """Retorna a pasta para arquivos individuais npc/custom/spawns/"""
+    """Returns the absolute path to the ``npc/custom/spawns/`` directory.
+
+    Returns:
+        str: Absolute path to the per-map spawn files directory.
+    """
     root = _resolve_rathena_root()
     if root:
         return f"{root}/npc/custom/spawns"
     return os.path.join(os.getcwd(), "spawns").replace("\\", "/")
 
+
 def get_map_spawn_file(map_name: str) -> str:
+    """Returns the absolute path to a specific map's spawn txt file.
+
+    Args:
+        map_name: Map name without extension (e.g. ``prontera``).
+
+    Returns:
+        str: Absolute path to ``npc/custom/spawns/{map_name}.txt``.
+    """
     return f"{get_spawn_folder()}/{map_name}.txt"
 
 def ensure_index_file():
+    """Ensures the ``ui_spawns.conf`` index file exists, creating it with a header comment if not."""
     path = get_spawn_index_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     if not os.path.exists(path):
@@ -37,7 +59,15 @@ def ensure_index_file():
                 "// ============================================================\n\n"
             )
 
+
 def ensure_import_in_index(map_name: str):
+    """Ensures the map's spawn file is registered in ``ui_spawns.conf``.
+
+    Appends an ``npc: ...`` directive if it is not already present.
+
+    Args:
+        map_name: Map name without extension.
+    """
     ensure_index_file()
     path = get_spawn_index_path()
     import_line = f"npc: npc/custom/spawns/{map_name}.txt\n"
@@ -50,20 +80,33 @@ def ensure_import_in_index(map_name: str):
             f.write(import_line)
 
 def remove_import_from_index(map_name: str):
+    """Removes a map's ``npc:`` directive from ``ui_spawns.conf``.
+
+    Args:
+        map_name: Map name without extension.
+    """
     ensure_index_file()
     path = get_spawn_index_path()
     import_line = f"npc: npc/custom/spawns/{map_name}.txt"
-    
+
     with open(path, "r", encoding="utf-8") as f:
         lines = f.readlines()
-        
+
     new_lines = [l for l in lines if l.strip() != import_line]
-    
+
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.writelines(new_lines)
 
+
 def get_active_maps() -> List[str]:
-    """Retorna uma lista de mapas que possuem arquivos de spawn ativos lendo o index."""
+    """Returns a sorted list of map names that have active spawn files registered in the index.
+
+    Supports both the legacy ``import:`` prefix and the current ``npc:`` prefix for
+    backwards compatibility with existing ``ui_spawns.conf`` files.
+
+    Returns:
+        List[str]: Sorted list of active map names.
+    """
     ensure_index_file()
     path = get_spawn_index_path()
     maps = set()
@@ -78,7 +121,21 @@ def get_active_maps() -> List[str]:
     return sorted(list(maps))
 
 def get_map_spawns(map_name: str) -> List[Dict[str, Any]]:
-    """Parseia o arquivo de um mapa específico e retorna os spawns em formato JSON"""
+    """Parses a map's spawn txt file and returns all entries as structured dicts.
+
+    Each non-comment ``monster`` line is expected to follow the rAthena format::
+
+        map,x,y,rx,ry<TAB>monster<TAB>name<TAB>id,amount,delay1,delay2[,event]
+
+    UUID comment markers (``// UUID: ...``) immediately before a spawn line are
+    used to correlate entries with their editable identity.
+
+    Args:
+        map_name: Map name without extension.
+
+    Returns:
+        List[Dict[str, Any]]: List of parsed spawn entry dicts.
+    """
     file_path = get_map_spawn_file(map_name)
     spawns = []
     
@@ -95,12 +152,9 @@ def get_map_spawns(map_name: str) -> List[Dict[str, Any]]:
         if l.startswith("// UUID: "):
             current_uuid = l.replace("// UUID: ", "").strip()
             continue
-            
+
         if not l or l.startswith("//"):
             continue
-            
-        # Formato: mapname,x,y,rx,ry<TAB>monster<TAB>mobname<TAB>mobid,amount,delay1,delay2,event
-        # prt_fild01,0,0,0,0	monster	Poring	1002,1,0,0,0
         if "\tmonster\t" in l:
             try:
                 parts = l.split("\t")
@@ -143,6 +197,19 @@ def get_map_spawns(map_name: str) -> List[Dict[str, Any]]:
     return spawns
 
 def append_spawn(map_name: str, snippet: str) -> dict:
+    """Appends a new spawn entry to a map's spawn file.
+
+    Creates the spawn directory and file if they do not exist.  Registers the
+    map in ``ui_spawns.conf`` if it is not already present.  Each entry is
+    prefixed with a ``// UUID: ...`` comment for later identification.
+
+    Args:
+        map_name: Target map name without extension.
+        snippet: Pre-formatted rAthena spawn line.
+
+    Returns:
+        dict: ``{"success": True, "uuid": "...", "file_path": "..."}"
+    """
     folder = get_spawn_folder()
     os.makedirs(folder, exist_ok=True)
     
@@ -163,61 +230,92 @@ def append_spawn(map_name: str, snippet: str) -> dict:
     }
 
 def delete_spawn(map_name: str, spawn_uuid: str) -> dict:
+    """Removes a spawn entry and its UUID comment marker from a map's spawn file.
+
+    If the file becomes empty of non-comment lines after deletion, it is removed
+    from disk and unregistered from ``ui_spawns.conf`` automatically.
+
+    Args:
+        map_name: Map name without extension.
+        spawn_uuid: UUID of the entry to delete.
+
+    Returns:
+        dict: Contains ``success``, ``deleted``, and ``file_removed`` keys.
+
+    Raises:
+        RuntimeError: If the spawn file does not exist.
+    """
     file_path = get_map_spawn_file(map_name)
     if not os.path.exists(file_path):
         raise RuntimeError(f"Arquivo não encontrado: {file_path}")
-        
+
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
-        
+
     new_lines = []
     skip_next = False
     deleted = False
-    
+
     for i, line in enumerate(lines):
         if skip_next:
             skip_next = False
             continue
-            
+
         if line.strip() == f"// UUID: {spawn_uuid}":
             skip_next = True
             deleted = True
             continue
-            
+
         new_lines.append(line)
-        
+
     with open(file_path, "w", encoding="utf-8", newline="\n") as f:
         f.writelines(new_lines)
-        
-    # Autodelete check
+
+    # Remove the file and its index entry if no active spawn lines remain
     if not any(not l.strip().startswith("//") and l.strip() for l in new_lines):
         os.remove(file_path)
         remove_import_from_index(map_name)
         return {"success": True, "deleted": deleted, "file_removed": True}
-        
+
     return {"success": True, "deleted": deleted, "file_removed": False}
 
 def update_spawn(map_name: str, spawn_uuid: str, snippet: str) -> dict:
+    """Replaces the spawn line associated with a UUID in a map's spawn file.
+
+    Locates the ``// UUID: ...`` comment marker and overwrites the line
+    immediately following it.
+
+    Args:
+        map_name: Map name without extension.
+        spawn_uuid: UUID of the entry to update.
+        snippet: The new pre-formatted rAthena spawn line.
+
+    Returns:
+        dict: ``{"success": ..., "updated": ...}``.
+
+    Raises:
+        RuntimeError: If the spawn file does not exist.
+    """
     file_path = get_map_spawn_file(map_name)
     if not os.path.exists(file_path):
         raise RuntimeError(f"Arquivo não encontrado: {file_path}")
-        
+
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
-        
+
     updated = False
-    
+
     for i, line in enumerate(lines):
         if line.strip() == f"// UUID: {spawn_uuid}":
             if i + 1 < len(lines):
                 lines[i+1] = snippet.strip() + "\n"
                 updated = True
                 break
-                
+
     if not updated:
         return {"success": False, "updated": False}
-        
+
     with open(file_path, "w", encoding="utf-8", newline="\n") as f:
         f.writelines(lines)
-        
+
     return {"success": True, "updated": True}

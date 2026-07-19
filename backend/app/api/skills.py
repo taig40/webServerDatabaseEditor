@@ -22,6 +22,11 @@ class SkillCreate(BaseModel):
 
 @router.get("/status")
 async def get_skill_status():
+    """Returns the current background loading status for the skill database.
+
+    Returns:
+        dict: Keys ``is_loading``, ``message``, and ``skills_loaded``.
+    """
     return {
         "is_loading": skill_db.is_loading,
         "message": skill_db.loading_status,
@@ -30,8 +35,13 @@ async def get_skill_status():
 
 @router.get("/references")
 async def get_skill_references():
-    """
-    Retorna uma lista leve de todas as habilidades para o ReferencePicker / Smart Autocomplete do Front-end.
+    """Returns a lightweight list of all skills for the ReferencePicker / Smart Autocomplete.
+
+    Returns:
+        dict: A ``{"skills": [...]}`` payload with ``Id``, ``Name``, and ``is_custom`` per entry.
+
+    Raises:
+        HTTPException: 503 if the database is still loading.
     """
     if skill_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
@@ -53,6 +63,18 @@ async def get_skills(
     skip: int = Query(0),
     limit: int = Query(0),
 ):
+    """Returns a (optionally paginated) list of all skills.
+
+    Args:
+        skip: Number of entries to skip (0-based offset).
+        limit: Maximum number of entries to return (0 = no limit).
+
+    Returns:
+        dict: ``total``, ``skip``, ``limit``, and ``skills`` list.
+
+    Raises:
+        HTTPException: 503 if the database is still loading.
+    """
     if skill_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     skills = skill_db.get_skills()
@@ -70,36 +92,48 @@ async def get_skills(
 
 @router.get("/tree/{job_name}")
 async def get_skill_tree_with_lineage(job_name: str):
-    """
-    Retorna a árvore de habilidades combinada da classe e de suas classes base (linhagem).
+    """Returns the combined skill tree for a job class and its entire base-class lineage.
+
+    Traverses the inheritance chain recursively (``Inherit`` field) and merges all
+    skill nodes into a single list.  Each node is annotated with an ``OriginJob``
+    key so the UI can group or colour skills by their source class.
+
+    Args:
+        job_name: Internal job name string (e.g. ``Knight``, ``HighWizard``).
+
+    Returns:
+        dict: ``{"Job": job_name, "Tree": [...]}``.
+
+    Raises:
+        HTTPException: 503 if loading; 404 if no tree data is found for the job.
     """
     if skill_tree_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
-    
+
     visited_jobs = set()
     combined_tree = []
-    
+
     def fetch_tree(current_job: str):
         if current_job in visited_jobs:
             return
         visited_jobs.add(current_job)
-        
+
         enriched = skill_tree_db.get_job_tree_enriched(current_job)
         if not enriched:
             return
-            
+
         tree_nodes = enriched.get("Tree", [])
-        
-        # Inject OriginJob to each node so UI knows where it came from
+
+        # Tag each node with its source job for frontend grouping/colouring
         for node in tree_nodes:
             node["OriginJob"] = current_job
-            
+
         combined_tree.extend(tree_nodes)
-        
+
         inherit_data = enriched.get("Inherit")
         if not inherit_data:
             return
-            
+
         if isinstance(inherit_data, str):
             fetch_tree(inherit_data)
         elif isinstance(inherit_data, dict):
@@ -108,17 +142,28 @@ async def get_skill_tree_with_lineage(job_name: str):
         elif isinstance(inherit_data, list):
             for base_job in inherit_data:
                 fetch_tree(base_job)
-                
+
     fetch_tree(job_name)
-    
+
     if not combined_tree:
         raise HTTPException(status_code=404, detail="Tree not found")
-        
+
     return {"Job": job_name, "Tree": combined_tree}
 
 
 @router.get("/{skill_id}")
 async def get_skill(skill_id: int):
+    """Returns the full skill entry for a given skill ID.
+
+    Args:
+        skill_id: Numeric rAthena skill ID.
+
+    Returns:
+        dict: Complete skill object.
+
+    Raises:
+        HTTPException: 503 if loading; 404 if not found.
+    """
     if skill_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     skill = skill_db.get_skill(skill_id)
@@ -129,6 +174,18 @@ async def get_skill(skill_id: int):
 
 @router.put("/{skill_id}")
 async def update_skill(skill_id: int, body: SkillUpdate):
+    """Updates a skill entry in the YAML database.
+
+    Args:
+        skill_id: Numeric rAthena skill ID.
+        body: Skill update payload (only set fields are applied).
+
+    Returns:
+        dict: The updated skill object.
+
+    Raises:
+        HTTPException: 404 if the skill is not found.
+    """
     updated_dict = body.data.model_dump(exclude_unset=True)
     if "Id" in updated_dict:
         del updated_dict["Id"]
@@ -140,6 +197,17 @@ async def update_skill(skill_id: int, body: SkillUpdate):
 
 @router.post("/", status_code=201)
 async def create_skill(body: SkillCreate):
+    """Creates a new custom skill entry in ``db/import/skill_db.yml``.
+
+    Args:
+        body: Skill creation payload. ``Id`` is required.
+
+    Returns:
+        dict: The newly created skill object.
+
+    Raises:
+        HTTPException: 503 if loading; 422 if ``Id`` is missing; 409 if ID already exists.
+    """
     if skill_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
 
@@ -156,12 +224,17 @@ async def create_skill(body: SkillCreate):
 
 @router.delete("/{skill_id}", status_code=200)
 async def delete_skill(skill_id: int):
-    """
-    Remove permanentemente uma habilidade de db/import/skill_db.yml.
+    """Permanently removes a skill from ``db/import/skill_db.yml``.
 
-    Retorna 403 se a habilidade pertencer ao banco oficial do rAthena (db/re/ ou db/pre-re/).
-    Retorna 404 se a habilidade não existir no índice.
-    Retorna 200 { deleted: true, skill_id } em caso de sucesso.
+    Args:
+        skill_id: Numeric rAthena skill ID.
+
+    Returns:
+        dict: ``{"deleted": True, "skill_id": skill_id}`` on success.
+
+    Raises:
+        HTTPException: 503 if loading; 403 if the skill belongs to the official
+            rAthena database; 404 if not found.
     """
     if skill_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")

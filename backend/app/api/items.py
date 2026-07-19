@@ -1,4 +1,4 @@
-from typing import Union, Optional
+from typing import Union, Optional, List, Dict
 from fastapi import APIRouter, Query, HTTPException
 from app.services.yaml_parser import yaml_db
 from app.services.mob_parser import mob_db
@@ -6,10 +6,13 @@ from app.services.npc_parser import npc_db
 
 router = APIRouter()
 
+
 @router.get("/status")
 async def get_status():
-    """
-    Retorna o status atual do carregamento em background (para exibição na UI).
+    """Returns the current background loading status for display in the UI.
+
+    Returns:
+        dict: Keys ``is_loading``, ``message``, and ``items_loaded``.
     """
     return {
         "is_loading": yaml_db.is_loading,
@@ -17,11 +20,16 @@ async def get_status():
         "items_loaded": yaml_db.items_loaded
     }
 
+
 @router.get("/lookup")
 async def get_items_lookup():
-    """
-    Retorna um dicionário JSON (Hash Map) de Id -> AegisName para resolução O(1) no frontend.
-    Exemplo: {"501": "Red_Potion", "502": "Apple"}
+    """Returns a JSON hash-map of Id → AegisName for O(1) resolution in the frontend.
+
+    Returns:
+        dict: Mapping of string item IDs to their AegisName, e.g. ``{"501": "Red_Potion"}``.
+
+    Raises:
+        HTTPException: 503 if the database is still loading.
     """
     if yaml_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando na memória RAM.")
@@ -33,11 +41,18 @@ async def get_items_lookup():
             lookup[str(item_id)] = item.get("AegisName", f"ITEM_{item_id}")
     return lookup
 
+
 @router.get("/references")
 async def get_item_references():
-    """
-    Retorna uma lista leve de todos os itens (Id, AegisName, Name, is_custom)
-    para o ReferencePicker / Smart Autocomplete do Front-end.
+    """Returns a lightweight list of all items for the ReferencePicker / Smart Autocomplete.
+
+    Each entry contains only ``Id``, ``AegisName``, ``Name``, and ``is_custom``.
+
+    Returns:
+        dict: A ``{"items": [...]}`` payload for the frontend autocomplete widget.
+
+    Raises:
+        HTTPException: 503 if the database is still loading.
     """
     if yaml_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando na memória RAM.")
@@ -55,25 +70,33 @@ async def get_item_references():
         })
     return {"items": result}
 
+
 @router.get("/{item_id}/sold-by")
 @router.get("/{item_id}/sold_by")
 async def get_item_sold_by(item_id: str):
-    """
-    Returns a list of shops that sell the given item. Zero-Regression isolated endpoint.
-    If search fails or item not sold, returns HTTP 200 with []
+    """Returns a list of NPC shops that sell the given item.
+
+    Accepts both a numeric ID and an AegisName string in the path. If the
+    lookup by ID fails, falls back to a lookup by AegisName from the item
+    cache. Prices reported as ``-1`` are resolved to the item's native Buy
+    value automatically.
+
+    Args:
+        item_id: Numeric item ID or AegisName string.
+
+    Returns:
+        list: Shop entries, or an empty list if the item is not sold anywhere.
     """
     try:
         from app.services.shop_parser_service import shop_service
-        # Aceita tanto ID numérico como string de AegisName na URL
         lookup_key: Union[int, str] = int(item_id) if item_id.isdigit() else item_id
         shops = shop_service.get_sold_by(lookup_key)
         if not shops and isinstance(lookup_key, int):
-            # Tenta pelo AegisName do item caso exista no cache de itens
             item = yaml_db.get_item(lookup_key)
             if item and item.get("AegisName"):
                 shops = shop_service.get_sold_by(item.get("AegisName"))
-        
-        # Ajusta preço padrão se o preço específico for -1 (preço nativo do item)
+
+        # Resolve native item price when the shop entry reports -1
         if shops and isinstance(lookup_key, int):
             item_data = yaml_db.get_item(lookup_key)
             if item_data:
@@ -87,7 +110,6 @@ async def get_item_sold_by(item_id: str):
         print(f"[items.py] Erro em /sold-by para item {item_id}: {e}")
         return []
 
-from typing import Optional
 
 @router.get("/")
 async def get_items(
@@ -100,8 +122,26 @@ async def get_items(
     source: str = Query("", description="Filtra por origem: rathena ou custom"),
     skip: Optional[int] = Query(None, description="Opcional retrocompatibilidade com skip")
 ):
-    """
-    Returns a paginated list of items from the in-memory YAML database.
+    """Returns a paginated list of items from the in-memory YAML database.
+
+    Each entry is enriched with ``identifiedDisplayName`` and
+    ``identifiedResourceName`` from the client-side ItemInfo Lua cache.
+
+    Args:
+        page: 1-based page index.
+        limit: Number of items per page (capped at 100).
+        search: Legacy free-text search term.
+        search_query: Typed search text (takes precedence over ``search``).
+        search_target: Search field — ``"name"`` or ``"script"``.
+        item_type: YAML type filter (e.g. ``"Equipment"``, ``"Consumable"``).
+        source: Origin filter — ``"rathena"`` or ``"custom"``.
+        skip: Optional raw offset for backwards-compatible pagination.
+
+    Returns:
+        dict: Paginated response with ``total``, ``page``, ``limit``, ``has_more``, and ``items``.
+
+    Raises:
+        HTTPException: 503 if the database is still loading.
     """
     limit = min(max(1, limit), 100)
     if yaml_db.is_loading:
@@ -118,7 +158,6 @@ async def get_items(
         item_type=item_type
     )
 
-    # Merge client database LUA properties (identifiedDisplayName, identifiedResourceName)
     from app.services.iteminfo_parser import iteminfo_db
     merged_items = []
     for item in paginated_items:
@@ -162,11 +201,23 @@ async def get_items(
         "items": merged_items
     }
 
+
 @router.get("/{item_id}")
 async def get_item_detail(item_id: int):
-    """
-    Retorna o objeto completo do item (com todos os scripts, random options, etc.)
-    pelo Id para exibição/edição detalhada no Frontend.
+    """Returns the full item object (including scripts, random options, etc.) for detail/edit view.
+
+    The response is enriched with ``identifiedDisplayName`` and
+    ``identifiedResourceName`` from the ItemInfo Lua cache, and annotated with
+    ``is_custom`` / ``_source`` flags.
+
+    Args:
+        item_id: Numeric rAthena item ID.
+
+    Returns:
+        dict: Complete item object.
+
+    Raises:
+        HTTPException: 503 if loading; 404 if item not found.
     """
     if yaml_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando.")
@@ -184,56 +235,61 @@ async def get_item_detail(item_id: int):
             it["identifiedResourceName"] = entry.get("identifiedResourceName")
     target_filepath = yaml_db.item_index.get(item_id, "")
     is_custom = "/db/import/" in target_filepath.replace("\\", "/")
-    
+
     it["is_custom"] = is_custom
     it["_source"] = "custom" if is_custom else "rathena"
-    
+
     return it
 
+
 from app.models.item import ItemDBModel, ItemUpdateModel
-from fastapi import HTTPException
-from typing import List, Dict
+
 
 @router.get("/{item_id}/dropped_by")
 async def get_item_dropped_by(item_id: int):
-    """
-    Retorna a lista de monstros que dropam este item.
+    """Returns the list of monsters that drop the given item.
+
+    Args:
+        item_id: Numeric rAthena item ID.
+
+    Returns:
+        list: Entries with ``MobId``, ``MobName``, ``MobAegisName``, ``Rate``, and ``Type``.
+
+    Raises:
+        HTTPException: 503 if either database is loading; 404 if the item does not exist.
     """
     if yaml_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando.")
-        
-    # Primeiro acha o item pelo ID para pegar o AegisName
+
     items = yaml_db.get_items()
     target_item = next((i for i in items if i.get("Id") == item_id), None)
     if not target_item:
         raise HTTPException(status_code=404, detail=f"Item with Id {item_id} not found")
-        
+
     aegis_name = target_item.get("AegisName")
     if not aegis_name:
         return []
 
-    # Busca no mob_db os monstros que dropam este AegisName
     from app.services.mob_parser import mob_db
     if mob_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de monstros ainda está carregando.")
-        
+
     mobs = mob_db.get_mobs()
     droppers = []
-    
+
     for mob in mobs:
         drops = mob.get("Drops", [])
         if drops:
             for drop in drops:
-                # O formato do drop é {"Item": "AegisName", "Rate": 100}
                 if drop.get("Item") == aegis_name:
                     droppers.append({
                         "MobId": mob.get("Id"),
                         "MobName": mob.get("Name"),
                         "MobAegisName": mob.get("AegisName"),
                         "Rate": drop.get("Rate", 0),
-                        "Type": "Normal" # Podemos refinar se tivermos StealProtected ou Mvp
+                        "Type": "Normal"
                     })
-                    
+
     return droppers
 
 
@@ -243,18 +299,25 @@ async def update_item(
     item_data: ItemUpdateModel,
     save_mode: str = Query("import", description="Modo de salvamento: 'import' para cópia em db/import/ ou 'overwrite' para sobrescrever")
 ):
-    """
-    Atualiza um item no banco YAML e salva no disco.
-    Utiliza exclude_none=True para omitir campos nulos, evitando chaves
-    inválidas que possam causar crash no map-server do rAthena.
-    Preserva comentários e formatação original via ruamel.yaml.
-    """
-    # exclude_none=True → chaves não preenchidas não são escritas no YAML
-    # exclude_defaults=True → chaves correspondentes ao padrão do rAthena são omitidas
-    # extra='ignore' no modelo → campos desconhecidos do front-end são descartados
-    updated_dict = item_data.model_dump(exclude_none=True, exclude_defaults=True)
+    """Updates an item in the YAML database and persists it to disk.
 
-    # A chave primária não deve sobrescrever o índice existente
+    Uses ``exclude_none=True`` and ``exclude_defaults=True`` on the Pydantic model
+    to produce a clean YAML output — no null keys or rAthena-default values are written,
+    preventing potential map-server crashes. The primary key ``Id`` is intentionally
+    stripped from the patch dict to avoid overwriting the YAML index entry.
+
+    Args:
+        item_id: Numeric rAthena item ID.
+        item_data: Partial item payload (all fields optional via ``ItemUpdateModel``).
+        save_mode: ``"import"`` writes to ``db/import/``; ``"overwrite"`` patches in place.
+
+    Returns:
+        dict: The updated item object.
+
+    Raises:
+        HTTPException: 404 if the item is not found.
+    """
+    updated_dict = item_data.model_dump(exclude_none=True, exclude_defaults=True)
     updated_dict.pop("Id", None)
 
     updated_item = yaml_db.update_item(item_id, updated_dict, save_mode=save_mode)
@@ -264,12 +327,19 @@ async def update_item(
 
     return updated_item
 
+
 @router.post("/")
 async def create_item(item_data: ItemDBModel):
-    """
-    Cria um novo item customizado e salva em db/import/item_db.yml.
-    Usa exclude_none=True para omitir campos não preenchidos e
-    extra='ignore' no modelo para descartar chaves desconhecidas.
+    """Creates a new custom item and saves it to ``db/import/item_db.yml``.
+
+    Args:
+        item_data: Full item payload. ``Id`` is required.
+
+    Returns:
+        dict: The newly created item object.
+
+    Raises:
+        HTTPException: 503 if loading; 400 if ``Id`` is missing; 409 if the ID already exists.
     """
     if yaml_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando.")
@@ -281,7 +351,6 @@ async def create_item(item_data: ItemDBModel):
     if item_id in yaml_db.item_index:
         raise HTTPException(status_code=409, detail=f"Um item com o ID {item_id} já existe.")
 
-    # Serializa descartando nulos e defaults → YAML limpo, sem chaves inválidas
     clean_data = item_data.model_dump(exclude_none=True, exclude_defaults=True)
 
     try:
@@ -291,16 +360,19 @@ async def create_item(item_data: ItemDBModel):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── DELETE /api/items/{item_id} ──────────────────────────────────────────────
-
 @router.delete("/{item_id}", status_code=200)
 async def delete_item(item_id: int):
-    """
-    Remove permanentemente um item de db/import/item_db.yml.
+    """Permanently removes an item from ``db/import/item_db.yml``.
 
-    Retorna 403 se o item pertencer ao banco oficial do rAthena (db/re/ ou db/pre-re/).
-    Retorna 404 se o item não existir no índice.
-    Retorna 200 { deleted: true, item_id } em caso de sucesso.
+    Args:
+        item_id: Numeric rAthena item ID.
+
+    Returns:
+        dict: ``{"status": "success", "item_id": item_id}`` on successful deletion.
+
+    Raises:
+        HTTPException: 503 if loading; 403 if the item belongs to the official rAthena
+            database (``db/re/`` or ``db/pre-re/``); 404 if not found.
     """
     if yaml_db.is_loading:
         raise HTTPException(status_code=503, detail="O banco de dados ainda está carregando.")
