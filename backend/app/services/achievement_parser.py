@@ -1,6 +1,7 @@
-"""
-achievement_parser.py — Parser for achievement_db.yml (Server) and achievements.lub (Client).
-Unifies server execution database with client translation lua tables.
+"""achievement_parser.py — Parser and synchronizer for achievement databases.
+
+Unifies server execution data from ``achievement_db.yml`` with client display
+and translation data from ``achievements.lub`` / ``achievements.lua``.
 """
 
 import os
@@ -9,8 +10,15 @@ from typing import Optional
 from app.services.generic_parser import GenericYamlParser
 from app.core.config import cfg
 
-# Helper to locate the client achievements Lua file relative to the iteminfo configuration
 def get_achievements_lua_path() -> str:
+    """Resolves the absolute path to the client-side ``achievements.lub`` / ``achievements.lua`` file.
+
+    Checks the path configured in ``cfg.achievements_lua_path`` first, then
+    attempts automatic discovery relative to the ``ITEMINFO_PATH`` directory structure.
+
+    Returns:
+        str: Absolute path to the achievements Lua file, or ``""`` if not found.
+    """
     path = cfg.achievements_lua_path
     if path and os.path.exists(path):
         return path
@@ -37,9 +45,18 @@ def get_achievements_lua_path() -> str:
     return ""
 
 
-# ─── Client Lua/Lub Parser ───────────────────────────────────────────────────
-
 def extract_lua_string(key: str, block: str) -> str:
+    """Extracts a string value assigned to ``key`` from a Lua table block.
+
+    Supports double-quoted, single-quoted, and long-bracket (``[[...]]``) string literals.
+
+    Args:
+        key: The Lua table field name.
+        block: Raw Lua text of the table entry block.
+
+    Returns:
+        str: Extracted string without enclosing quotes, or ``""`` if missing.
+    """
     m = re.search(key + r"\s*=\s*\"([^\"]*)\"", block)
     if m: return m.group(1)
     m = re.search(key + r"\s*=\s*'([^']*)'", block)
@@ -49,6 +66,15 @@ def extract_lua_string(key: str, block: str) -> str:
     return ""
 
 def extract_brace_content(key: str, block: str) -> str:
+    """Extracts the innermost block of text enclosed in balanced curly braces for ``key``.
+
+    Args:
+        key: The Lua table field name whose table payload should be extracted.
+        block: Raw Lua source text.
+
+    Returns:
+        str: Text contained inside the braces, or ``""`` if not found.
+    """
     pattern = re.compile(key + r"\s*=\s*\{")
     m = pattern.search(block)
     if not m: return ""
@@ -64,7 +90,16 @@ def extract_brace_content(key: str, block: str) -> str:
     return "".join(content_chars)
 
 def parse_achievements_lua(filepath: str) -> dict[int, dict]:
-    """Reads achievements.lub line-by-line and extracts all entries into a dictionary."""
+    """Reads ``achievements.lub`` line-by-line and extracts all achievement entries.
+
+    Iterates through configured and fallback encodings to safely read the file.
+
+    Args:
+        filepath: Absolute path to the client achievements Lua file.
+
+    Returns:
+        dict[int, dict]: Mapping of achievement IDs to parsed field dictionaries.
+    """
     if not os.path.exists(filepath):
         return {}
 
@@ -130,7 +165,17 @@ def parse_achievements_lua(filepath: str) -> dict[int, dict]:
 
 
 def parse_lua_block(block: str) -> dict:
-    """Parses individual achievement block fields from client Lua code."""
+    """Parses individual achievement block fields from raw client Lua code.
+
+    Extracts UI metadata, titles, descriptions, score values, reward definitions,
+    and multi-line resource text blocks.
+
+    Args:
+        block: Raw text of a single achievement Lua table block.
+
+    Returns:
+        dict: Parsed dictionary containing all standard achievement fields.
+    """
     data = {
         "UI_Type": 0,
         "group": "",
@@ -198,7 +243,15 @@ def parse_lua_block(block: str) -> dict:
 
 
 def serialize_lua_block(ach_id: int, data: dict) -> str:
-    """Formats a dict back into standard Lua block notation matching the original format."""
+    """Formats a dictionary into standard Lua block notation matching the original format.
+
+    Args:
+        ach_id: Numeric achievement ID.
+        data: Dictionary of achievement fields and resources.
+
+    Returns:
+        str: Formatted Lua code block for the entry.
+    """
     # Resources
     resources = data.get("resource", [])
     if len(resources) == 1:
@@ -238,7 +291,19 @@ def serialize_lua_block(ach_id: int, data: dict) -> str:
 
 
 def save_achievement_lua(filepath: str, ach_id: int, data: dict):
-    """Inserts or replaces the LUA table entry in the specified client file."""
+    """Inserts or updates a single achievement block inside the client Lua file in-place.
+
+    Preserves surrounding file formatting and comments while replacing or appending
+    the specified achievement entry.
+
+    Args:
+        filepath: Absolute path to the target Lua file.
+        ach_id: Numeric ID of the achievement being modified or added.
+        data: Dictionary containing the updated achievement values.
+
+    Raises:
+        RuntimeError: If the target file cannot be decoded with supported encodings.
+    """
     if not os.path.exists(filepath):
         return
 
@@ -298,9 +363,18 @@ def save_achievement_lua(filepath: str, ach_id: int, data: dict):
         f.write(new_content)
 
 
-# ─── Combined Yaml/Lua Service ───────────────────────────────────────────────
-
 class AchievementDatabase(GenericYamlParser):
+    """Unified manager and parser for server and client achievement databases.
+
+    Inherits from ``GenericYamlParser`` to manage ``achievement_db.yml`` on the server,
+    while concurrently maintaining an in-memory cache of client display data parsed
+    from ``achievements.lub``.
+
+    Attributes:
+        client_cache: Mapping of achievement IDs to client-side display definitions.
+        client_loaded: Flag indicating whether the client Lua cache is currently loaded.
+    """
+
     _id_key = 'Id'
     _import_filename = 'achievement_db.yml'
     _label = 'conquistas'
@@ -313,7 +387,7 @@ class AchievementDatabase(GenericYamlParser):
         self.client_loaded = False
 
     def load_client_db(self):
-        """Loads client Lua data into memory cache."""
+        """Loads and caches client Lua achievement display tables from disk."""
         lua_path = get_achievements_lua_path()
         if lua_path:
             try:
@@ -329,7 +403,14 @@ class AchievementDatabase(GenericYamlParser):
             self.client_loaded = False
 
     def get_ach_list(self) -> list[dict]:
-        """Returns unified server and client lists annotated with sync status."""
+        """Returns unified server and client lists annotated with synchronization status.
+
+        Merges records by ID and labels each entry with one of three status markers:
+        ``"divergent"``, ``"client_only"``, or ``"server_only"`` (or synchronized).
+
+        Returns:
+            list[dict]: Merged achievement entries with combined server/client data.
+        """
         server_list = self.get_all()
         
         if not self.client_loaded:

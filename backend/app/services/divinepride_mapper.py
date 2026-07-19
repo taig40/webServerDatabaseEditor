@@ -1,3 +1,9 @@
+"""divinepride_mapper.py — ETL mapping helpers for Divine Pride JSON payloads.
+
+Transforms raw API responses for items, monsters, skills, and experience curves
+into strict dictionary formats compatible with rAthena YAML databases.
+"""
+
 import re
 from typing import Dict, Any, List
 
@@ -34,6 +40,7 @@ RACE_MAP = {
 }
 
 def _safe_int(val: Any, default: int = 0) -> int:
+    """Safely converts arbitrary values to integer with a default fallback."""
     try:
         return int(val if val is not None else default)
     except (ValueError, TypeError):
@@ -54,6 +61,15 @@ ITEM_TYPE_MAP = {
 }
 
 def to_upper_camel_case(name: str, fallback_id: int = 0) -> str:
+    """Converts a raw string into valid UpperCamelCase notation for AegisName generation.
+
+    Args:
+        name: Raw item or monster name string.
+        fallback_id: Numeric ID used if string extraction yields no alphanumeric characters.
+
+    Returns:
+        str: Sanitized UpperCamelCase string (e.g. ``"RedPotion"``).
+    """
     if not name:
         return f"ITEM_{fallback_id}"
     words = re.findall(r'[A-Za-z0-9]+', str(name))
@@ -62,6 +78,16 @@ def to_upper_camel_case(name: str, fallback_id: int = 0) -> str:
     return "".join(word[:1].upper() + word[1:] for word in words)
 
 def map_divinepride_item_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
+    """Transforms raw Divine Pride item JSON into an rAthena ``item_db.yml`` compatible dict.
+
+    Applies weight scaling (x10), type mapping, and default value normalization.
+
+    Args:
+        dp_json: Raw dictionary received from Divine Pride item endpoints.
+
+    Returns:
+        dict: rAthena item database fields.
+    """
     if not isinstance(dp_json, dict):
         dp_json = {}
 
@@ -117,27 +143,24 @@ def map_divinepride_item_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 class DivinePrideItemMapper:
-    """
-    Mapeador responsável pela conversão estrita entre dados JSON de Itens da API
-    do DivinePride e a estrutura oficial YAML (item_db.yml) do rAthena.
-    """
+    """Mapper class for transforming Divine Pride item JSON into rAthena item database structure."""
 
     @staticmethod
     def map_item_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
+        """Alias for ``map_divinepride_item_to_rathena``."""
         return map_divinepride_item_to_rathena(dp_json)
 
     @staticmethod
     def map_divinepride_item_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
+        """Transforms raw Divine Pride item JSON to rAthena structure."""
         return map_divinepride_item_to_rathena(dp_json)
 
 class DivinePrideMapper:
-    """
-    Utilitário responsável pelo mapeamento estrito entre os dados JSON
-    da API do DivinePride e a estrutura oficial YAML do rAthena.
-    """
+    """Mapper class for transforming Divine Pride monster JSON into rAthena mob database structure."""
 
     @staticmethod
     def map_monster_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
+        """Transforms raw Divine Pride monster JSON to rAthena ``mob_db.yml`` structure."""
         stats = dp_json.get("stats")
         if not isinstance(stats, dict):
             stats = {}
@@ -345,6 +368,17 @@ class DivinePrideMapper:
 
 
 def map_divinepride_skill_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
+    """Transforms raw Divine Pride skill JSON into an rAthena ``skill_db.yml`` compatible dict.
+
+    Extracts localized names (preferring language 0/English), description strings,
+    and maximum skill levels.
+
+    Args:
+        dp_json: Raw dictionary received from Divine Pride skill endpoints.
+
+    Returns:
+        dict: rAthena skill database fields.
+    """
     if not isinstance(dp_json, dict):
         dp_json = {}
 
@@ -402,6 +436,16 @@ def map_divinepride_skill_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _get_exp_dict(dp_json: Dict[str, Any], prefix: str, suffix: str) -> Dict[str, Any]:
+    """Resolves and extracts a specific experience table dictionary from a Divine Pride payload.
+
+    Args:
+        dp_json: Raw experience payload dictionary.
+        prefix: Table category (``"base"`` or ``"job"``).
+        suffix: Progression tier (e.g. ``"normal"``, ``"rebirth"``, ``"transcendent"``).
+
+    Returns:
+        dict: Mapping of level strings to experience requirements, or empty dict if not found.
+    """
     candidates = [f"{prefix}_{suffix}"]
     if suffix in ("rebirth", "trans", "transcendent"):
         candidates.extend([f"{prefix}_rebirth", f"{prefix}_transcendent", f"{prefix}_trans"])
@@ -416,6 +460,14 @@ def _get_exp_dict(dp_json: Dict[str, Any], prefix: str, suffix: str) -> Dict[str
 
 
 def _dict_to_int_array(exp_dict: Dict[str, Any]) -> List[int]:
+    """Converts a dictionary of level keys (`"1"`, `"2"`, ...) into a continuous 0-indexed integer list.
+
+    Args:
+        exp_dict: Level-to-EXP mapping dictionary.
+
+    Returns:
+        list[int]: Ordered list of experience points per level from 1 to max level.
+    """
     if not isinstance(exp_dict, dict) or not exp_dict:
         return []
     levels = []
@@ -432,6 +484,15 @@ def _dict_to_int_array(exp_dict: Dict[str, Any]) -> List[int]:
 
 
 def map_divinepride_exp_to_rathena(dp_json: Dict[str, Any], exp_type: str = "normal") -> Dict[str, Any]:
+    """Transforms raw Divine Pride EXP table JSON into rAthena curve and array representations.
+
+    Args:
+        dp_json: Raw experience payload from Divine Pride.
+        exp_type: Progression category string (e.g. ``"normal"``, ``"rebirth"``).
+
+    Returns:
+        dict: Formatted dictionary containing integer arrays and level objects for Base and Job EXP.
+    """
     if not isinstance(dp_json, dict):
         dp_json = {}
 
@@ -460,28 +521,25 @@ def map_divinepride_exp_to_rathena(dp_json: Dict[str, Any], exp_type: str = "nor
 
 
 class DivinePrideSkillMapper:
-    """
-    Mapeador responsável pela conversão estrita entre dados JSON de Habilidades da API
-    do DivinePride e a estrutura oficial YAML (skill_db.yml) do rAthena.
-    """
+    """Mapper class for transforming Divine Pride skill JSON into rAthena skill database structure."""
 
     @staticmethod
     def map_skill_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
+        """Transforms raw Divine Pride skill JSON to rAthena ``skill_db.yml`` structure."""
         return map_divinepride_skill_to_rathena(dp_json)
 
     @staticmethod
     def map_divinepride_skill_to_rathena(dp_json: Dict[str, Any]) -> Dict[str, Any]:
+        """Alias for ``map_divinepride_skill_to_rathena``."""
         return map_divinepride_skill_to_rathena(dp_json)
 
 
 class DivinePrideExpMapper:
-    """
-    Mapeador responsável pela conversão estrita entre dados JSON de Experiência da API
-    do DivinePride e a estrutura de curvas do rAthena/front-end.
-    """
+    """Mapper class for transforming Divine Pride experience table JSON into rAthena curve structures."""
 
     @staticmethod
     def map_exp_to_rathena(dp_json: Dict[str, Any], exp_type: str = "normal") -> Dict[str, Any]:
+        """Transforms raw Divine Pride EXP JSON to rAthena experience table structure."""
         return map_divinepride_exp_to_rathena(dp_json, exp_type=exp_type)
 
     @staticmethod

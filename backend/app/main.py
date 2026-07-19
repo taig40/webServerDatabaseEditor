@@ -1,3 +1,9 @@
+"""main.py — Application entrypoint, FastAPI initialization, and startup setup routines.
+
+Handles configuration loading, database path resolution, CORS configuration,
+background startup tasks, and first-time setup endpoints.
+"""
+
 import os
 import shutil
 import sys
@@ -5,11 +11,8 @@ import traceback
 from pathlib import Path
 from app.core.config import cfg, get_env_path, get_config_path, load_config_file, BASE_DIR, ENV_PATH, CONFIG_PATH, ENV_TEMPLATE_PATH
 
-# ─── Load Environment Variables First (Highest Priority) ─────────────────────
-# 1. Obter caminho unificado e absoluto do config.conf (Desktop Config)
 unified_env_path = get_config_path()
 
-# 2. Se é a primeira vez rodando (não existe config.conf), migra de .env ou cria a partir de template
 if not os.path.exists(unified_env_path):
     old_env = os.path.join(BASE_DIR, '.env')
     if os.path.exists(old_env):
@@ -23,10 +26,8 @@ if not os.path.exists(unified_env_path):
             f.write("# rAthena Web Editor - Gerado automaticamente em Safe Mode\nRATHENA_DB_PATH=\nSERVER_DB_BASE_PATH=\n")
         print(f"[*] Arquivo config.conf vazio gerado para modo First-Time Setup em {unified_env_path}")
 
-# 3. Carrega as variáveis (com override=True para garantir precedência do arquivo config.conf)
 load_config_file(path=get_config_path(), override=True)
 
-# 2c. Preencher caminhos de banco de dados automaticamente a partir de RATHENA_DB_PATH ou SERVER_DB_BASE_PATH se preenchido
 db_base_path = os.environ.get("RATHENA_DB_PATH", "").strip() or os.environ.get("SERVER_DB_BASE_PATH", "").strip()
 if db_base_path:
     os.environ["RATHENA_DB_PATH"] = db_base_path
@@ -52,7 +53,6 @@ if db_base_path:
         if not os.environ.get(env_key, "").strip():
             os.environ[env_key] = os.path.join(db_base_path, filename).replace("\\", "/")
 
-# ─── Import Application Modules (Dependent on Env Variables) ────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import items, grf, mobs, skills, mob_skills, combos, quests, pets, client_items, settings as settings_api, achievements, randomopt, sizefix, images, constants, progression, editor, system, divinepride, map_drops, custom_spawns, visualizer, maps
@@ -67,16 +67,19 @@ from app.services.pet_parser import pet_db
 from app.services.achievement_parser import achievement_db
 from app.services.const_parser import const_db
 
-# ─── Live Config Sync ────────────────────────────────────────────────────────
 cfg.reload_from_env()
 
 APP_STATE = {"setup_required": False, "missing_keys": []}
 
 def setup_and_validate_env():
+    """Validates required environment paths and determines if first-time setup is needed.
+
+    Checks for the existence of ``config.conf`` and verify that valid rAthena DB
+    and GRF paths are configured. Updates global ``APP_STATE`` accordingly.
+    """
     unified_env_path = get_config_path()
     env_exists = os.path.exists(unified_env_path)
-    
-    # [!] A LINHA CRÍTICA QUE FALTAVA:
+
     if env_exists:
         load_config_file(path=unified_env_path, override=True)
         
@@ -112,7 +115,6 @@ def setup_and_validate_env():
         APP_STATE["setup_required"] = False
         APP_STATE["missing_keys"] = []
 
-# Executa o setup e validação antes de subir a app
 setup_and_validate_env()
 
 app = FastAPI(
@@ -121,7 +123,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS configuration for the React frontend
 default_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -148,6 +149,8 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 
 class SetupPayload(BaseModel):
+    """Payload schema for the first-time configuration endpoint."""
+
     SERVER_DB_BASE_PATH: str
     GRF_0: str = ""
     ITEMINFO_PATH: str = ""
@@ -157,6 +160,14 @@ class SetupPayload(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """FastAPI application lifespan manager.
+
+    Spawns background startup threads to load GRF archives and ItemInfo definitions
+    unless the server is started in Safe Mode waiting for setup.
+
+    Args:
+        app: The active FastAPI application instance.
+    """
     if APP_STATE["setup_required"]:
         print("[*] Servidor FastAPI iniciando em Safe Mode (Aguardando First-Time Setup).")
         yield
@@ -182,10 +193,8 @@ async def lifespan(app: FastAPI):
     threading.Thread(target=_startup_resources, daemon=True).start()
     yield
 
-# Atualiza a app para usar o lifespan correto (FastAPI moderno)
 app.router.lifespan_context = lifespan
 
-# Register routers
 app.include_router(items.router,        prefix="/api/items",        tags=["items"])
 app.include_router(grf.router,          prefix="/api/grf",          tags=["grf"])
 app.include_router(images.router,       prefix="/api/images",       tags=["images"])
@@ -213,6 +222,7 @@ app.include_router(visualizer.router,   prefix="/api/visualizer",       tags=["v
 
 @app.get("/api/status")
 def get_system_status():
+    """Returns the current server readiness state and any missing configuration keys."""
     env_exists = os.path.exists(get_env_path())
     db_base = os.environ.get("SERVER_DB_BASE_PATH", "").strip()
     item_db = os.environ.get("ITEM_DB_PATH", "").strip()
@@ -225,6 +235,20 @@ def get_system_status():
 
 @app.post("/api/setup")
 async def post_system_setup(payload: SetupPayload):
+    """Handles first-time configuration submission and schedules a server restart.
+
+    Updates configuration variables and triggers a delayed process exit so the process
+    manager can restart the backend with the new paths.
+
+    Args:
+        payload: Configuration values submitted by the frontend setup wizard.
+
+    Returns:
+        dict: Status confirmation and restart notification.
+
+    Raises:
+        HTTPException: If the specified DB directory does not exist or setup fails.
+    """
     from fastapi import HTTPException
     from app.api.settings import _read_env, _write_env, reload_settings
     try:
@@ -282,7 +306,6 @@ async def post_system_setup(payload: SetupPayload):
         APP_STATE["setup_required"] = False
         APP_STATE["missing_keys"] = []
 
-        # Agenda reinicialização via Thread em background após retorno do response
         import threading
         import time
         def _delayed_restart():
@@ -298,18 +321,18 @@ async def post_system_setup(payload: SetupPayload):
     except Exception as e:
         import traceback
         try:
-            # Tenta salvar o log direto na Área de Trabalho do Windows
             desktop = os.path.join(os.environ.get('USERPROFILE', 'C:\\'), 'Desktop')
             log_file = os.path.join(desktop, 'rathena_crash_log.txt')
             with open(log_file, 'w', encoding='utf-8') as f:
                 f.write("CRASH DURANTE O SETUP:\n")
                 f.write(traceback.format_exc())
         except:
-            pass # Se até o log falhar, ignora
+            pass
         
-        # Retorna o erro pro frontend não ficar travado
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 def read_root():
+    """Root health check endpoint."""
     return {"status": "ok", "message": "webServerDatabaseEditor API is running"}
+
