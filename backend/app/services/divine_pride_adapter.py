@@ -158,21 +158,18 @@ def _infer_type_from_location(bitmask: int) -> Optional[str]:
 def _resolve_item_name(raw: Dict[str, Any], item_id: int) -> str:
     """Extracts the English display name from a Divine Pride item payload.
 
-    Divine Pride returns names for newer items exclusively via the
-    ``globalization`` array (language 0 = English), not in the top-level
-    ``name`` field which may be empty or in Korean.  This mirrors the
-    pattern already used by ``adapt_skill()``.
-
     Fallback chain:
         1. ``globalization[language==0].name``
         2. ``globalization[0].name`` (any language)
-        3. ``raw["name"]`` (top-level, may be non-English)
-        4. ``raw["aegisName"]`` spaced out (e.g. ``WM_Physical_LT``)
-        5. ``f"ITEM_{item_id}"`` (last-resort placeholder)
+        3. ``raw["name"]`` (top-level, may be non-English for newer items)
+        4. ``sets[*].items[*].name`` where ``itemId == item_id`` (DP stores the
+           display name inside the set entries, e.g. "White Knight's Physical Mantle [1]")
+        5. ``raw["aegisName"]`` as-is (e.g. ``WM_Physical_LT``)
+        6. ``f"ITEM_{item_id}"`` (last-resort placeholder)
 
     Args:
         raw: Full raw item dictionary from Divine Pride.
-        item_id: Numeric item ID used for the placeholder fallback.
+        item_id: Numeric item ID used for cache lookup and the placeholder fallback.
 
     Returns:
         Best available English name string.
@@ -189,10 +186,21 @@ def _resolve_item_name(raw: Dict[str, Any], item_id: int) -> str:
             candidate = str(entry.get("name") or "").strip()
             if candidate:
                 return candidate
+
     top_level = str(raw.get("name") or "").strip()
     if top_level:
         return top_level
-    # Use aegisName as a human-readable fallback (better than ITEM_{id})
+
+    # Fallback: extract name from sets[].items[] where itemId matches
+    for set_entry in (raw.get("sets") or []):
+        if not isinstance(set_entry, dict):
+            continue
+        for it in (set_entry.get("items") or []):
+            if isinstance(it, dict) and _safe_int(it.get("itemId") or it.get("id"), 0) == item_id:
+                candidate = str(it.get("name") or "").strip()
+                if candidate:
+                    return candidate
+
     aegis_fallback = str(raw.get("aegisName") or raw.get("dbname") or "").strip()
     return aegis_fallback if aegis_fallback else f"ITEM_{item_id}"
 
@@ -485,10 +493,11 @@ class DivinePrideAdapter:
             if not isinstance(dp_items, list):
                 continue
 
+            # DP uses 'itemId' (not 'id') inside sets[].items[]
             original_ids = [
-                _safe_int(it.get("id"), 0)
+                _safe_int(it.get("itemId") or it.get("id"), 0)
                 for it in dp_items
-                if isinstance(it, dict) and _safe_int(it.get("id"), 0) > 0
+                if isinstance(it, dict) and _safe_int(it.get("itemId") or it.get("id"), 0) > 0
             ]
 
             if len(original_ids) < 2:
