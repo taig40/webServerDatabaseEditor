@@ -43,6 +43,31 @@ _RACE_MAP: Dict[int, str] = {
     5: "Fish",     6: "Demon",  7: "Demihuman", 8: "Angel",  9: "Dragon",
 }
 
+_CLASS_MAP: Dict[int, str] = {0: "Normal", 1: "Boss", 4: "Guardian"}
+
+_MOB_SKILL_STATE_MAP: Dict[str, str] = {
+    "IDLE_ST":    "Idle",
+    "WALK_ST":    "Walk",
+    "RUSH_ST":    "Walk",
+    "DEAD_ST":    "Dead",
+    "BERSERK_ST": "Aggressive",
+    "ANY_ST":     "Any",
+}
+
+# DP condition names (IF_XXX) → rAthena Condition values
+_MOB_SKILL_COND_MAP: Dict[str, str] = {
+    "IF_ALWAYS":         "Always",
+    "IF_RUDEATTACK":     "RudeAttack",
+    "IF_MONSTERCOUNT":   "MobCount",
+    "IF_HP":             "HP",
+    "IF_HIDING":         "Hiding",
+    "IF_SLAVE":          "Slave",
+    "IF_TARGET":         "Target",
+    "IF_MAGICATTACK":    "MagicAttacked",
+    "IF_MASTERATTACKED": "MasterAttacked",
+    "IF_DEAD":           "Dead",
+}
+
 _ITEM_TYPE_MAP: Dict[int, str] = {
     0: "Consumable", 1: "Consumable", 2: "Consumable",
     3: "Etc",        4: "Weapon",     5: "Armor",
@@ -103,16 +128,19 @@ _ITEM_DEFAULTS: Dict[str, Any] = {
 }
 
 _MOB_DEFAULTS: Dict[str, Any] = {
-    "Sp":           0,
-    "BaseExp":      0,
-    "JobExp":       0,
-    "MvpExp":       0,
-    "Attack2":      0,
-    "Resistance":   0,
+    "Sp":              0,
+    "BaseExp":         0,
+    "JobExp":          0,
+    "MvpExp":          0,
+    "Attack2":         0,
+    "Resistance":      0,
     "MagicResistance": 0,
-    "WalkSpeed":    150,
-    "ElementLevel": 1,
-    "DamageTaken":  100,
+    "WalkSpeed":       150,
+    "SkillRange":      10,
+    "ChaseRange":      12,
+    "ElementLevel":    1,
+    "DamageTaken":     100,
+    "Class":           "Normal",
 }
 
 
@@ -279,14 +307,18 @@ def _strip_ro_color_tokens(text: str) -> str:
 
 
 def _get_element(raw_element: int):
-    """Decodifica o elemento do DP: (nível * 20) + tipo."""
+    """Decodes a Divine Pride element integer into (element_name, level).
+
+    DP encoding: ``element = level * 10 + type_index``
+
+    Args:
+        raw_element: Integer from ``stats.element`` in the DP payload.
+
+    Returns:
+        Tuple of (element_name: str, level: int) clamped to rAthena valid range [1, 4].
+    """
     element_type_idx = raw_element % 10
-    if raw_element >= 20:
-        element_level = raw_element // 20
-    elif raw_element >= 10:
-        element_level = raw_element // 10
-    else:
-        element_level = 1
+    element_level    = raw_element // 10
     return _ELEMENT_TYPES.get(element_type_idx, "Neutral"), max(1, min(4, element_level))
 
 
@@ -583,13 +615,22 @@ class DivinePrideAdapter:
     # ── Monster ───────────────────────────────────────────────────────────────
 
     def adapt_monster(self, raw: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Transforma JSON bruto de Monster do DP → dict compatível com MobDBModelUpdate.
+        """Transforms raw Divine Pride monster JSON into a ``MobDBModelUpdate``-compatible dict.
 
-        Correções aplicadas:
-        - Omite campos com valores iguais aos defaults do rAthena
-        - MobSkills: apenas as chaves snake_case internas (sem duplicação CamelCase)
-        - Elemento decodificado corretamente: (nível * 20) + tipo
+        Corrections applied:
+
+        - **SpriteName**: uses ``raw["sprite"]`` (not dbname).
+        - **Element**: fixed decoder — DP encoding is ``level * 10 + type``.
+        - **Timing**: ``movementSpeed`` → ``WalkSpeed``; ``rechargeTime`` → ``AttackDelay``;
+          ``attackSpeed`` → ``AttackMotion``; ``attackedSpeed`` → ``DamageMotion``.
+        - **Drops**: entries with ``chance == 0`` are filtered (DP placeholder rows).
+        - **MvpDrops**: reads lowercase ``raw["mvpdrops"]`` key (DP canonical casing).
+        - **StealProtected**: forwarded per-drop when ``stealProtected == True``.
+        - **Class**: ``stats.class`` mapped via ``_CLASS_MAP``; ``Normal`` omitted as default.
+        - **Resistance / MagicResistance**: ``stats.res`` / ``stats.mres``.
+        - **Skills**: ``state`` normalised via ``_MOB_SKILL_STATE_MAP``;
+          ``condition`` via ``_MOB_SKILL_COND_MAP`` (IF_ prefix stripped).
+        - **Ai**: returned as ``int`` (no zero-padding string).
         """
         if not isinstance(raw, dict):
             raw = {}
@@ -598,83 +639,114 @@ class DivinePrideAdapter:
         if not isinstance(stats, dict):
             stats = {}
 
-        mob_id    = _safe_int(raw.get("id"), 0)
-        name      = str(raw.get("name") or f"MOB_{mob_id}")
-        aegis     = str(raw.get("dbname") or raw.get("aegisName") or f"MOB_{mob_id}")
+        mob_id = _safe_int(raw.get("id"), 0)
+        name   = str(raw.get("name") or f"MOB_{mob_id}")
+        aegis  = str(raw.get("dbname") or raw.get("aegisName") or f"MOB_{mob_id}")
+        sprite = str(raw.get("sprite") or aegis)
 
-        # Elemento
-        raw_element = _safe_int(stats.get("element"), 0)
-        element_str, element_level = _get_element(raw_element)
+        # Element
+        element_str, element_level = _get_element(_safe_int(stats.get("element"), 0))
 
-        # Tamanho e Raça
-        size_str = _SCALE_MAP.get(_safe_int(stats.get("scale"), 1), "Medium")
-        race_str = _RACE_MAP.get(_safe_int(stats.get("race"),  0), "Formless")
+        # Size, Race, Class
+        size_str  = _SCALE_MAP.get(_safe_int(stats.get("scale"),  1), "Medium")
+        race_str  = _RACE_MAP.get(_safe_int(stats.get("race"),   0), "Formless")
+        class_str = _CLASS_MAP.get(_safe_int(stats.get("class"), 0), "Normal")
 
         # AI
         raw_ai = str(stats.get("ai") or "01").strip()
         m = re.search(r"(\d+)$", raw_ai)
         ai_str = m.group(1).zfill(2) if m else "01"
 
-        # Ataque (pode vir como dict {minimum, maximum} ou int)
+        # Attack (may arrive as {minimum, maximum} dict or raw ints)
         attack_raw = stats.get("attack")
         if isinstance(attack_raw, dict):
             attack  = _safe_int(attack_raw.get("minimum"), 0)
             attack2 = _safe_int(attack_raw.get("maximum"), 0)
         else:
-            attack  = _safe_int(attack_raw, 0)
-            attack2 = _safe_int(stats.get("attack2"), 0)
+            attack  = _safe_int(stats.get("atk1"), 0)
+            attack2 = _safe_int(stats.get("atk2"), 0)
 
-        # Modos
+        # Timing — DP field names differ from rAthena YAML keys
+        walk_speed    = _safe_int(stats.get("movementSpeed"), 150)
+        attack_delay  = _safe_int(stats.get("rechargeTime") or stats.get("attackSpeed"), 1000)
+        attack_motion = _safe_int(stats.get("attackSpeed"), 500)
+        damage_motion = _safe_int(stats.get("attackedSpeed"), 500)
+
+        # Modes
         modes: Dict[str, bool] = {}
         if _safe_int(stats.get("mvp"), 0) == 1:
             modes["Mvp"] = True
 
-        # Drops normais
+        # Drops — filter out DP placeholder rows (chance == 0)
         drops: List[Dict[str, Any]] = []
         for drop in (raw.get("drops") or []):
             if not isinstance(drop, dict):
                 continue
             item_id = _safe_int(drop.get("itemId") or drop.get("id") or drop.get("Item"), 0)
             rate    = _safe_int(drop.get("chance") or drop.get("rate") or drop.get("Rate"), 0)
-            if item_id > 0:
-                # Traduz itemId → AegisName (fallback para int se não encontrado)
-                drops.append({"Item": self._resolve_item_ref(item_id), "Rate": rate})
+            if item_id <= 0 or rate == 0:
+                continue
+            entry: Dict[str, Any] = {"Item": self._resolve_item_ref(item_id), "Rate": rate}
+            if drop.get("stealProtected") is True:
+                entry["StealProtected"] = True
+            drops.append(entry)
 
-        # MVP Drops
-        mvp_exp  = _safe_int(raw.get("mvpExperience") or stats.get("mvpExperience"), 0)
+        # MvpDrops — DP uses lowercase key "mvpdrops", filter chance == 0 rows
+        mvp_exp = _safe_int(raw.get("mvpExperience") or stats.get("mvpExperience"), 0)
         mvp_drops: List[Dict[str, Any]] = []
-        for drop in (raw.get("mvpDrops") or stats.get("mvpDrops") or []):
+        for drop in (raw.get("mvpdrops") or raw.get("mvpDrops") or []):
             if not isinstance(drop, dict):
                 continue
             item_id = _safe_int(drop.get("itemId") or drop.get("id") or drop.get("Item"), 0)
             rate    = _safe_int(drop.get("chance") or drop.get("rate") or drop.get("Rate"), 0)
-            if item_id > 0:
-                # Traduz itemId → AegisName (fallback para int se não encontrado)
-                mvp_drops.append({"Item": self._resolve_item_ref(item_id), "Rate": rate})
+            if item_id <= 0 or rate == 0:
+                continue
+            entry = {"Item": self._resolve_item_ref(item_id), "Rate": rate}
+            if drop.get("stealProtected") is True:
+                entry["StealProtected"] = True
+            mvp_drops.append(entry)
 
-        # MobSkills — apenas chaves snake_case do nosso editor interno (sem duplicação)
+        # MobSkills
         mob_skills: List[Dict[str, Any]] = []
         for sk in (raw.get("skill") or raw.get("skills") or []):
             if not isinstance(sk, dict):
                 continue
-            skill_id = _safe_int(sk.get("skillId") or sk.get("id") or sk.get("skill_id") or sk.get("Skill"), 0)
+            skill_id = _safe_int(
+                sk.get("skillId") or sk.get("id") or sk.get("skill_id") or sk.get("Skill"), 0
+            )
             if skill_id <= 0:
                 continue
 
-            level = _safe_int(sk.get("level") or sk.get("skill_lv") or sk.get("Level"), 1)
-            rate  = _safe_int(sk.get("chance") or sk.get("rate") or sk.get("Rate"), 10000)
-            cast_time = _safe_int(sk.get("castTime") or sk.get("cast_time") or sk.get("CastTime"), 0)
-            delay     = _safe_int(sk.get("delay") or sk.get("Delay"), 0)
+            level      = _safe_int(sk.get("level") or sk.get("skill_lv") or sk.get("Level"), 1)
+            rate       = _safe_int(sk.get("chance") or sk.get("rate") or sk.get("Rate"), 0)
+            cast_time  = _safe_int(
+                sk.get("casttime") or sk.get("castTime") or sk.get("cast_time") or sk.get("CastTime"), 0
+            )
+            delay      = _safe_int(sk.get("delay") or sk.get("Delay"), 0)
             cancelable = bool(sk.get("interruptable") or sk.get("cancelable") or False)
 
-            raw_state = str(sk.get("status") or sk.get("state") or "idle").strip()
-            state     = raw_state.replace("STATE_", "").replace("state_", "").lower() or "idle"
+            # State normalisation via lookup table
+            raw_state = str(sk.get("status") or sk.get("state") or "IDLE_ST").strip().upper()
+            state = _MOB_SKILL_STATE_MAP.get(raw_state, "Idle")
 
-            raw_cond = str(sk.get("condition") or sk.get("condition_type") or "always").strip()
-            cond_type = raw_cond.replace("CONDITION_", "").replace("condition_", "").lower() or "always"
+            # Condition normalisation: DP uses IF_XXX prefixed strings or null
+            raw_cond = sk.get("condition") or sk.get("condition_type")
+            if raw_cond is None or str(raw_cond).strip().lower() in ("", "null", "always"):
+                cond_type = "Always"
+            else:
+                cond_key  = str(raw_cond).strip().upper()
+                # Prefer explicit map; fallback: strip IF_ prefix + TitleCase
+                cond_type = _MOB_SKILL_COND_MAP.get(
+                    cond_key,
+                    cond_key.replace("IF_", "").replace("_", " ").title().replace(" ", ""),
+                )
 
             raw_cond_val = sk.get("conditionValue") or sk.get("condition_value")
-            cond_val = 0 if (raw_cond_val is None or str(raw_cond_val).lower() in ("null", "")) else _safe_int(raw_cond_val)
+            cond_val = (
+                0
+                if (raw_cond_val is None or str(raw_cond_val).lower() in ("null", ""))
+                else _safe_int(raw_cond_val)
+            )
 
             target = str(sk.get("target") or "target").lower().replace("target_", "") or "target"
 
@@ -694,39 +766,42 @@ class DivinePrideAdapter:
             })
 
         result: Dict[str, Any] = {
-            "Id":         mob_id,
-            "AegisName":  aegis,
-            "SpriteName": aegis,
-            "Name":       name,
-            "Level":      _safe_int(stats.get("level"), 1),
-            "Hp":         _safe_int(stats.get("health"), 1),
-            "Sp":         _safe_int(stats.get("sp"), 0),
-            "BaseExp":    _safe_int(stats.get("baseExperience"), 0),
-            "JobExp":     _safe_int(stats.get("jobExperience"), 0),
-            "Attack":     attack,
-            "Attack2":    attack2,
-            "Defense":    _safe_int(stats.get("defense"), 0),
-            "MagicDefense": _safe_int(stats.get("magicDefense"), 0),
-            "Str":  _safe_int(stats.get("str"), 1),
-            "Agi":  _safe_int(stats.get("agi"), 1),
-            "Vit":  _safe_int(stats.get("vit"), 1),
-            "Int":  _safe_int(stats.get("int"), 1),
-            "Dex":  _safe_int(stats.get("dex"), 1),
-            "Luk":  _safe_int(stats.get("luk"), 1),
-            "AttackRange": _safe_int(stats.get("attackRange"), 1),
-            "SkillRange":  _safe_int(stats.get("skillRange"), 10),
-            "ChaseRange":  _safe_int(stats.get("chaseRange"), 12),
-            "Size":         size_str,
-            "Race":         race_str,
-            "Element":      element_str,
-            "ElementLevel": element_level,
-            "WalkSpeed":    _safe_int(stats.get("walkSpeed"), 150),
-            "AttackDelay":  _safe_int(stats.get("attackDelay"), 1000),
-            "AttackMotion": _safe_int(stats.get("attackMotion"), 500),
-            "DamageMotion": _safe_int(stats.get("damageMotion"), 500),
-            "Ai":    ai_str,
-            "Modes": modes if modes else None,
-            "Drops": drops if drops else None,
+            "Id":              mob_id,
+            "AegisName":       aegis,
+            "SpriteName":      sprite,
+            "Name":            name,
+            "Level":           _safe_int(stats.get("level"), 1),
+            "Hp":              _safe_int(stats.get("health"), 1),
+            "Sp":              _safe_int(stats.get("sp"), 0),
+            "BaseExp":         _safe_int(stats.get("baseExperience"), 0),
+            "JobExp":          _safe_int(stats.get("jobExperience"), 0),
+            "Attack":          attack,
+            "Attack2":         attack2,
+            "Defense":         _safe_int(stats.get("defense"), 0),
+            "MagicDefense":    _safe_int(stats.get("magicDefense"), 0),
+            "Str":             _safe_int(stats.get("str"), 1),
+            "Agi":             _safe_int(stats.get("agi"), 1),
+            "Vit":             _safe_int(stats.get("vit"), 1),
+            "Int":             _safe_int(stats.get("int"), 1),
+            "Dex":             _safe_int(stats.get("dex"), 1),
+            "Luk":             _safe_int(stats.get("luk"), 1),
+            "AttackRange":     _safe_int(stats.get("attackRange"), 1),
+            "SkillRange":      _safe_int(stats.get("aggroRange"), 10),
+            "ChaseRange":      _safe_int(stats.get("escapeRange"), 12),
+            "Size":            size_str,
+            "Race":            race_str,
+            "Element":         element_str,
+            "ElementLevel":    element_level,
+            "Class":           class_str,
+            "WalkSpeed":       walk_speed,
+            "AttackDelay":     attack_delay,
+            "AttackMotion":    attack_motion,
+            "DamageMotion":    damage_motion,
+            "Resistance":      _safe_int(stats.get("res"), 0),
+            "MagicResistance": _safe_int(stats.get("mres"), 0),
+            "Ai":              ai_str,
+            "Modes":           modes if modes else None,
+            "Drops":           drops if drops else None,
         }
 
         if mvp_exp > 0:
@@ -736,10 +811,7 @@ class DivinePrideAdapter:
         if mob_skills:
             result["MobSkills"] = mob_skills
 
-        # Omite campos com valores iguais aos defaults do rAthena
         result = _omit_defaults(result, _MOB_DEFAULTS)
-
-        # Remove None remanescentes
         result = {k: v for k, v in result.items() if v is not None}
 
         return result
