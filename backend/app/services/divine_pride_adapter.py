@@ -167,7 +167,8 @@ def _resolve_item_name(raw: Dict[str, Any], item_id: int) -> str:
         1. ``globalization[language==0].name``
         2. ``globalization[0].name`` (any language)
         3. ``raw["name"]`` (top-level, may be non-English)
-        4. ``f"ITEM_{item_id}"`` (last-resort placeholder)
+        4. ``raw["aegisName"]`` spaced out (e.g. ``WM_Physical_LT``)
+        5. ``f"ITEM_{item_id}"`` (last-resort placeholder)
 
     Args:
         raw: Full raw item dictionary from Divine Pride.
@@ -189,7 +190,11 @@ def _resolve_item_name(raw: Dict[str, Any], item_id: int) -> str:
             if candidate:
                 return candidate
     top_level = str(raw.get("name") or "").strip()
-    return top_level if top_level else f"ITEM_{item_id}"
+    if top_level:
+        return top_level
+    # Use aegisName as a human-readable fallback (better than ITEM_{id})
+    aegis_fallback = str(raw.get("aegisName") or raw.get("dbname") or "").strip()
+    return aegis_fallback if aegis_fallback else f"ITEM_{item_id}"
 
 
 def _to_aegis_name(name: str, fallback_id: int = 0) -> str:
@@ -363,12 +368,23 @@ class DivinePrideAdapter:
         raw_type  = _safe_int(raw.get("itemTypeId"), 3)
         item_type = _ITEM_TYPE_MAP.get(raw_type, "Etc")
 
-        # Sanity check: if itemTypeId produced a non-equipment type but location bits
-        # indicate an equip slot, override — a wrong Type causes map-server crashes.
+        # Sanity check: if itemTypeId produced a non-equipment type but signals
+        # indicate equipment, override — writing a wrong Type to item_db.yml crashes
+        # the map-server.
+        #
+        # Signal 1: location bitmask has known equip-slot bits.
+        # Signal 2: requiredLevel > 0 — consumables use UseLv, not EquipLv.
+        #           When DP sends requiredLevel > 0 but location = 0, we default to
+        #           Armor (safer than Consumable for any equip item).
         location_raw = raw.get("location")
         location_bitmask = _safe_int(location_raw) if location_raw is not None else 0
-        if item_type in ("Consumable", "Etc") and location_bitmask:
-            inferred = _infer_type_from_location(location_bitmask)
+        if item_type in ("Consumable", "Etc"):
+            inferred: Optional[str] = None
+            if location_bitmask:
+                inferred = _infer_type_from_location(location_bitmask)
+            if not inferred and _safe_int(raw.get("requiredLevel"), 0) > 0:
+                # requiredLevel implies an equip slot; use location hint or default Armor
+                inferred = _infer_type_from_location(location_bitmask) or "Armor"
             if inferred:
                 item_type = inferred
 
