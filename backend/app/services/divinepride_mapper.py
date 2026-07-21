@@ -257,7 +257,8 @@ class DivinePrideMapper:
                 if skill_id <= 0:
                     continue
                 level = _safe_int(sk.get("level", sk.get("skill_lv", sk.get("Level", 1))), 1)
-                rate = _safe_int(sk.get("chance", sk.get("rate", sk.get("Rate", 10000))), 10000)
+                raw_rate = _safe_int(sk.get("chance", sk.get("rate", sk.get("Rate", 10000))), 10000)
+                rate = raw_rate * 10 if 0 < raw_rate <= 1000 else min(raw_rate, 10000)
                 cast_time = _safe_int(sk.get("castTime", sk.get("cast_time", sk.get("CastTime", 0))), 0)
                 delay = _safe_int(sk.get("delay", sk.get("Delay", 0)), 0)
 

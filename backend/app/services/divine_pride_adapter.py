@@ -720,7 +720,8 @@ class DivinePrideAdapter:
                 continue
 
             level      = _safe_int(sk.get("level") or sk.get("skill_lv") or sk.get("Level"), 1)
-            rate       = _safe_int(sk.get("chance") or sk.get("rate") or sk.get("Rate"), 0)
+            raw_rate   = _safe_int(sk.get("chance") or sk.get("rate") or sk.get("Rate"), 0)
+            rate       = raw_rate * 10 if 0 < raw_rate <= 1000 else min(raw_rate, 10000)
             cast_time  = _safe_int(
                 sk.get("casttime") or sk.get("castTime") or sk.get("cast_time") or sk.get("CastTime"), 0
             )
