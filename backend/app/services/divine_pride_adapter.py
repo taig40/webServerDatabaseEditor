@@ -82,23 +82,24 @@ _WEAPON_LOCATION_BITS: int = 0x0002 | 0x0020
 
 # rAthena official defaults: fields with these values are NOT written to YAML
 _ITEM_DEFAULTS: Dict[str, Any] = {
-    "Type":          "Etc",
-    "Defense":       0,
-    "Attack":        0,
-    "MagicAttack":   0,
-    "Weight":        0,
-    "Buy":           0,
-    "Sell":          0,
-    "Slots":         0,
-    "EquipLevelMin": 0,
-    "EquipLevelMax": 0,
-    "Range":         0,
-    "Gender":        "Both",
-    "Refineable":    False,
-    "Gradable":      False,
-    "ArmorLevel":    1,
-    "WeaponLevel":   1,
-    "View":          0,
+    "Type":           "Etc",
+    "Defense":        0,
+    "Attack":         0,
+    "MagicAttack":    0,
+    "Weight":         0,
+    "Buy":            0,
+    "Sell":           0,
+    "Slots":          0,
+    "EquipLevelMin":  0,
+    "EquipLevelMax":  0,
+    "Range":          0,
+    "Gender":         "Both",
+    "Refineable":     False,
+    "Gradable":       False,
+    "Indestructible": False,
+    "ArmorLevel":     1,
+    "WeaponLevel":    1,
+    "View":           0,
 }
 
 _MOB_DEFAULTS: Dict[str, Any] = {
@@ -351,12 +352,15 @@ class DivinePrideAdapter:
 
         Corrections applied:
 
-        - **Name**: resolved via ``globalization[]`` fallback chain before ``name`` root key.
-        - **Type**: cross-validated against the ``location`` bitmask — prevents mapping an
-          armour as ``Consumable`` when ``itemTypeId`` is absent or zero in the DP payload.
+        - **Name**: resolved via ``globalization[]`` / ``sets[]`` / ``aegisName`` fallback chain.
+        - **Type**: cross-validated against ``LOCA`` bitmask and ``requiredLevel`` to prevent
+          map-server crashes from incorrect ``itemTypeId`` values in the DP payload.
+        - **Location**: uses ``LOCA`` (primary) since ``location`` is always ``null`` in DP.
         - **Defense**: multi-field lookup (``defense`` → ``defRate`` → ``armorDefense``).
+        - **Refineable**: ``null``/``true`` → ``True``; explicit ``false`` → ``False`` (omitted).
+        - **Indestructible**: ``null``/``false`` → ``False`` (omitted); ``true`` → written.
+        - **Trade**: ``itemMoveInfo`` mapped to rAthena ``Trade:`` restriction block.
         - **Defaults omitted**: fields equal to rAthena engine defaults are not written.
-        - **Locations**: bitmask decoded to ``ItemLocations`` dict.
         - **Scripts**: wrapped in ``LiteralScalarString`` for YAML pipe-block style.
         """
         if not isinstance(raw, dict):
@@ -376,22 +380,17 @@ class DivinePrideAdapter:
         raw_type  = _safe_int(raw.get("itemTypeId"), 3)
         item_type = _ITEM_TYPE_MAP.get(raw_type, "Etc")
 
-        # Sanity check: if itemTypeId produced a non-equipment type but signals
-        # indicate equipment, override — writing a wrong Type to item_db.yml crashes
-        # the map-server.
-        #
-        # Signal 1: location bitmask has known equip-slot bits.
-        # Signal 2: requiredLevel > 0 — consumables use UseLv, not EquipLv.
-        #           When DP sends requiredLevel > 0 but location = 0, we default to
-        #           Armor (safer than Consumable for any equip item).
-        location_raw = raw.get("location")
+        # Location — DP uses 'LOCA' (uppercase) as the primary field; 'location' is always null.
+        location_raw     = raw.get("LOCA") or raw.get("location")
         location_bitmask = _safe_int(location_raw) if location_raw is not None else 0
+
+        # Type sanity: cross-validate against location bitmask and requiredLevel.
+        # A wrong Type in item_db.yml causes map-server crashes on startup.
         if item_type in ("Consumable", "Etc"):
             inferred: Optional[str] = None
             if location_bitmask:
                 inferred = _infer_type_from_location(location_bitmask)
             if not inferred and _safe_int(raw.get("requiredLevel"), 0) > 0:
-                # requiredLevel implies an equip slot; use location hint or default Armor
                 inferred = _infer_type_from_location(location_bitmask) or "Armor"
             if inferred:
                 item_type = inferred
@@ -399,31 +398,63 @@ class DivinePrideAdapter:
         price = _safe_int(raw.get("price"), 0)
         sell  = price // 2 if price > 0 else 0
 
-        # Defense: DP uses 'defense' for most items; newer endpoints may use alternatives.
         defense = _safe_int(
             raw.get("defense") or raw.get("defRate") or raw.get("armorDefense"), 0
         )
 
+        # Refineable: DP null/true → True (equipment is refineable by default).
+        # Only explicit false disables it.
+        refinable_raw = raw.get("refinable")
+        refineable    = False if refinable_raw is False else True
+
+        # Indestructible: DP null/false → False (default, omitted). Only true is written.
+        indestructible_raw = raw.get("indestructible")
+        indestructible     = True if indestructible_raw is True else False
+
         result: Dict[str, Any] = {
-            "Id":        item_id,
-            "AegisName": aegis,
-            "Name":      name,
-            "Type":      item_type,
-            "Buy":       price,
-            "Sell":      sell,
-            "Weight":    weight,
-            "Attack":    _safe_int(raw.get("attack"), 0),
-            "Defense":   defense,
-            "Slots":     _safe_int(raw.get("slots"), 0),
-            "EquipLevelMin": _safe_int(raw.get("requiredLevel"), 0),
-            "EquipLevelMax": _safe_int(raw.get("limitLevel"), 0),
+            "Id":             item_id,
+            "AegisName":      aegis,
+            "Name":           name,
+            "Type":           item_type,
+            "Buy":            price,
+            "Sell":           sell,
+            "Weight":         weight,
+            "Attack":         _safe_int(raw.get("attack"), 0),
+            "MagicAttack":    _safe_int(raw.get("matk"), 0),
+            "Defense":        defense,
+            "Slots":          _safe_int(raw.get("slots"), 0),
+            "Refineable":     refineable,
+            "Indestructible": indestructible,
+            "EquipLevelMin":  _safe_int(raw.get("requiredLevel"), 0),
+            "EquipLevelMax":  _safe_int(raw.get("limitLevel"), 0),
         }
 
-        # Locations (bitmask → dict)
+        # Locations (LOCA bitmask → ItemLocations dict)
         if location_bitmask:
             locations = _decode_location_bitmask(location_bitmask)
             if locations:
                 result["Locations"] = locations
+
+        # Trade restrictions from itemMoveInfo
+        move_info = raw.get("itemMoveInfo")
+        if isinstance(move_info, dict):
+            _DP_TRADE_MAP = (
+                ("drop",       "NoDrop"),
+                ("trade",      "NoTrade"),
+                ("sell",       "NoSell"),
+                ("cart",       "NoCart"),
+                ("store",      "NoStorage"),
+                ("guildStore", "NoGuildStorage"),
+                ("mail",       "NoMail"),
+                ("auction",    "NoAuction"),
+            )
+            trade = {
+                ra_key: True
+                for dp_key, ra_key in _DP_TRADE_MAP
+                if move_info.get(dp_key) is False
+            }
+            if trade:
+                result["Trade"] = trade
 
         # Scripts
         for dp_key, ra_key in [("script", "Script"), ("equipScript", "EquipScript"), ("unequipScript", "UnEquipScript")]:
