@@ -24,8 +24,10 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
   
   const [dpId, setDpId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [previewData, setPreviewData] = useState<{ mapped: any; yaml_preview: string; combos: any[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [savedCombosCount, setSavedCombosCount] = useState(0);
 
   // Clear state when opened/closed
   useEffect(() => {
@@ -34,6 +36,8 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
       setPreviewData(null);
       setError(null);
       setIsLoading(false);
+      setIsSaving(false);
+      setSavedCombosCount(0);
     }
   }, [isOpen]);
 
@@ -83,11 +87,31 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
     }
   };
 
-  const handleApprove = () => {
-    if (previewData && previewData.mapped) {
-      onImportSuccess(previewData.mapped);
-      onClose();
+  const handleApprove = async () => {
+    if (!previewData?.mapped) return;
+
+    setIsSaving(true);
+    setError(null);
+    let savedCount = 0;
+
+    // Save each combo to POST /api/combos/ (writes to db/import/item_combos.yml)
+    if (resourceType === 'item' && previewData.combos.length > 0) {
+      for (const combo of previewData.combos) {
+        if (!combo.combo_data) continue;
+        try {
+          await axios.post(`${API_URL}/api/combos/`, { data: combo.combo_data });
+          savedCount++;
+        } catch (err: any) {
+          // Non-fatal: log and continue — the item itself should still be imported
+          console.warn('Combo save failed:', err?.response?.data?.detail || err.message);
+        }
+      }
     }
+
+    setSavedCombosCount(savedCount);
+    onImportSuccess(previewData.mapped);
+    setIsSaving(false);
+    onClose();
   };
 
   return (
@@ -248,11 +272,11 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
               </button>
               <button
                 onClick={handleApprove}
-                disabled={!previewData || isLoading}
+                disabled={!previewData || isLoading || isSaving}
                 className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-400 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-all shadow-lg shadow-emerald-900/20"
               >
-                <Save className="w-4 h-4" />
-                {t('divinepride.panel_save')}
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {isSaving ? t('divinepride.panel_saving') : t('divinepride.panel_save')}
               </button>
             </div>
           </div>
