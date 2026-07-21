@@ -16,6 +16,7 @@ import os
 import threading
 from typing import Optional
 from app.core.config import cfg
+from app.services.mob_skill_translator import MobSkillTranslator
 
 
 FIELDS = [
@@ -63,6 +64,9 @@ def _parse_line(line: str, line_index: int) -> Optional[dict]:
     except (ValueError, TypeError):
         entry['emotion'] = -1
     entry['cancelable'] = entry.get('cancelable', 'no').lower() in ('yes', '1', 'true')
+    entry['state'] = MobSkillTranslator.normalize_state(entry.get('state', 'idle'))
+    entry['condition_type'] = MobSkillTranslator.normalize_condition(entry.get('condition_type', 'always'))
+    entry['target'] = MobSkillTranslator.normalize_target(entry.get('target', 'target'))
     return entry
 
 
