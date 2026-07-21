@@ -402,14 +402,15 @@ class DivinePrideAdapter:
             raw.get("defense") or raw.get("defRate") or raw.get("armorDefense"), 0
         )
 
-        # Refineable: DP null/true → True (equipment is refineable by default).
-        # Only explicit false disables it.
-        refinable_raw = raw.get("refinable")
-        refineable    = False if refinable_raw is False else True
-
-        # Indestructible: DP null/false → False (default, omitted). Only true is written.
+        # Refineable / Indestructible only apply to equipment (Armor, Weapon).
+        # Consumables and Etc items cannot be refined or destroyed in rAthena,
+        # so writing these flags for them would produce a dirty/incorrect YAML.
+        _is_equipment = item_type in ("Armor", "Weapon")
+        refinable_raw      = raw.get("refinable")
         indestructible_raw = raw.get("indestructible")
-        indestructible     = True if indestructible_raw is True else False
+        refineable     = (False if refinable_raw is False else True)  if _is_equipment else False
+        indestructible = (True  if indestructible_raw is True else False) if _is_equipment else False
+
 
         result: Dict[str, Any] = {
             "Id":             item_id,
