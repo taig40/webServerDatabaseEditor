@@ -10,7 +10,7 @@ para omitir campos não preenchidos e manter o output limpo.
 """
 
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List, Dict, Literal, Union
+from typing import Optional, List, Dict, Literal, Union, Any
 
 
 # ─── Base ─────────────────────────────────────────────────────────────────────
@@ -156,6 +156,9 @@ class MobDBModel(rAthenaBaseModel):
     MvpDrops: Optional[List[MobMvpDrop]] = None
     Drops:    Optional[List[MobDrop]]    = None
 
+    # ── Skills (gerenciadas em mob_skill_db.txt, removidas antes de salvar no mob_db.yml) ──
+    MobSkills: Optional[List[Dict[str, Any]]] = None
+
 
 
 # ─── Modelo de Atualização Parcial (PUT) ─────────────────────────────────────
@@ -241,6 +244,9 @@ class MobDBModelUpdate(rAthenaBaseModel):
     # ── Drops ──
     MvpDrops: Optional[List[MobMvpDrop]] = None
     Drops:    Optional[List[MobDrop]]    = None
+
+    # ── Skills (gerenciadas em mob_skill_db.txt, removidas antes de salvar no mob_db.yml) ──
+    MobSkills: Optional[List[Dict[str, Any]]] = None
 
 
 # ─── Aliases de retrocompatibilidade ──────────────────────────────────────────

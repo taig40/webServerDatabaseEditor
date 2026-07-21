@@ -314,7 +314,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
     setIsSaving(true);
     setShowSaveModal(false);
     try {
-      const payload = { ...local };
+      const payload = {
+        ...local,
+        MobSkills: activeMobSkills
+      };
       delete payload._source;
       delete payload.Id;
       await onUpdate(mob.Id, payload, mode);

@@ -333,7 +333,7 @@ async def create_mob(mob_data: MobDBModel):
         raise HTTPException(status_code=409, detail="ERROR_DUPLICATE_ID")
 
     clean_data = mob_data.model_dump(exclude_none=True)
-    clean_data.pop("MobSkills", None)
+    mob_skills = clean_data.pop("MobSkills", None)
 
     if "Ai" in clean_data and clean_data["Ai"] is not None:
         ai_str = str(clean_data["Ai"]).strip()
@@ -354,6 +354,9 @@ async def create_mob(mob_data: MobDBModel):
 
     try:
         new_mob = mob_db.add_custom_mob(clean_data)
+        if mob_skills is not None and isinstance(mob_skills, list):
+            dummy_name = new_mob.get("AegisName") or new_mob.get("Name") or str(mob_id)
+            mob_skill_db.sync_mob_skills(mob_id, str(dummy_name), mob_skills)
         return _normalize_mob_entry(new_mob)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
