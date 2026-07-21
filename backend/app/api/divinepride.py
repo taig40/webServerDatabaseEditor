@@ -103,6 +103,55 @@ def _translate_dp_error(exc: Exception, resource_type: str, resource_id) -> HTTP
     return HTTPException(status_code=500, detail=f"Erro inesperado: {exc}")
 
 
+def _build_combo_previews(combos: list) -> list:
+    """Serializes adapter combo descriptors into YAML-with-comments preview strings.
+
+    Each combo descriptor produced by ``DivinePrideAdapter.adapt_item_combos``
+    contains both data fields and private meta-data keys (prefixed with ``_``).
+    This function consumes the meta-data to prepend the correct comment block and
+    serializes the clean data portion into a YAML string via ruamel.
+
+    The resulting strings are **read-only previews** for the front-end; they are
+    never written to disk.  Disk writes go through ``POST /api/combos/`` which
+    enforces Pydantic validation and redirects to ``db/import/item_combos.yml``.
+
+    Args:
+        combos: List returned by ``DivinePrideAdapter.adapt_item_combos``.
+
+    Returns:
+        List of preview dicts, each containing:
+
+        - ``combo_yaml`` (``str``): Comment-annotated YAML block.
+        - ``has_missing_items`` (``bool``): Whether placeholder ``501`` was used.
+        - ``original_ids`` (``List[int]``): Original IDs from the DP payload.
+        - ``script_is_server_side`` (``bool``): Script classification result.
+        - ``combo_data`` (``dict``): Clean payload ready for ``POST /api/combos/``.
+    """
+    results = []
+    for c in combos:
+        comment_lines = [c["_yaml_comment"]]
+        if c.get("_visual_script_note"):
+            comment_lines.append(c["_visual_script_note"])
+
+        combo_data: dict = {
+            "Combos": [{"Combo": c["combo_items"]}],
+        }
+        if c["script"] is not None:
+            combo_data["Script"] = str(c["script"])
+
+        yaml_block = _to_yaml_preview(combo_data)
+        combo_yaml = "\n".join(comment_lines) + "\n" + yaml_block
+
+        results.append({
+            "combo_yaml":          combo_yaml,
+            "has_missing_items":   c["has_missing_items"],
+            "original_ids":        c["original_ids"],
+            "script_is_server_side": c["script_is_server_side"],
+            "combo_data":          combo_data,
+        })
+    return results
+
+
 @router.get("/preview/item/{item_id}")
 async def preview_item(
     item_id: int,
@@ -135,8 +184,8 @@ async def preview_item(
         raise _translate_dp_error(e, "Item", item_id)
 
     mapped = dp_adapter.adapt_item(raw)
-    # Gera preview sem LiteralScalarString (para display no front-end)
     preview_dict = {k: (str(v) if hasattr(v, "lc") else v) for k, v in mapped.items()}
+    combo_previews = _build_combo_previews(dp_adapter.adapt_item_combos(raw, item_id))
 
     return {
         "success":      True,
@@ -145,6 +194,7 @@ async def preview_item(
         "id":           item_id,
         "mapped":       mapped,
         "yaml_preview": _to_yaml_preview(mapped),
+        "combos":       combo_previews,
         "raw":          raw,
     }
 

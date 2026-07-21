@@ -17,6 +17,17 @@ import re
 from typing import Any, Dict, List, Optional, Union
 from ruamel.yaml.scalarstring import LiteralScalarString
 
+_RO_COLOR_PATTERN = re.compile(r'\^[0-9A-Fa-f]{6}')
+
+_RATHENA_SCRIPT_KEYWORDS: frozenset = frozenset({
+    "bonus", "bonus2", "bonus3", "bonus4", "bonus5",
+    "skill", "sc_start", "sc_end", "heal", "itemheal",
+    "specialeffect", "callfunc", "callsub", "getitem",
+    "delitem", "rentitem", "percentheal", "warp",
+    "announce", "atcommand", "set", "if", "strcharinfo",
+    "getcharid", "monster", "areamonster", "autobonus",
+})
+
 
 # ─── Lookup tables ────────────────────────────────────────────────────────────
 
@@ -129,15 +140,56 @@ def _decode_location_bitmask(bitmask: int) -> Optional[Dict[str, bool]]:
 
 
 def _wrap_script(script: str) -> Optional[LiteralScalarString]:
-    """
-    Envolve um script em LiteralScalarString para forçar o pipe | no YAML.
-    Retorna None se o script for vazio.
+    """Envolve um script em LiteralScalarString para forçar o pipe ``|`` no YAML.
+
+    Args:
+        script: Raw script string from the Divine Pride payload or editor input.
+
+    Returns:
+        LiteralScalarString suitable for ruamel.yaml block-scalar output,
+        or ``None`` if the input is empty/whitespace-only.
     """
     if not script or not str(script).strip():
         return None
     s = str(script).strip()
-    # Garante terminação com \n (exigido pelo block scalar do YAML)
     return LiteralScalarString(s if s.endswith("\n") else s + "\n")
+
+
+def _is_server_script(text: str) -> bool:
+    """Determines whether a Divine Pride script string is rAthena server-side logic.
+
+    A script is considered server-side when it contains at least one recognised
+    rAthena bonus/skill keyword.  Strings that exclusively contain RO client
+    colour tokens (``^RRGGBB``) and no bonus keywords are classified as
+    client-side (lore/visual) and must **never** be written to ``Script:`` in
+    ``item_combo_db.yml`` — doing so would crash the map-server.
+
+    Args:
+        text: Raw script string from the ``sets[].script`` field of a Divine
+              Pride item payload.
+
+    Returns:
+        ``True`` if the string contains a valid rAthena script keyword.
+        ``False`` if the content is purely visual/descriptive (client-side).
+    """
+    lower = text.lower()
+    return any(kw in lower for kw in _RATHENA_SCRIPT_KEYWORDS)
+
+
+def _strip_ro_color_tokens(text: str) -> str:
+    """Removes RO client colour tokens (``^RRGGBB``) from a string.
+
+    Intended **only** for producing human-readable YAML comment lines.
+    The return value must never be written to a server-side ``Script:`` field.
+
+    Args:
+        text: Raw string potentially containing ``^000000``-style colour tokens
+              from the Ragnarok Online client format.
+
+    Returns:
+        Sanitized plain-text string with all colour tokens removed.
+    """
+    return _RO_COLOR_PATTERN.sub('', text).strip()
 
 
 def _get_element(raw_element: int):
@@ -192,6 +244,20 @@ class DivinePrideAdapter:
             return item_id
         aegis = self._item_db.get_aegisname_by_id(item_id)
         return aegis if aegis is not None else item_id
+
+    def _item_exists(self, item_id: int) -> bool:
+        """Reports whether a numeric item ID exists in the local in-memory cache.
+
+        Args:
+            item_id: Numeric rAthena item ID to look up.
+
+        Returns:
+            ``True`` if the ID resolves to a known AegisName; ``False`` otherwise
+            (including when no ``item_db_service`` was injected).
+        """
+        if self._item_db is None:
+            return False
+        return self._item_db.get_aegisname_by_id(item_id) is not None
 
     # ── Item ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -263,6 +329,115 @@ class DivinePrideAdapter:
         result = {k: v for k, v in result.items() if v is not None}
 
         return result
+
+    # ── Item Combos ──────────────────────────────────────────────────────────
+
+    def adapt_item_combos(self, raw: Dict[str, Any], item_id: int) -> List[Dict[str, Any]]:
+        """Extracts and validates combo entries from the Divine Pride ``sets`` key.
+
+        Applies two scenarios based on local cache availability:
+
+        - **Scenario A** — all combo item IDs exist in the local ``item_db``:
+          Resolves each ID to its AegisName and annotates with a human-readable
+          comment listing the resolved names.
+        - **Scenario B** — one or more IDs are missing from the local cache:
+          Replaces unknown IDs with ``501`` (``Red_Potion``) as a safe placeholder
+          to prevent map-server crashes, and annotates with a ``TODO`` comment
+          listing the original unknown IDs for manual resolution.
+
+        Script classification (server vs client-side):
+
+        - If ``sets[].script`` passes ``_is_server_script()``, it is wrapped as
+          a ``LiteralScalarString`` for the YAML ``Script:`` field.
+        - Otherwise the raw text is demoted to a ``_visual_script_note`` comment
+          and the ``Script:`` field is **omitted** from the output to avoid
+          crashing the map-server parser.
+
+        Args:
+            raw: Full raw item dictionary received from Divine Pride.
+            item_id: Numeric ID of the item currently being imported (used as
+                     anchor when the DP payload omits the current item from a set).
+
+        Returns:
+            List of combo descriptor dicts.  Each dict contains:
+
+            - ``combo_items`` (``List[Union[str, int]]``): AegisNames or ``501`` placeholders.
+            - ``script`` (``Optional[LiteralScalarString]``): Server-side script or ``None``.
+            - ``_yaml_comment`` (``str``): Header comment for the YAML block.
+            - ``_visual_script_note`` (``Optional[str]``): Client-side script demoted to comment.
+            - ``has_missing_items`` (``bool``): Whether any placeholder was applied.
+            - ``original_ids`` (``List[int]``): Original IDs from the DP payload.
+            - ``script_is_server_side`` (``bool``): Classification result.
+
+            Returns an empty list when ``sets`` is absent or empty.
+        """
+        sets = raw.get("sets") or []
+        if not sets or not isinstance(sets, list):
+            return []
+
+        results: List[Dict[str, Any]] = []
+
+        for set_entry in sets:
+            if not isinstance(set_entry, dict):
+                continue
+
+            dp_items = set_entry.get("items") or []
+            if not isinstance(dp_items, list):
+                continue
+
+            original_ids = [
+                _safe_int(it.get("id"), 0)
+                for it in dp_items
+                if isinstance(it, dict) and _safe_int(it.get("id"), 0) > 0
+            ]
+
+            if len(original_ids) < 2:
+                continue
+
+            # Classify the DP script field
+            dp_script = str(set_entry.get("script") or "").strip()
+            if dp_script and _is_server_script(dp_script):
+                server_script: Optional[LiteralScalarString] = _wrap_script(dp_script)
+                visual_note: Optional[str] = None
+                script_is_server = True
+            elif dp_script:
+                server_script = None
+                visual_note = _strip_ro_color_tokens(dp_script)
+                script_is_server = False
+            else:
+                server_script = None
+                visual_note = None
+                script_is_server = False
+
+            # Scenario A / B: validate IDs against local cache
+            missing_ids = [id_ for id_ in original_ids if not self._item_exists(id_)]
+            has_missing = bool(missing_ids)
+
+            if has_missing:
+                combo_items: List[Union[str, int]] = [
+                    self._resolve_item_ref(id_) if self._item_exists(id_) else 501
+                    for id_ in original_ids
+                ]
+                missing_str = " and ".join(str(id_) for id_ in missing_ids)
+                yaml_comment = f"# TODO: Combo Item ID {missing_str}"
+            else:
+                combo_items = [self._resolve_item_ref(id_) for id_ in original_ids]
+                name_str = " + ".join(
+                    str(self._resolve_item_ref(id_)) for id_ in original_ids
+                )
+                yaml_comment = f"# {name_str}"
+
+            results.append({
+                "combo_items":         combo_items,
+                "script":              server_script,
+                "_yaml_comment":       yaml_comment,
+                "_visual_script_note": f"# DP script (client-side): {visual_note}" if visual_note else None,
+                "has_missing_items":   has_missing,
+                "original_ids":        original_ids,
+                "script_is_server_side": script_is_server,
+            })
+
+        return results
 
     # ── Monster ───────────────────────────────────────────────────────────────
 
