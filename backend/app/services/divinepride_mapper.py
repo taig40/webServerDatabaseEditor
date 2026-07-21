@@ -6,6 +6,7 @@ into strict dictionary formats compatible with rAthena YAML databases.
 
 import re
 from typing import Dict, Any, List
+from app.services.mob_skill_translator import MobSkillTranslator
 
 ELEMENT_TYPES = {
     0: "Neutral",
@@ -253,64 +254,30 @@ class DivinePrideMapper:
             for sk in raw_skills:
                 if not isinstance(sk, dict):
                     continue
-                skill_id = _safe_int(sk.get("skillId", sk.get("id", sk.get("skill_id", sk.get("Skill")))), 0)
-                if skill_id <= 0:
+                norm = MobSkillTranslator.normalize_skill_entry(sk, mob_id=mob_id, dummy_name=aegis_name)
+                if not norm or norm.get("skill_id", 0) <= 0:
                     continue
-                level = _safe_int(sk.get("level", sk.get("skill_lv", sk.get("Level", 1))), 1)
-                raw_rate = _safe_int(sk.get("chance", sk.get("rate", sk.get("Rate", 10000))), 10000)
-                rate = raw_rate * 10 if 0 < raw_rate <= 1000 else min(raw_rate, 10000)
-                cast_time = _safe_int(sk.get("castTime", sk.get("cast_time", sk.get("CastTime", 0))), 0)
-                delay = _safe_int(sk.get("delay", sk.get("Delay", 0)), 0)
-
-                raw_cancel = sk.get("interruptable")
-                if raw_cancel is None:
-                    raw_cancel = sk.get("cancelable", False)
-                cancelable = bool(raw_cancel)
-
-                # HIGIENIZAÇÃO DE STATE: "STATE_CHASE" -> "chase"
-                raw_state = str(sk.get("status", sk.get("state", "idle")) or "idle").strip()
-                state = raw_state.replace("STATE_", "").replace("state_", "").lower()
-                if not state:
-                    state = "idle"
-
-                # HIGIENIZAÇÃO DE CONDITION: "CONDITION_ALWAYS" -> "always"
-                raw_cond = str(sk.get("condition", sk.get("condition_type", "always")) or "always").strip()
-                condition_type = raw_cond.replace("CONDITION_", "").replace("condition_", "").lower()
-                if not condition_type:
-                    condition_type = "always"
-
-                # conditionValue pode vir como string "null" ou None
-                raw_cond_val = sk.get("conditionValue", sk.get("condition_value"))
-                if raw_cond_val is None or str(raw_cond_val).strip().lower() == "null" or str(raw_cond_val).strip() == "":
-                    condition_value = 0
-                else:
-                    condition_value = _safe_int(raw_cond_val, 0)
-
-                target = str(sk.get("target", "target") or "target").lower().replace("target_", "")
-                if not target:
-                    target = "target"
-
                 rathena_mob_skills.append({
-                    "Skill": skill_id,
-                    "skill_id": skill_id,
-                    "Level": level,
-                    "skill_lv": level,
-                    "Rate": rate,
-                    "rate": rate,
-                    "State": state,
-                    "state": state,
-                    "ConditionType": condition_type,
-                    "condition_type": condition_type,
-                    "ConditionValue": condition_value,
-                    "condition_value": condition_value,
-                    "CastTime": cast_time,
-                    "cast_time": cast_time,
-                    "Delay": delay,
-                    "delay": delay,
-                    "Cancelable": cancelable,
-                    "cancelable": cancelable,
-                    "Target": target,
-                    "target": target,
+                    "Skill": norm["skill_id"],
+                    "skill_id": norm["skill_id"],
+                    "Level": norm["skill_lv"],
+                    "skill_lv": norm["skill_lv"],
+                    "Rate": norm["rate"],
+                    "rate": norm["rate"],
+                    "State": norm["state"],
+                    "state": norm["state"],
+                    "ConditionType": norm["condition_type"],
+                    "condition_type": norm["condition_type"],
+                    "ConditionValue": norm["condition_value"],
+                    "condition_value": norm["condition_value"],
+                    "CastTime": norm["cast_time"],
+                    "cast_time": norm["cast_time"],
+                    "Delay": norm["delay"],
+                    "delay": norm["delay"],
+                    "Cancelable": norm["cancelable"],
+                    "cancelable": norm["cancelable"],
+                    "Target": norm["target"],
+                    "target": norm["target"],
                 })
 
         result = {

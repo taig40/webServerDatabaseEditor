@@ -266,10 +266,15 @@ class MobSkillDatabase:
                     entry[field] = val
                 else:
                     entry[field] = str(val).lower() in ('yes', '1', 'true')
+            elif field in ('state', 'condition_type', 'target'):
+                if field == 'state':
+                    entry[field] = MobSkillTranslator.normalize_state(val)
+                elif field == 'condition_type':
+                    entry[field] = MobSkillTranslator.normalize_condition(val)
+                else:
+                    entry[field] = MobSkillTranslator.normalize_target(val)
             else:
-                str_val = str(val).strip().lower() if val is not None else ''
-                if field == 'state' and str_val in ('aggressive', 'aggressive_st', 'berserk', 'berserk_st'):
-                    str_val = 'angry'
+                str_val = str(val).strip() if val is not None else ''
                 entry[field] = str_val
 
     def update_entry(self, line_index: int, updated_data: dict) -> Optional[dict]:
@@ -301,22 +306,18 @@ class MobSkillDatabase:
             except (ValueError, TypeError):
                 return default
 
-        state_val = str(entry_data.get('state', 'idle')).strip().lower()
-        if state_val in ('aggressive', 'aggressive_st', 'berserk', 'berserk_st'):
-            state_val = 'angry'
-
         clean: dict = {
             'mob_id': mob_id,
             'dummy_name': str(entry_data.get('dummy_name', '')),
-            'state': state_val,
+            'state': MobSkillTranslator.normalize_state(entry_data.get('state', 'idle')),
             'skill_id': _safe_int('skill_id', 1),
             'skill_lv': _safe_int('skill_lv', 1),
             'rate': _safe_int('rate', 1000),
             'cast_time': _safe_int('cast_time', 0),
             'delay': _safe_int('delay', 5000),
             'cancelable': bool(entry_data.get('cancelable', False)),
-            'target': str(entry_data.get('target', 'target')).strip().lower(),
-            'condition_type': str(entry_data.get('condition_type', 'always')).strip().lower(),
+            'target': MobSkillTranslator.normalize_target(entry_data.get('target', 'target')),
+            'condition_type': MobSkillTranslator.normalize_condition(entry_data.get('condition_type', 'always')),
             'condition_value': _safe_int('condition_value', 0),
             'val1': _safe_int('val1', 0),
             'val2': _safe_int('val2', 0),
@@ -332,7 +333,7 @@ class MobSkillDatabase:
             self._original_lines.append(csv_line)
             clean['_line_index'] = line_index
             clean['_source'] = 'rathena'
-            self._original_entries.append(dict(clean))
+            self._original_entries.append(clean)
             self._save_file(self.original_path, self._original_lines)
         else:
             if not os.path.exists(self.import_path):

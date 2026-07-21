@@ -16,6 +16,7 @@ dicts compatible with the Pydantic V2 DTOs (``ItemDBModel``, ``MobDBModelUpdate`
 import re
 from typing import Any, Dict, List, Optional, Union
 from ruamel.yaml.scalarstring import LiteralScalarString
+from app.services.mob_skill_translator import MobSkillTranslator
 
 _RO_COLOR_PATTERN = re.compile(r'\^[0-9A-Fa-f]{6}')
 
@@ -36,25 +37,16 @@ _ELEMENT_TYPES: Dict[int, str] = {
     5: "Poison",  6: "Holy",   7: "Dark",  8: "Ghost",  9: "Undead",
 }
 
-_SCALE_MAP: Dict[int, str] = {0: "Small", 1: "Medium", 2: "Large"}
-
-_RACE_MAP: Dict[int, str] = {
-    0: "Formless", 1: "Undead", 2: "Brute",    3: "Plant",  4: "Insect",
-    5: "Fish",     6: "Demon",  7: "Demihuman", 8: "Angel",  9: "Dragon",
+_RACE_TYPES: Dict[int, str] = {
+    0: "Formless", 1: "Undead", 2: "Brute",  3: "Plant",    4: "Insect",
+    5: "Fish",     6: "Demon",  7: "Demihuman", 8: "Angel", 9: "Dragon",
 }
+
+_SIZE_TYPES: Dict[int, str] = {0: "Small", 1: "Medium", 2: "Large"}
+_SCALE_MAP: Dict[int, str] = _SIZE_TYPES
+_RACE_MAP: Dict[int, str] = _RACE_TYPES
 
 _CLASS_MAP: Dict[int, str] = {0: "Normal", 1: "Boss", 4: "Guardian"}
-
-_MOB_SKILL_STATE_MAP: Dict[str, str] = {
-    "IDLE_ST":       "idle",
-    "WALK_ST":       "walk",
-    "RUSH_ST":       "walk",
-    "DEAD_ST":       "dead",
-    "BERSERK_ST":    "angry",
-    "AGGRESSIVE_ST": "angry",
-    "AGGRESSIVE":    "angry",
-    "ANY_ST":        "any",
-}
 
 # DP condition names (IF_XXX) → rAthena Condition values
 _MOB_SKILL_COND_MAP: Dict[str, str] = {
@@ -713,64 +705,9 @@ class DivinePrideAdapter:
         for sk in (raw.get("skill") or raw.get("skills") or []):
             if not isinstance(sk, dict):
                 continue
-            skill_id = _safe_int(
-                sk.get("skillId") or sk.get("id") or sk.get("skill_id") or sk.get("Skill"), 0
-            )
-            if skill_id <= 0:
-                continue
-
-            level      = _safe_int(sk.get("level") or sk.get("skill_lv") or sk.get("Level"), 1)
-            raw_rate   = _safe_int(sk.get("chance") or sk.get("rate") or sk.get("Rate"), 0)
-            rate       = raw_rate * 10 if 0 < raw_rate <= 1000 else min(raw_rate, 10000)
-            cast_time  = _safe_int(
-                sk.get("casttime") or sk.get("castTime") or sk.get("cast_time") or sk.get("CastTime"), 0
-            )
-            delay      = _safe_int(sk.get("delay") or sk.get("Delay"), 0)
-            cancelable = bool(sk.get("interruptable") or sk.get("cancelable") or False)
-
-            # State normalisation via lookup table
-            raw_state = str(sk.get("status") or sk.get("state") or "IDLE_ST").strip().upper()
-            state = _MOB_SKILL_STATE_MAP.get(
-                raw_state,
-                raw_state.lower().replace("_st", "").replace("state_", "")
-            ).lower()
-            if state in ("aggressive", "berserk"):
-                state = "angry"
-
-            # Condition normalisation: DP uses IF_XXX prefixed strings or null
-            raw_cond = sk.get("condition") or sk.get("condition_type")
-            if raw_cond is None or str(raw_cond).strip().lower() in ("", "null", "always"):
-                cond_type = "always"
-            else:
-                cond_key  = str(raw_cond).strip().upper()
-                cond_type = _MOB_SKILL_COND_MAP.get(
-                    cond_key,
-                    cond_key.replace("IF_", "").replace("CONDITION_", "").replace("_", "").lower(),
-                ).lower()
-
-            raw_cond_val = sk.get("conditionValue") or sk.get("condition_value")
-            cond_val = (
-                0
-                if (raw_cond_val is None or str(raw_cond_val).lower() in ("null", ""))
-                else _safe_int(raw_cond_val)
-            )
-
-            target = str(sk.get("target") or "target").lower().replace("target_", "") or "target"
-
-            mob_skills.append({
-                "mob_id":          mob_id,
-                "dummy_name":      aegis,
-                "skill_id":        skill_id,
-                "skill_lv":        level,
-                "rate":            rate,
-                "state":           state,
-                "condition_type":  cond_type,
-                "condition_value": cond_val,
-                "cast_time":       cast_time,
-                "delay":           delay,
-                "cancelable":      cancelable,
-                "target":          target,
-            })
+            normalized_sk = MobSkillTranslator.normalize_skill_entry(sk, mob_id=mob_id, dummy_name=aegis)
+            if normalized_sk and normalized_sk.get("skill_id", 0) > 0:
+                mob_skills.append(normalized_sk)
 
         result: Dict[str, Any] = {
             "Id":              mob_id,
