@@ -267,9 +267,33 @@ class MobSkillDatabase:
                 else:
                     entry[field] = str(val).lower() in ('yes', '1', 'true')
             else:
-                str_val = str(val).strip().lower() if val is not None else ''
-                if field == 'state' and str_val in ('aggressive', 'aggressive_st', 'berserk', 'berserk_st'):
-                    str_val = 'angry'
+                str_val = str(val).strip() if val is not None else ''
+                if field == 'state':
+                    str_val = str_val.lower()
+                    if str_val in ('aggressive', 'aggressive_st', 'berserk', 'berserk_st'):
+                        str_val = 'angry'
+                elif field == 'condition_type':
+                    if str_val.islower():
+                        cond_map = {
+                            'always': 'always',
+                            'rudeattack': 'RudeAttack',
+                            'mobcount': 'MobCount',
+                            'hp': 'HP',
+                            'sp': 'SP',
+                            'hiding': 'Hiding',
+                            'slave': 'Slave',
+                            'slavenum': 'SlaveNum',
+                            'target': 'Target',
+                            'magicattacked': 'MagicAttacked',
+                            'masterattacked': 'MasterAttacked',
+                            'rangeattacked': 'RangeAttacked',
+                            'comradehp': 'ComradeHP',
+                            'friendhp': 'FriendHP',
+                            'dead': 'Dead',
+                        }
+                        str_val = cond_map.get(str_val, str_val.title())
+                elif field == 'target':
+                    str_val = str_val.lower()
                 entry[field] = str_val
 
     def update_entry(self, line_index: int, updated_data: dict) -> Optional[dict]:
@@ -305,6 +329,27 @@ class MobSkillDatabase:
         if state_val in ('aggressive', 'aggressive_st', 'berserk', 'berserk_st'):
             state_val = 'angry'
 
+        cond_val_str = str(entry_data.get('condition_type', 'always')).strip()
+        if cond_val_str.islower():
+            cond_map = {
+                'always': 'always',
+                'rudeattack': 'RudeAttack',
+                'mobcount': 'MobCount',
+                'hp': 'HP',
+                'sp': 'SP',
+                'hiding': 'Hiding',
+                'slave': 'Slave',
+                'slavenum': 'SlaveNum',
+                'target': 'Target',
+                'magicattacked': 'MagicAttacked',
+                'masterattacked': 'MasterAttacked',
+                'rangeattacked': 'RangeAttacked',
+                'comradehp': 'ComradeHP',
+                'friendhp': 'FriendHP',
+                'dead': 'Dead',
+            }
+            cond_val_str = cond_map.get(cond_val_str, cond_val_str.title())
+
         clean: dict = {
             'mob_id': mob_id,
             'dummy_name': str(entry_data.get('dummy_name', '')),
@@ -316,7 +361,7 @@ class MobSkillDatabase:
             'delay': _safe_int('delay', 5000),
             'cancelable': bool(entry_data.get('cancelable', False)),
             'target': str(entry_data.get('target', 'target')).strip().lower(),
-            'condition_type': str(entry_data.get('condition_type', 'always')).strip().lower(),
+            'condition_type': cond_val_str,
             'condition_value': _safe_int('condition_value', 0),
             'val1': _safe_int('val1', 0),
             'val2': _safe_int('val2', 0),
