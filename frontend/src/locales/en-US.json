@@ -1214,7 +1214,12 @@
     "panel_save_error": "Error saving: {{message}}",
     "panel_fetch_error": "Error fetching: {{message}}",
     "panel_resource_item": "Item",
-    "panel_resource_monster": "Monster"
+    "panel_resource_monster": "Monster",
+    "no_preview": "No preview available.",
+    "invalid_response": "Invalid response from API.",
+    "combos_section_title": "Item Combos (from Divine Pride)",
+    "combo_placeholder_badge": "Placeholder 501 applied — review before saving",
+    "combo_resolved_badge": "All items resolved"
   },
   "random_options_manager": {
     "title": "Unified Random Options Manager",

@@ -1216,7 +1216,12 @@
     "panel_save_error": "Erro ao salvar: {{message}}",
     "panel_fetch_error": "Erro ao buscar: {{message}}",
     "panel_resource_item": "Item",
-    "panel_resource_monster": "Monstro"
+    "panel_resource_monster": "Monstro",
+    "no_preview": "Sem preview disponível.",
+    "invalid_response": "Resposta inválida da API.",
+    "combos_section_title": "Combos de Item (via DivinePride)",
+    "combo_placeholder_badge": "Placeholder 501 aplicado — revise antes de salvar",
+    "combo_resolved_badge": "Todos os itens resolvidos"
   },
   "random_options_manager": {
     "title": "Gerenciador Unificado de Opções Aleatórias",

@@ -24,7 +24,7 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
   
   const [dpId, setDpId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [previewData, setPreviewData] = useState<{ mapped: any, yaml_preview: string } | null>(null);
+  const [previewData, setPreviewData] = useState<{ mapped: any; yaml_preview: string; combos: any[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Clear state when opened/closed
@@ -69,10 +69,11 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
       if (response.data && response.data.mapped) {
         setPreviewData({
           mapped: response.data.mapped,
-          yaml_preview: response.data.yaml_preview || 'Sem preview disponível'
+          yaml_preview: response.data.yaml_preview || t('divinepride.no_preview'),
+          combos: response.data.combos || [],
         });
       } else {
-        setError("Retorno inválido da API.");
+        setError(t('divinepride.invalid_response'));
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail || err.message || 'Unknown error';
@@ -169,7 +170,7 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
               {t('divinepride.panel_preview_title')}
             </div>
             
-            <div className="flex-1 overflow-auto custom-scrollbar relative p-4">
+            <div className="flex-1 overflow-auto custom-scrollbar relative">
               {isLoading ? (
                 <div className="absolute inset-0 flex items-center justify-center text-emerald-500">
                   <div className="flex flex-col items-center gap-3">
@@ -178,13 +179,58 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
                   </div>
                 </div>
               ) : previewData ? (
-                <SyntaxHighlighter
-                  language="yaml"
-                  style={vscDarkPlus}
-                  customStyle={{ margin: 0, padding: '1rem', background: 'transparent', fontSize: '0.875rem' }}
-                >
-                  {previewData.yaml_preview}
-                </SyntaxHighlighter>
+                <div className="flex flex-col">
+                  <div className="p-4">
+                    <SyntaxHighlighter
+                      language="yaml"
+                      style={vscDarkPlus}
+                      customStyle={{ margin: 0, padding: '1rem', background: 'transparent', fontSize: '0.875rem' }}
+                    >
+                      {previewData.yaml_preview}
+                    </SyntaxHighlighter>
+                  </div>
+
+                  {previewData.combos.length > 0 && (
+                    <div className="px-4 pb-4 border-t border-gray-800 pt-4">
+                      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                        {t('divinepride.combos_section_title')} ({previewData.combos.length})
+                      </h4>
+                      <div className="flex flex-col gap-3">
+                        {previewData.combos.map((combo: any, idx: number) => (
+                          <div
+                            key={idx}
+                            className={`rounded-lg border ${
+                              combo.has_missing_items
+                                ? 'border-yellow-700/50 bg-yellow-900/10'
+                                : 'border-emerald-800/40 bg-emerald-900/10'
+                            }`}
+                          >
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-t-lg text-xs font-medium ${
+                              combo.has_missing_items
+                                ? 'text-yellow-400 bg-yellow-900/20'
+                                : 'text-emerald-400 bg-emerald-900/20'
+                            }`}>
+                              <span>{combo.has_missing_items ? '⚠' : '✓'}</span>
+                              <span>
+                                {combo.has_missing_items
+                                  ? t('divinepride.combo_placeholder_badge')
+                                  : t('divinepride.combo_resolved_badge')}
+                              </span>
+                            </div>
+                            <SyntaxHighlighter
+                              language="yaml"
+                              style={vscDarkPlus}
+                              customStyle={{ margin: 0, padding: '0.75rem', background: 'transparent', fontSize: '0.8rem' }}
+                            >
+                              {combo.combo_yaml}
+                            </SyntaxHighlighter>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-gray-600">
                   {t('divinepride.panel_preview_empty')}

@@ -70,6 +70,16 @@ _LOCATION_BITS: Dict[int, str] = {
     0x8000: "Shadow_Armor",
 }
 
+# Bitmasks that unambiguously identify an Armor-type item (garment, body, shoes, headgear…)
+_ARMOR_LOCATION_BITS: int = (
+    0x0001 | 0x0004 | 0x0008 | 0x0010 | 0x0040 |
+    0x0080 | 0x0100 | 0x0200 | 0x0400 | 0x0800 |
+    0x1000 | 0x2000 | 0x8000
+)
+
+# Bitmasks that indicate a Weapon slot (right-hand or left-hand weapon)
+_WEAPON_LOCATION_BITS: int = 0x0002 | 0x0020
+
 # rAthena official defaults: fields with these values are NOT written to YAML
 _ITEM_DEFAULTS: Dict[str, Any] = {
     "Type":          "Etc",
@@ -118,6 +128,68 @@ def _safe_int(val: Any, default: int = 0) -> int:
 def _omit_defaults(data: dict, defaults: Dict[str, Any]) -> dict:
     """Remove do dict qualquer chave cujo valor seja igual ao default do rAthena."""
     return {k: v for k, v in data.items() if defaults.get(k, object()) != v}
+
+
+def _infer_type_from_location(bitmask: int) -> Optional[str]:
+    """Infers the rAthena item ``Type`` from the equipment location bitmask.
+
+    Used as a sanity layer when ``itemTypeId`` from Divine Pride is absent,
+    zero, or maps to an implausible type (e.g. ``Consumable`` for an item
+    with equip-slot bits set).  Writing an incorrect ``Type`` to
+    ``item_db.yml`` causes map-server crashes on load.
+
+    Args:
+        bitmask: Raw ``location`` integer from the Divine Pride item payload.
+
+    Returns:
+        ``"Armor"`` if the bitmask contains armour-slot bits,
+        ``"Weapon"`` if it contains weapon-slot bits,
+        ``None`` if the bitmask is zero or unrecognised (no override applied).
+    """
+    if not bitmask:
+        return None
+    if bitmask & _ARMOR_LOCATION_BITS:
+        return "Armor"
+    if bitmask & _WEAPON_LOCATION_BITS:
+        return "Weapon"
+    return None
+
+
+def _resolve_item_name(raw: Dict[str, Any], item_id: int) -> str:
+    """Extracts the English display name from a Divine Pride item payload.
+
+    Divine Pride returns names for newer items exclusively via the
+    ``globalization`` array (language 0 = English), not in the top-level
+    ``name`` field which may be empty or in Korean.  This mirrors the
+    pattern already used by ``adapt_skill()``.
+
+    Fallback chain:
+        1. ``globalization[language==0].name``
+        2. ``globalization[0].name`` (any language)
+        3. ``raw["name"]`` (top-level, may be non-English)
+        4. ``f"ITEM_{item_id}"`` (last-resort placeholder)
+
+    Args:
+        raw: Full raw item dictionary from Divine Pride.
+        item_id: Numeric item ID used for the placeholder fallback.
+
+    Returns:
+        Best available English name string.
+    """
+    globalization = raw.get("globalization")
+    if isinstance(globalization, list) and globalization:
+        entry = next(
+            (e for e in globalization if isinstance(e, dict) and _safe_int(e.get("language"), -1) == 0),
+            None,
+        )
+        if entry is None:
+            entry = next((e for e in globalization if isinstance(e, dict)), None)
+        if entry:
+            candidate = str(entry.get("name") or "").strip()
+            if candidate:
+                return candidate
+    top_level = str(raw.get("name") or "").strip()
+    return top_level if top_level else f"ITEM_{item_id}"
 
 
 def _to_aegis_name(name: str, fallback_id: int = 0) -> str:
@@ -262,35 +334,51 @@ class DivinePrideAdapter:
     # ── Item ─────────────────────────────────────────────────────────────────────────────────────
 
     def adapt_item(self, raw: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Transforma JSON bruto de Item do DP → dict compatível com ItemDBModel.
+        """Transforms raw Divine Pride item JSON into an ``ItemDBModel``-compatible dict.
 
-        Correções aplicadas:
-        - Omite campos com valores iguais aos defaults do rAthena
-        - Mapeia location (bitmask) → Locations (dict ItemLocations)
-        - NÃO inclui EquipLocations (chave inválida no nosso modelo)
-        - Scripts envoltos com LiteralScalarString
+        Corrections applied:
+
+        - **Name**: resolved via ``globalization[]`` fallback chain before ``name`` root key.
+        - **Type**: cross-validated against the ``location`` bitmask — prevents mapping an
+          armour as ``Consumable`` when ``itemTypeId`` is absent or zero in the DP payload.
+        - **Defense**: multi-field lookup (``defense`` → ``defRate`` → ``armorDefense``).
+        - **Defaults omitted**: fields equal to rAthena engine defaults are not written.
+        - **Locations**: bitmask decoded to ``ItemLocations`` dict.
+        - **Scripts**: wrapped in ``LiteralScalarString`` for YAML pipe-block style.
         """
         if not isinstance(raw, dict):
             raw = {}
 
-        item_id   = _safe_int(raw.get("id"), 0)
-        name      = str(raw.get("name") or f"ITEM_{item_id}")
-        aegis     = str(raw.get("aegisName") or raw.get("dbname") or "").strip()
+        item_id = _safe_int(raw.get("id"), 0)
+        name    = _resolve_item_name(raw, item_id)
+        aegis   = str(raw.get("aegisName") or raw.get("dbname") or "").strip()
         if not aegis:
             aegis = _to_aegis_name(name, item_id)
 
-        # Peso: DP usa float (ex: 0.7 = 70 no rAthena)
         try:
             weight = int(round(float(raw.get("weight") or 0) * 10))
         except (ValueError, TypeError):
             weight = 0
 
-        raw_type = _safe_int(raw.get("itemTypeId"), 3)
+        raw_type  = _safe_int(raw.get("itemTypeId"), 3)
         item_type = _ITEM_TYPE_MAP.get(raw_type, "Etc")
 
-        price   = _safe_int(raw.get("price"), 0)
-        sell    = price // 2 if price > 0 else 0
+        # Sanity check: if itemTypeId produced a non-equipment type but location bits
+        # indicate an equip slot, override — a wrong Type causes map-server crashes.
+        location_raw = raw.get("location")
+        location_bitmask = _safe_int(location_raw) if location_raw is not None else 0
+        if item_type in ("Consumable", "Etc") and location_bitmask:
+            inferred = _infer_type_from_location(location_bitmask)
+            if inferred:
+                item_type = inferred
+
+        price = _safe_int(raw.get("price"), 0)
+        sell  = price // 2 if price > 0 else 0
+
+        # Defense: DP uses 'defense' for most items; newer endpoints may use alternatives.
+        defense = _safe_int(
+            raw.get("defense") or raw.get("defRate") or raw.get("armorDefense"), 0
+        )
 
         result: Dict[str, Any] = {
             "Id":        item_id,
@@ -301,16 +389,15 @@ class DivinePrideAdapter:
             "Sell":      sell,
             "Weight":    weight,
             "Attack":    _safe_int(raw.get("attack"), 0),
-            "Defense":   _safe_int(raw.get("defense"), 0),
+            "Defense":   defense,
             "Slots":     _safe_int(raw.get("slots"), 0),
             "EquipLevelMin": _safe_int(raw.get("requiredLevel"), 0),
             "EquipLevelMax": _safe_int(raw.get("limitLevel"), 0),
         }
 
         # Locations (bitmask → dict)
-        location_raw = raw.get("location")
-        if location_raw is not None:
-            locations = _decode_location_bitmask(_safe_int(location_raw))
+        if location_bitmask:
+            locations = _decode_location_bitmask(location_bitmask)
             if locations:
                 result["Locations"] = locations
 
@@ -322,10 +409,7 @@ class DivinePrideAdapter:
                 if wrapped:
                     result[ra_key] = wrapped
 
-        # Remove campos com valores iguais aos defaults do rAthena
         result = _omit_defaults(result, _ITEM_DEFAULTS)
-
-        # Remove None remanescentes
         result = {k: v for k, v in result.items() if v is not None}
 
         return result
