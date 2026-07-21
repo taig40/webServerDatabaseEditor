@@ -56,26 +56,18 @@ _MOB_SKILL_STATE_MAP: Dict[str, str] = {
     "ANY_ST":        "any",
 }
 
-# DP condition names (IF_XXX) → rAthena Condition values (PascalCase expected by rAthena map-server)
+# DP condition names (IF_XXX) → rAthena Condition values
 _MOB_SKILL_COND_MAP: Dict[str, str] = {
-    "IF_ALWAYS":         "Always",
-    "IF_RUDEATTACK":     "RudeAttack",
-    "IF_MONSTERCOUNT":   "MobCount",
-    "IF_MOBCOUNT":       "MobCount",
-    "IF_HP":             "HP",
-    "IF_SP":             "SP",
-    "IF_HIDING":         "Hiding",
-    "IF_SLAVE":          "Slave",
-    "IF_SLAVENUM":       "SlaveNum",
-    "IF_TARGET":         "Target",
-    "IF_MAGICATTACK":    "MagicAttacked",
-    "IF_MAGICATTACKED": "MagicAttacked",
-    "IF_MASTERATTACKED": "MasterAttacked",
-    "IF_RANGEATTACK":    "RangeAttacked",
-    "IF_RANGEATTACKED":  "RangeAttacked",
-    "IF_COMRADEHP":      "ComradeHP",
-    "IF_FRIENDHP":       "FriendHP",
-    "IF_DEAD":           "Dead",
+    "IF_ALWAYS":         "always",
+    "IF_RUDEATTACK":     "rudeattack",
+    "IF_MONSTERCOUNT":   "mobcount",
+    "IF_HP":             "hp",
+    "IF_HIDING":         "hiding",
+    "IF_SLAVE":          "slave",
+    "IF_TARGET":         "target",
+    "IF_MAGICATTACK":    "magicattacked",
+    "IF_MASTERATTACKED": "masterattacked",
+    "IF_DEAD":           "dead",
 }
 
 _ITEM_TYPE_MAP: Dict[int, str] = {
@@ -753,8 +745,8 @@ class DivinePrideAdapter:
                 cond_key  = str(raw_cond).strip().upper()
                 cond_type = _MOB_SKILL_COND_MAP.get(
                     cond_key,
-                    cond_key.replace("IF_", "").replace("CONDITION_", "").replace("_", " ").title().replace(" ", ""),
-                )
+                    cond_key.replace("IF_", "").replace("CONDITION_", "").replace("_", "").lower(),
+                ).lower()
 
             raw_cond_val = sk.get("conditionValue") or sk.get("condition_value")
             cond_val = (
