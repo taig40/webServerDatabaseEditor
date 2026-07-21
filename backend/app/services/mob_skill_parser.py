@@ -267,7 +267,10 @@ class MobSkillDatabase:
                 else:
                     entry[field] = str(val).lower() in ('yes', '1', 'true')
             else:
-                entry[field] = str(val) if val is not None else ''
+                str_val = str(val).strip().lower() if val is not None else ''
+                if field == 'state' and str_val in ('aggressive', 'aggressive_st', 'berserk', 'berserk_st'):
+                    str_val = 'angry'
+                entry[field] = str_val
 
     def update_entry(self, line_index: int, updated_data: dict) -> Optional[dict]:
         for entry in self._original_entries:
@@ -298,18 +301,22 @@ class MobSkillDatabase:
             except (ValueError, TypeError):
                 return default
 
+        state_val = str(entry_data.get('state', 'idle')).strip().lower()
+        if state_val in ('aggressive', 'aggressive_st', 'berserk', 'berserk_st'):
+            state_val = 'angry'
+
         clean: dict = {
             'mob_id': mob_id,
             'dummy_name': str(entry_data.get('dummy_name', '')),
-            'state': str(entry_data.get('state', 'idle')),
+            'state': state_val,
             'skill_id': _safe_int('skill_id', 1),
             'skill_lv': _safe_int('skill_lv', 1),
             'rate': _safe_int('rate', 1000),
             'cast_time': _safe_int('cast_time', 0),
             'delay': _safe_int('delay', 5000),
             'cancelable': bool(entry_data.get('cancelable', False)),
-            'target': str(entry_data.get('target', 'target')),
-            'condition_type': str(entry_data.get('condition_type', 'always')),
+            'target': str(entry_data.get('target', 'target')).strip().lower(),
+            'condition_type': str(entry_data.get('condition_type', 'always')).strip().lower(),
             'condition_value': _safe_int('condition_value', 0),
             'val1': _safe_int('val1', 0),
             'val2': _safe_int('val2', 0),

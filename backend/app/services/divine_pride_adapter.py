@@ -46,26 +46,28 @@ _RACE_MAP: Dict[int, str] = {
 _CLASS_MAP: Dict[int, str] = {0: "Normal", 1: "Boss", 4: "Guardian"}
 
 _MOB_SKILL_STATE_MAP: Dict[str, str] = {
-    "IDLE_ST":    "Idle",
-    "WALK_ST":    "Walk",
-    "RUSH_ST":    "Walk",
-    "DEAD_ST":    "Dead",
-    "BERSERK_ST": "Aggressive",
-    "ANY_ST":     "Any",
+    "IDLE_ST":       "idle",
+    "WALK_ST":       "walk",
+    "RUSH_ST":       "walk",
+    "DEAD_ST":       "dead",
+    "BERSERK_ST":    "angry",
+    "AGGRESSIVE_ST": "angry",
+    "AGGRESSIVE":    "angry",
+    "ANY_ST":        "any",
 }
 
 # DP condition names (IF_XXX) → rAthena Condition values
 _MOB_SKILL_COND_MAP: Dict[str, str] = {
-    "IF_ALWAYS":         "Always",
-    "IF_RUDEATTACK":     "RudeAttack",
-    "IF_MONSTERCOUNT":   "MobCount",
-    "IF_HP":             "HP",
-    "IF_HIDING":         "Hiding",
-    "IF_SLAVE":          "Slave",
-    "IF_TARGET":         "Target",
-    "IF_MAGICATTACK":    "MagicAttacked",
-    "IF_MASTERATTACKED": "MasterAttacked",
-    "IF_DEAD":           "Dead",
+    "IF_ALWAYS":         "always",
+    "IF_RUDEATTACK":     "rudeattack",
+    "IF_MONSTERCOUNT":   "mobcount",
+    "IF_HP":             "hp",
+    "IF_HIDING":         "hiding",
+    "IF_SLAVE":          "slave",
+    "IF_TARGET":         "target",
+    "IF_MAGICATTACK":    "magicattacked",
+    "IF_MASTERATTACKED": "masterattacked",
+    "IF_DEAD":           "dead",
 }
 
 _ITEM_TYPE_MAP: Dict[int, str] = {
@@ -727,19 +729,23 @@ class DivinePrideAdapter:
 
             # State normalisation via lookup table
             raw_state = str(sk.get("status") or sk.get("state") or "IDLE_ST").strip().upper()
-            state = _MOB_SKILL_STATE_MAP.get(raw_state, "Idle")
+            state = _MOB_SKILL_STATE_MAP.get(
+                raw_state,
+                raw_state.lower().replace("_st", "").replace("state_", "")
+            ).lower()
+            if state in ("aggressive", "berserk"):
+                state = "angry"
 
             # Condition normalisation: DP uses IF_XXX prefixed strings or null
             raw_cond = sk.get("condition") or sk.get("condition_type")
             if raw_cond is None or str(raw_cond).strip().lower() in ("", "null", "always"):
-                cond_type = "Always"
+                cond_type = "always"
             else:
                 cond_key  = str(raw_cond).strip().upper()
-                # Prefer explicit map; fallback: strip IF_ prefix + TitleCase
                 cond_type = _MOB_SKILL_COND_MAP.get(
                     cond_key,
-                    cond_key.replace("IF_", "").replace("_", " ").title().replace(" ", ""),
-                )
+                    cond_key.replace("IF_", "").replace("CONDITION_", "").replace("_", "").lower(),
+                ).lower()
 
             raw_cond_val = sk.get("conditionValue") or sk.get("condition_value")
             cond_val = (
