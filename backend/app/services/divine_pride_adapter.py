@@ -340,34 +340,49 @@ class DivinePrideAdapter:
 
     # ── Helpers Internos ─────────────────────────────────────────────────────
 
-    def _resolve_item_ref(self, item_id: int) -> Union[str, int]:
+    def _resolve_item_ref(
+        self,
+        item_id: int,
+        raw_current_item: Optional[Dict[str, Any]] = None,
+        dp_item_dict: Optional[Dict[str, Any]] = None
+    ) -> Union[str, int]:
         """
-        Traduz um itemId numérico do Divine Pride para o AegisName local.
+        Traduz um itemId numérico do Divine Pride para o AegisName local ou do payload.
 
         Regra de Fallback (conforme CONVENTIONS.md, Union[str, int]):
-          - Item encontrado no banco local → retorna AegisName (str)
-          - Item não encontrado (item novo/desconhecido) → retorna item_id (int)
-
-        Busca exclusivamente no cache em memória. Zero requisições HTTP adicionais.
+          - Item no banco local (yaml_db) → retorna AegisName (str)
+          - Item atual sendo importado → retorna dbname/aegisName (str)
+          - Item no payload do Divine Pride → retorna dbname/aegisName/name (str)
+          - Item não encontrado → retorna item_id (int)
         """
-        if self._item_db is None:
-            return item_id
-        aegis = self._item_db.get_aegisname_by_id(item_id)
-        return aegis if aegis is not None else item_id
+        if self._item_db is not None:
+            aegis = self._item_db.get_aegisname_by_id(item_id)
+            if aegis:
+                return aegis
 
-    def _item_exists(self, item_id: int) -> bool:
-        """Reports whether a numeric item ID exists in the local in-memory cache.
+        if raw_current_item and isinstance(raw_current_item, dict):
+            current_id = _safe_int(raw_current_item.get("id"), 0)
+            if current_id == item_id or item_id == 0:
+                name = raw_current_item.get("dbname") or raw_current_item.get("aegisName")
+                if name:
+                    return str(name)
 
-        Args:
-            item_id: Numeric rAthena item ID to look up.
+        if dp_item_dict and isinstance(dp_item_dict, dict):
+            name = dp_item_dict.get("dbname") or dp_item_dict.get("aegisName") or dp_item_dict.get("name")
+            if name:
+                return str(name)
 
-        Returns:
-            ``True`` if the ID resolves to a known AegisName; ``False`` otherwise
-            (including when no ``item_db_service`` was injected).
-        """
-        if self._item_db is None:
-            return False
-        return self._item_db.get_aegisname_by_id(item_id) is not None
+        return item_id
+
+    def _item_exists(
+        self,
+        item_id: int,
+        raw_current_item: Optional[Dict[str, Any]] = None,
+        dp_item_dict: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """Reports whether a numeric item ID can be resolved to a known AegisName."""
+        resolved = self._resolve_item_ref(item_id, raw_current_item, dp_item_dict)
+        return isinstance(resolved, str)
 
     # ── Item ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -549,12 +564,16 @@ class DivinePrideAdapter:
             if not isinstance(dp_items, list):
                 continue
 
-            # DP uses 'itemId' (not 'id') inside sets[].items[]
-            original_ids = [
-                _safe_int(it.get("itemId") or it.get("id"), 0)
-                for it in dp_items
-                if isinstance(it, dict) and _safe_int(it.get("itemId") or it.get("id"), 0) > 0
-            ]
+            dp_item_map: Dict[int, Dict[str, Any]] = {}
+            original_ids: List[int] = []
+
+            for it in dp_items:
+                if not isinstance(it, dict):
+                    continue
+                id_ = _safe_int(it.get("itemId") or it.get("id"), 0)
+                if id_ > 0:
+                    dp_item_map[id_] = it
+                    original_ids.append(id_)
 
             if len(original_ids) < 2:
                 continue
@@ -574,22 +593,28 @@ class DivinePrideAdapter:
                 visual_note = None
                 script_is_server = False
 
-            # Scenario A / B: validate IDs against local cache
-            missing_ids = [id_ for id_ in original_ids if not self._item_exists(id_)]
+            # Scenario A / B: validate IDs against local cache or payload context
+            missing_ids = [
+                id_ for id_ in original_ids
+                if not self._item_exists(id_, raw_current_item=raw, dp_item_dict=dp_item_map.get(id_))
+            ]
             has_missing = bool(missing_ids)
 
             if has_missing:
                 combo_items: List[Union[str, int]] = [
-                    self._resolve_item_ref(id_) if self._item_exists(id_) else 501
+                    self._resolve_item_ref(id_, raw_current_item=raw, dp_item_dict=dp_item_map.get(id_))
+                    if self._item_exists(id_, raw_current_item=raw, dp_item_dict=dp_item_map.get(id_))
+                    else 501
                     for id_ in original_ids
                 ]
                 missing_str = " and ".join(str(id_) for id_ in missing_ids)
                 yaml_comment = f"# TODO: Combo Item ID {missing_str}"
             else:
-                combo_items = [self._resolve_item_ref(id_) for id_ in original_ids]
-                name_str = " + ".join(
-                    str(self._resolve_item_ref(id_)) for id_ in original_ids
-                )
+                combo_items = [
+                    self._resolve_item_ref(id_, raw_current_item=raw, dp_item_dict=dp_item_map.get(id_))
+                    for id_ in original_ids
+                ]
+                name_str = " + ".join(str(item) for item in combo_items)
                 yaml_comment = f"# {name_str}"
 
             results.append({
