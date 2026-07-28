@@ -397,7 +397,6 @@ export const QuestEditor: React.FC = () => {
                 </h1>
                 <div className="flex items-center gap-3 mt-1 text-xs font-mono text-gray-500">
                   <span>ID: <span className="text-indigo-400">{selectedQuest.Id}</span></span>
-                  <span>{t('quest_editor.header.source')}: <span className="text-gray-400">{selectedQuest.server?._source || t('quest_editor.header.source_undefined')}</span></span>
                 </div>
               </div>
 
