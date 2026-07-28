@@ -19,6 +19,10 @@ interface Patch {
   sheet_y: number;
   w: number;
   h: number;
+  /** RGBA tint from the .act file [R, G, B, A]. A=255 means fully opaque. */
+  rgba?: [number, number, number, number];
+  /** Sprite type: 0 = Indexed palette, 1 = BGRA32. */
+  spr_type?: number;
 }
 
 /** Animation frame containing layered patches. */
@@ -172,7 +176,7 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
 
       const frame = animData.frames[currentFrameRef.current];
       if (frame && frame.patches) {
-        frame.patches.forEach((patch: any) => {
+        frame.patches.forEach((patch: Patch) => {
           ctx.save();
           ctx.translate(canvas.width / 2, canvas.height * 0.75);
 
@@ -183,13 +187,10 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
           if (patch.rotation !== 0) {
             ctx.rotate((patch.rotation * Math.PI) / 180);
           }
-          
-          if (patch.rgba && patch.rgba.length === 4) {
-            const alpha = patch.rgba[3] / 255.0;
-            if (alpha < 1.0) {
-              ctx.globalAlpha = alpha;
-            }
-          }
+
+          // Apply ACT alpha tint — always set (even 1.0) so ctx.save/restore cleanly isolates it.
+          const alpha = patch.rgba ? patch.rgba[3] / 255.0 : 1.0;
+          ctx.globalAlpha = alpha;
 
           const destX = patch.x - patch.w / 2;
           const destY = patch.y - patch.h / 2;

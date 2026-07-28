@@ -66,6 +66,13 @@ def _resolve_aegis_to_item_id(aegis_name: str) -> Optional[int]:
         for item in yaml_db.get_items():
             if item.get("AegisName") == aegis_name:
                 return item.get("Id")
+        
+        # Fuzzy match for typos/apostrophes
+        aegis_clean = aegis_name.replace("'", "").replace("_", "").lower()
+        for item in yaml_db.get_items():
+            aegis = item.get("AegisName", "")
+            if aegis and aegis.replace("'", "").replace("_", "").lower() == aegis_clean:
+                return item.get("Id")
     except Exception:
         pass
     return None

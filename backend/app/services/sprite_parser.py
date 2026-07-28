@@ -503,11 +503,12 @@ def get_item_equip_animation_data(resource_name: str) -> dict:
             t = sprite['spr_type']
             if num >= 0 and (num, t) in layout_map:
                 pl = layout_map[(num, t)]
+                # ACT color field: stored as little-endian BGRA (B=byte0, G=byte1, R=byte2, A=byte3)
                 color = sprite.get('color', 0xFFFFFFFF)
-                r = color & 0xFF
-                g = (color >> 8) & 0xFF
-                b = (color >> 16) & 0xFF
-                a = (color >> 24) & 0xFF
+                b_ch = color & 0xFF
+                g_ch = (color >> 8) & 0xFF
+                r_ch = (color >> 16) & 0xFF
+                a_ch = (color >> 24) & 0xFF
                 patches.append({
                     'x': sprite['x'],
                     'y': sprite['y'],
@@ -515,7 +516,7 @@ def get_item_equip_animation_data(resource_name: str) -> dict:
                     'scale_x': sprite['scale_x'],
                     'scale_y': sprite['scale_y'],
                     'rotation': sprite['rotation'],
-                    'rgba': [r, g, b, a],
+                    'rgba': [r_ch, g_ch, b_ch, a_ch],
                     'spr_type': t,
                     'sheet_x': pl['x'],
                     'sheet_y': pl['y'],
@@ -539,16 +540,22 @@ def get_item_equip_animation_data(resource_name: str) -> dict:
 
 
 
-def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int):
+def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int) -> 'Image.Image | None':
     """
     Decode a single SPR frame into a PIL RGBA Image.
     Returns None if the frame index is out of bounds.
 
-    spr_type 0 = Indexed palette-based sprite
-    spr_type 1 = RGBA (ABGR) sprite
+    spr_type 0 = Indexed palette-based (Indexed8)
+      - Colour key: palette[0] is ALWAYS transparent, by kRO engine spec.
+      - No secondary / top-left fallback — that heuristic destroys glows.
+
+    spr_type 1 = BGRA32 (stored as B, G, R, A bytes)
+      - Native per-pixel alpha — no colour key whatsoever.
+      - Any colorkey manipulation here would destroy semi-transparent effects
+        such as glows, halos, and shadows.
     """
     if spr_type == 0:
-        # --- Indexed palette sprite ---
+        # ── Indexed palette sprite ───────────────────────────────────────────
         if spr_num >= len(spr.indexed_frames):
             return None
         frame_info = spr.indexed_frames[spr_num]
@@ -556,30 +563,33 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int):
         h = frame_info['height']
         raw = frame_info['data']
         total = w * h
-        pixels = []
-        
-        bg_r, bg_g, bg_b, _ = spr.palette[0] if spr.palette else (255, 0, 255, 0)
-        
-        # Second fallback: The top-left pixel is almost always the background color.
-        # This catches dirty sprites where the creator missed palette[0].
-        tl_idx = raw[0] if len(raw) > 0 else 0
-        tl_r, tl_g, tl_b, _ = spr.palette[tl_idx] if (spr.palette and tl_idx < len(spr.palette)) else (255, 0, 255, 0)
-        
+
+        # palette[0] is the transparent background colour by RO spec.
+        bg_color: tuple[int, int, int] = spr.palette[0][:3] if spr.palette else (0, 0, 0)
+
+        pixels: list[tuple[int, int, int, int]] = []
         for j in range(total):
             idx = raw[j] if j < len(raw) else 0
             if idx < len(spr.palette):
                 r, g, b, a = spr.palette[idx]
-                if (r == bg_r and g == bg_g and b == bg_b) or (r == tl_r and g == tl_g and b == tl_b):
+                # Index 0 ← transparent regardless of the RGB stored there.
+                # Other indices: use the palette alpha (always 255 from SprParser).
+                if idx == 0:
                     pixels.append((0, 0, 0, 0))
                 else:
                     pixels.append((r, g, b, a))
             else:
                 pixels.append((0, 0, 0, 0))
+
         img = Image.new("RGBA", (w, h))
         img.putdata(pixels)
         return img
+
     else:
-        # --- RGBA (ABGR) sprite ---
+        # ── BGRA32 sprite ────────────────────────────────────────────────────
+        # The file stores bytes in B, G, R, A order (little-endian BGRA).
+        # We must NOT apply any colour key — the alpha byte is authoritative.
+        # Applying a colour key here destroys glows (e.g. Arch Plasma halo).
         if spr_num >= len(spr.rgba_frames):
             return None
         frame_info = spr.rgba_frames[spr_num]
@@ -587,14 +597,8 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int):
         h = frame_info['height']
         raw = frame_info['data']
         total = w * h
+
         pixels = []
-        
-        # Top left pixel colorkey for dirty RGBA frames
-        if len(raw) >= 4:
-            tl_b, tl_g, tl_r = raw[0], raw[1], raw[2]
-        else:
-            tl_r, tl_g, tl_b = 255, 0, 255
-            
         for j in range(total):
             offset = j * 4
             if offset + 3 < len(raw):
@@ -602,20 +606,14 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int):
                 g = raw[offset + 1]
                 r = raw[offset + 2]
                 a = raw[offset + 3]
-                
-                # Check for standard solid backgrounds that mistakenly have high alpha
-                if (r == tl_r and g == tl_g and b == tl_b) or \
-                   (r == 255 and g == 0 and b == 255) or \
-                   (r == 0 and g == 255 and b == 0) or \
-                   (r == 255 and g == 255 and b == 0):
-                    pixels.append((0, 0, 0, 0))
-                else:
-                    pixels.append((r, g, b, a))
+                pixels.append((r, g, b, a))
             else:
                 pixels.append((0, 0, 0, 0))
+
         img = Image.new("RGBA", (w, h))
         img.putdata(pixels)
         return img
+
 
 
 def get_mob_animation_data(sprite_name: str) -> dict:
@@ -697,11 +695,12 @@ def get_mob_animation_data(sprite_name: str) -> dict:
             t = sprite['spr_type']
             if num >= 0 and (num, t) in layout_map:
                 pl = layout_map[(num, t)]
+                # ACT color field: stored as little-endian BGRA (B=byte0, G=byte1, R=byte2, A=byte3)
                 color = sprite.get('color', 0xFFFFFFFF)
-                r = color & 0xFF
-                g = (color >> 8) & 0xFF
-                b = (color >> 16) & 0xFF
-                a = (color >> 24) & 0xFF
+                b_ch = color & 0xFF
+                g_ch = (color >> 8) & 0xFF
+                r_ch = (color >> 16) & 0xFF
+                a_ch = (color >> 24) & 0xFF
                 patches.append({
                     'x': sprite['x'],
                     'y': sprite['y'],
@@ -709,7 +708,7 @@ def get_mob_animation_data(sprite_name: str) -> dict:
                     'scale_x': sprite['scale_x'],
                     'scale_y': sprite['scale_y'],
                     'rotation': sprite['rotation'],
-                    'rgba': [r, g, b, a],
+                    'rgba': [r_ch, g_ch, b_ch, a_ch],
                     'spr_type': t,
                     'sheet_x': pl['x'],
                     'sheet_y': pl['y'],
@@ -840,6 +839,12 @@ def get_pet_equipped_animation_data(base_mob: str, equip_resource_name: str = No
             t = sprite['spr_type']
             if num >= 0 and (num, t) in layout_map:
                 pl = layout_map[(num, t)]
+                # ACT color field: stored as little-endian BGRA (B=byte0, G=byte1, R=byte2, A=byte3)
+                color = sprite.get('color', 0xFFFFFFFF)
+                b_ch = color & 0xFF
+                g_ch = (color >> 8) & 0xFF
+                r_ch = (color >> 16) & 0xFF
+                a_ch = (color >> 24) & 0xFF
                 patches.append({
                     'x': sprite['x'],
                     'y': sprite['y'],
@@ -847,6 +852,8 @@ def get_pet_equipped_animation_data(base_mob: str, equip_resource_name: str = No
                     'scale_x': sprite['scale_x'],
                     'scale_y': sprite['scale_y'],
                     'rotation': sprite['rotation'],
+                    'rgba': [r_ch, g_ch, b_ch, a_ch],
+                    'spr_type': t,
                     'sheet_x': pl['x'],
                     'sheet_y': pl['y'],
                     'w': pl['w'],

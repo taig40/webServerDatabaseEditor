@@ -604,7 +604,7 @@ class DivinePrideAdapter:
                 combo_items: List[Union[str, int]] = [
                     self._resolve_item_ref(id_, raw_current_item=raw, dp_item_dict=dp_item_map.get(id_))
                     if self._item_exists(id_, raw_current_item=raw, dp_item_dict=dp_item_map.get(id_))
-                    else 501
+                    else "Red_Potion"
                     for id_ in original_ids
                 ]
                 missing_str = " and ".join(str(id_) for id_ in missing_ids)

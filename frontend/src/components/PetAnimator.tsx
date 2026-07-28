@@ -25,6 +25,10 @@ interface Patch {
   sheet_y: number;
   w: number;
   h: number;
+  /** RGBA tint from the .act file [R, G, B, A]. A=255 means fully opaque. */
+  rgba?: [number, number, number, number];
+  /** Sprite type: 0 = Indexed palette, 1 = BGRA32. */
+  spr_type?: number;
 }
 
 interface Frame {
@@ -119,15 +123,11 @@ function drawLayer(
     const sy = p.scale_y * scale;
     ctx.scale(sx, sy);
     if (p.rotation !== 0) ctx.rotate((p.rotation * Math.PI) / 180);
-    
-    // Apply alpha from .act file color tint if available
-    if (p.rgba && p.rgba.length === 4) {
-      const alpha = p.rgba[3] / 255.0;
-      if (alpha < 1.0) {
-        ctx.globalAlpha = alpha;
-      }
-    }
-    
+
+    // Apply ACT alpha tint — always set (even 1.0) so ctx.save/restore cleanly isolates it.
+    const alpha = p.rgba ? p.rgba[3] / 255.0 : 1.0;
+    ctx.globalAlpha = alpha;
+
     ctx.drawImage(
       layer.sheet,
       p.sheet_x, p.sheet_y, p.w, p.h,
