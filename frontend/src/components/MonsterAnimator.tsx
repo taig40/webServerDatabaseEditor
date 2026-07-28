@@ -60,6 +60,7 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
   const lastFrameTimeRef = useRef<number>(0);
 
   const [autoScale, setAutoScale] = useState<number>(1.0);
+  const [bboxCenter, setBboxCenter] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const canvasDimensions = {
     sm: { width: 120, height: 120 },
@@ -94,14 +95,18 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
     const mobH = maxY - minY;
 
     if (mobW > 0 && mobH > 0) {
-      const scaleLimitX = (canvasDimensions.width * 0.75) / mobW;
-      const scaleLimitY = (canvasDimensions.height * 0.75) / mobH;
+      const scaleLimitX = (canvasDimensions.width * 0.80) / mobW;
+      const scaleLimitY = (canvasDimensions.height * 0.80) / mobH;
       let computed = Math.min(scaleLimitX, scaleLimitY);
-      
       computed = Math.min(Math.max(computed, 0.35), size === 'sm' ? 1.0 : 1.5);
       setAutoScale(computed);
+      // Store the bbox center in ACT sprite coords so the renderLoop can
+      // dynamically center the sprite in the canvas, regardless of where
+      // the ACT origin is relative to the visual content.
+      setBboxCenter({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
     } else {
       setAutoScale(1.0);
+      setBboxCenter({ x: 0, y: 0 });
     }
   }, [animData, size, canvasDimensions.width, canvasDimensions.height]);
 
@@ -174,11 +179,18 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Dynamic anchor: canvas center minus the scaled bbox center.
+      // This ensures the sprite's visual midpoint is always centered in the
+      // canvas, regardless of where the ACT origin (0,0) sits relative to
+      // the actual content (e.g. floating monsters like Arch Plasma).
+      const anchorX = canvas.width  / 2 - bboxCenter.x * autoScale;
+      const anchorY = canvas.height / 2 - bboxCenter.y * autoScale;
+
       const frame = animData.frames[currentFrameRef.current];
       if (frame && frame.patches) {
         frame.patches.forEach((patch: Patch) => {
           ctx.save();
-          ctx.translate(canvas.width / 2, canvas.height * 0.75);
+          ctx.translate(anchorX, anchorY);
 
           const scaleX = (patch.mirror === 1 ? -patch.scale_x : patch.scale_x) * autoScale;
           const scaleY = patch.scale_y * autoScale;
@@ -221,7 +233,7 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
         cancelAnimationFrame(animationFrameIdRef.current);
       }
     };
-  }, [spritesheetImg, animData]);
+  }, [spritesheetImg, animData, autoScale, bboxCenter]);
 
   if (loading) {
     if (size === 'sm') {

@@ -137,8 +137,12 @@ function drawLayer(
   });
 }
 
-/** Calculates a scale factor so the sprite fits within `targetPx` pixels. */
-function calcAutoScale(layer: AnimLayer, targetPx: number, maxScale: number): number {
+/** Calculates scale + bbox center so the sprite fits centered within `targetPx` pixels. */
+function calcAutoScale(
+  layer: AnimLayer,
+  targetPx: number,
+  maxScale: number,
+): { scale: number; bboxCx: number; bboxCy: number } {
   let minX = 99999, maxX = -99999, minY = 99999, maxY = -99999;
   layer.data.frames.forEach((frame) => {
     frame.patches?.forEach((p) => {
@@ -153,9 +157,14 @@ function calcAutoScale(layer: AnimLayer, targetPx: number, maxScale: number): nu
   const mw = maxX - minX;
   const mh = maxY - minY;
   if (mw > 0 && mh > 0) {
-    return Math.min((targetPx * 0.75) / mw, (targetPx * 0.75) / mh, maxScale);
+    const scale = Math.min((targetPx * 0.80) / mw, (targetPx * 0.80) / mh, maxScale);
+    return {
+      scale: Math.max(scale, 0.35),
+      bboxCx: (minX + maxX) / 2,
+      bboxCy: (minY + maxY) / 2,
+    };
   }
-  return 1.0;
+  return { scale: 1.0, bboxCx: 0, bboxCy: 0 };
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -191,11 +200,13 @@ const PetAnimator: React.FC<PetAnimatorProps> = ({
   const baseLayer = useAnimLayer(baseUrl);
   const equipLayer = useAnimLayer(equipUrl);
 
-  // Auto-scale based on base layer bounding box
-  const autoScale = React.useMemo(() => {
-    if (!baseLayer) return 1.0;
-    const raw = calcAutoScale(baseLayer, dims.width, size === 'sm' ? 1.0 : 1.5);
-    return Math.max(raw, 0.35);
+  // Auto-scale + bbox center — computed from base layer only.
+  // Using the BASE layer bbox center ensures that both the base sprite and the
+  // equipped accessory share the same world-space anchor, so they align correctly.
+  const { autoScale, bboxCenter } = React.useMemo(() => {
+    if (!baseLayer) return { autoScale: 1.0, bboxCenter: { x: 0, y: 0 } };
+    const { scale, bboxCx, bboxCy } = calcAutoScale(baseLayer, dims.width, size === 'sm' ? 1.0 : 1.5);
+    return { autoScale: scale, bboxCenter: { x: bboxCx, y: bboxCy } };
   }, [baseLayer, dims.width, size]);
 
   // Composite render loop — draws equip layer if available, otherwise base
@@ -216,8 +227,12 @@ const PetAnimator: React.FC<PetAnimatorProps> = ({
       }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const cx = canvas.width / 2;
-      const cy = canvas.height * 0.75;
+
+      // Dynamic anchor: canvas center minus the scaled bbox center.
+      // Both layers use the SAME cx/cy (derived from base layer bbox) so the
+      // accessory aligns with the pet body in ACT world-space coordinates.
+      const cx = canvas.width  / 2 - bboxCenter.x * autoScale;
+      const cy = canvas.height / 2 - bboxCenter.y * autoScale;
 
       // In kRO, pet equipments are full sprites (pet body + accessory).
       // We draw the equipped sprite if loaded; otherwise we draw the base sprite.
@@ -234,7 +249,7 @@ const PetAnimator: React.FC<PetAnimatorProps> = ({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [baseLayer, equipLayer, autoScale]);
+  }, [baseLayer, equipLayer, autoScale, bboxCenter]);
 
   // ── States ────────────────────────────────────────────────────────────────
 
