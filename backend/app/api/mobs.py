@@ -407,7 +407,7 @@ async def get_mob_animation(mob_id: int):
     from fastapi.responses import JSONResponse
     return JSONResponse(
         content=anim_data,
-        headers={"Cache-Control": "public, max-age=31536000, immutable"}
+        headers={"Cache-Control": "no-cache"}
     )
 
 

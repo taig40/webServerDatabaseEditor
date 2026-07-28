@@ -31,7 +31,7 @@ async def get_sprite(
         except ValueError:
             png_bytes = None
         if png_bytes:
-            return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+            return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "no-cache"})
 
     elif type == "npc":
         from app.services.sprite_thumbnail import get_first_frame_png
@@ -41,7 +41,7 @@ async def get_sprite(
         except ValueError:
             png_bytes = get_first_frame_png(0, fallback_aegis=id)
         if png_bytes:
-            return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+            return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "no-cache"})
 
     raise HTTPException(status_code=404, detail="Sprite not found in GRF")
 
@@ -89,9 +89,9 @@ async def get_resource_image(
         png_bytes = grf_reader.get_icon_by_resource_name(name)
 
     if png_bytes:
-        return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+        return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "no-cache"})
 
-    return Response(content=grf_reader.generate_dummy_png(), media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+    return Response(content=grf_reader.generate_dummy_png(), media_type="image/png", headers={"Cache-Control": "no-cache"})
 
 
 @router.get("/skill_icon")
@@ -109,7 +109,7 @@ async def get_skill_icon(
         Response: PNG image bytes with 1-year immutable cache headers.
     """
     png_bytes = grf_reader.get_skill_icon(name, id)
-    return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+    return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "no-cache"})
 
 @router.get("/skill-icon/{icon_name}")
 async def get_skill_icon_by_path(icon_name: str):
@@ -122,6 +122,6 @@ async def get_skill_icon_by_path(icon_name: str):
         Response: PNG image bytes with 1-year immutable cache headers.
     """
     png_bytes = grf_reader.get_skill_icon(icon_name)
-    return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+    return Response(content=png_bytes, media_type="image/png", headers={"Cache-Control": "no-cache"})
 
 

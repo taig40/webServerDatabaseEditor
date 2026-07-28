@@ -1,5 +1,6 @@
 import logging
-from fastapi import APIRouter, Response, HTTPException, Query
+import hashlib
+from fastapi import APIRouter, Response, HTTPException, Query, Request
 from typing import Optional
 
 from app.services.sprite_engine.compositor import compose_character
@@ -11,6 +12,7 @@ router = APIRouter()
 
 @router.get("/preview")
 async def get_preview(
+    request: Request,
     resource_name: Optional[str] = Query(None, description="Nome do recurso do acessório (ex: _CustomWings)"),
     robe_name: Optional[str] = Query(None, description="Nome do recurso da capa/asa (ex: _C_White_Angel_Wing)"),
     is_male: bool = Query(True, description="Define se o gênero do personagem é masculino"),
@@ -19,7 +21,7 @@ async def get_preview(
     """Returns a composite character preview image (Body + Head + Headgear/Robe) as PNG.
 
     Empty, ``"0"``, ``"None"``, or ``"null"`` resource names are treated as no accessory.
-    The response is served with 1-year immutable cache headers.
+    Uses ETag-based conditional caching so backend changes are visible without clearing browser cache.
 
     Args:
         resource_name: Headgear sprite resource name (e.g. ``_CustomWings``).
@@ -43,7 +45,15 @@ async def get_preview(
 
     try:
         image_bytes = compose_character(res_name, rb_name, is_male, direction)
-        return Response(content=image_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+        etag = '"' + hashlib.md5(image_bytes).hexdigest() + '"'
+        if_none_match = request.headers.get("if-none-match", "")
+        if if_none_match == etag:
+            return Response(status_code=304, headers={"ETag": etag, "Cache-Control": "no-cache"})
+        return Response(
+            content=image_bytes,
+            media_type="image/png",
+            headers={"Cache-Control": "no-cache", "ETag": etag},
+        )
     except Exception as e:
         logger.exception(f"Failed to compose character sprite for resource '{res_name}': {e}")
         raise HTTPException(status_code=500, detail="ERROR_COMPOSITION_FAILED")

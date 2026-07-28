@@ -114,7 +114,7 @@ async def get_pet_equip_animation(mob: str, equip: str):
 
     return JSONResponse(
         content=anim_data,
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        headers={"Cache-Control": "no-cache"},
     )
 
 
@@ -152,7 +152,7 @@ async def get_pet_animation(mob: str):
 
     return JSONResponse(
         content=anim_data,
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        headers={"Cache-Control": "no-cache"},
     )
 
 

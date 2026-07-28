@@ -78,22 +78,34 @@ def _resolve_aegis_to_item_id(aegis_name: str) -> Optional[int]:
     return None
 
 
-_CACHE_HEADERS = {"Cache-Control": "public, max-age=31536000, immutable"}
+import hashlib
+from fastapi import Request
+
+# Development-safe cache strategy:
+# - 'no-cache' forces the browser to revalidate on every request (no stale images).
+# - ETag avoids re-downloading bytes when the image hasn't changed (304 Not Modified).
+_CACHE_HEADERS = {"Cache-Control": "no-cache"}
 
 
-def _png_response(png_bytes: Optional[bytes]) -> Response:
+def _png_response(png_bytes: Optional[bytes], request: Optional[Request] = None) -> Response:
     content = png_bytes if png_bytes else TRANSPARENT_1X1_PNG
-    return Response(content=content, media_type="image/png", headers=_CACHE_HEADERS)
+    etag = '"' + hashlib.md5(content).hexdigest() + '"'
+    if request is not None:
+        if_none_match = request.headers.get("if-none-match", "")
+        if if_none_match == etag:
+            return Response(status_code=304, headers={"ETag": etag, "Cache-Control": "no-cache"})
+    headers = {"Cache-Control": "no-cache", "ETag": etag}
+    return Response(content=content, media_type="image/png", headers=headers)
 
 
 @router.get("/item/{item_id}")
-async def get_item_image(item_id: int):
+async def get_item_image(item_id: int, request: Request):
     """Returns the PNG icon for the given item ID; falls back to a 1×1 transparent PNG."""
-    return _png_response(get_cached_item_icon(item_id))
+    return _png_response(get_cached_item_icon(item_id), request)
 
 
 @router.get("/item_by_aegis/{aegis_name}")
-async def get_item_icon_by_aegis(aegis_name: str):
+async def get_item_icon_by_aegis(aegis_name: str, request: Request):
     """Returns the PNG icon for the item identified by its AegisName.
 
     Resolves ``AegisName → item_id`` via the in-memory item database and then
@@ -104,50 +116,50 @@ async def get_item_icon_by_aegis(aegis_name: str):
             ``Silk_Ribbon``).
 
     Returns:
-        Response: PNG icon with 1-year immutable cache headers.
+        Response: PNG icon with ETag-based conditional caching.
             Falls back to a 1×1 transparent PNG if the item is not found.
     """
     _ensure_resources_loaded()
     item_id = _resolve_aegis_to_item_id(aegis_name)
     if item_id is not None:
-        return _png_response(get_cached_item_icon(item_id))
-    return _png_response(None)
+        return _png_response(get_cached_item_icon(item_id), request)
+    return _png_response(None, request)
 
 
 @router.get("/collection/{item_id}")
-async def get_collection_image(item_id: int):
+async def get_collection_image(item_id: int, request: Request):
     """Returns the PNG collection image for the given item ID; falls back to a 1×1 transparent PNG."""
-    return _png_response(get_cached_item_collection(item_id))
+    return _png_response(get_cached_item_collection(item_id), request)
 
 
 @router.get("/item_icon")
-async def get_item_icon_by_name(resource_name: Optional[str] = None):
+async def get_item_icon_by_name(resource_name: Optional[str] = None, request: Request = None):
     """Returns the PNG icon for the given resource name; falls back to a 1×1 transparent PNG."""
     if not resource_name:
-        return _png_response(None)
+        return _png_response(None, request)
     _ensure_resources_loaded()
-    return _png_response(grf_reader.get_icon_by_resource_name(resource_name))
+    return _png_response(grf_reader.get_icon_by_resource_name(resource_name), request)
 
 
 @router.get("/collection_image")
-async def get_collection_image_by_name(resource_name: Optional[str] = None):
+async def get_collection_image_by_name(resource_name: Optional[str] = None, request: Request = None):
     """Returns the PNG collection image for the given resource name; falls back to a 1×1 transparent PNG."""
     if not resource_name:
-        return _png_response(None)
+        return _png_response(None, request)
     _ensure_resources_loaded()
-    return _png_response(grf_reader.get_collection_by_resource_name(resource_name))
+    return _png_response(grf_reader.get_collection_by_resource_name(resource_name), request)
 
 
 @router.get("/drop")
-async def get_drop_image(resource_name: Optional[str] = None):
+async def get_drop_image(resource_name: Optional[str] = None, request: Request = None):
     """Returns the rendered drop-sprite PNG for the given resource name."""
     if not resource_name:
-        return _png_response(None)
+        return _png_response(None, request)
     try:
         from app.services.sprite_engine.compositor import render_item_drop
         _ensure_resources_loaded()
         png_bytes = render_item_drop(resource_name)
-        return _png_response(png_bytes)
+        return _png_response(png_bytes, request)
     except Exception as e:
         print(f"Error rendering drop sprite for {resource_name}: {e}")
-        return _png_response(None)
+        return _png_response(None, request)
