@@ -503,6 +503,11 @@ def get_item_equip_animation_data(resource_name: str) -> dict:
             t = sprite['spr_type']
             if num >= 0 and (num, t) in layout_map:
                 pl = layout_map[(num, t)]
+                color = sprite.get('color', 0xFFFFFFFF)
+                r = color & 0xFF
+                g = (color >> 8) & 0xFF
+                b = (color >> 16) & 0xFF
+                a = (color >> 24) & 0xFF
                 patches.append({
                     'x': sprite['x'],
                     'y': sprite['y'],
@@ -510,6 +515,8 @@ def get_item_equip_animation_data(resource_name: str) -> dict:
                     'scale_x': sprite['scale_x'],
                     'scale_y': sprite['scale_y'],
                     'rotation': sprite['rotation'],
+                    'rgba': [r, g, b, a],
+                    'spr_type': t,
                     'sheet_x': pl['x'],
                     'sheet_y': pl['y'],
                     'w': pl['w'],
@@ -690,6 +697,11 @@ def get_mob_animation_data(sprite_name: str) -> dict:
             t = sprite['spr_type']
             if num >= 0 and (num, t) in layout_map:
                 pl = layout_map[(num, t)]
+                color = sprite.get('color', 0xFFFFFFFF)
+                r = color & 0xFF
+                g = (color >> 8) & 0xFF
+                b = (color >> 16) & 0xFF
+                a = (color >> 24) & 0xFF
                 patches.append({
                     'x': sprite['x'],
                     'y': sprite['y'],
@@ -697,6 +709,8 @@ def get_mob_animation_data(sprite_name: str) -> dict:
                     'scale_x': sprite['scale_x'],
                     'scale_y': sprite['scale_y'],
                     'rotation': sprite['rotation'],
+                    'rgba': [r, g, b, a],
+                    'spr_type': t,
                     'sheet_x': pl['x'],
                     'sheet_y': pl['y'],
                     'w': pl['w'],

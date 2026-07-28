@@ -172,7 +172,7 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
 
       const frame = animData.frames[currentFrameRef.current];
       if (frame && frame.patches) {
-        frame.patches.forEach(patch => {
+        frame.patches.forEach((patch: any) => {
           ctx.save();
           ctx.translate(canvas.width / 2, canvas.height * 0.75);
 
@@ -182,6 +182,13 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
 
           if (patch.rotation !== 0) {
             ctx.rotate((patch.rotation * Math.PI) / 180);
+          }
+          
+          if (patch.rgba && patch.rgba.length === 4) {
+            const alpha = patch.rgba[3] / 255.0;
+            if (alpha < 1.0) {
+              ctx.globalAlpha = alpha;
+            }
           }
 
           const destX = patch.x - patch.w / 2;

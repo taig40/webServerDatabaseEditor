@@ -119,6 +119,15 @@ function drawLayer(
     const sy = p.scale_y * scale;
     ctx.scale(sx, sy);
     if (p.rotation !== 0) ctx.rotate((p.rotation * Math.PI) / 180);
+    
+    // Apply alpha from .act file color tint if available
+    if (p.rgba && p.rgba.length === 4) {
+      const alpha = p.rgba[3] / 255.0;
+      if (alpha < 1.0) {
+        ctx.globalAlpha = alpha;
+      }
+    }
+    
     ctx.drawImage(
       layer.sheet,
       p.sheet_x, p.sheet_y, p.w, p.h,
