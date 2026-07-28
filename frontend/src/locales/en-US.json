@@ -1428,6 +1428,8 @@
     "identity_placeholder": "Ex: ACCESSORY_CustomWings",
     "sprite_name_label": "Sprite Name (accname.lua) / Resource Name",
     "sprite_name_placeholder": "Ex: _CustomWings",
-    "title": "Visual Configuration"
+    "title": "Visual Configuration",
+    "view_id_label": "View ID (ClassNum)",
+    "save_garment_view": "Save View ID (Garment)"
   }
 }

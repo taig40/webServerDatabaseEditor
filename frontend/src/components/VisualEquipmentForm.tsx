@@ -91,18 +91,22 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ itemId
       return;
     }
     
-    if (!identity.trim() || !name.trim()) {
-      setMessage({ text: t('visual_equipment.missing_fields' as any) || 'Identity and Name are required.', type: 'error' });
-      return;
+    if (equipmentType === 'headgear') {
+      if (!identity.trim() || !name.trim()) {
+        setMessage({ text: t('visual_equipment.missing_fields' as any) || 'Identity and Name are required.', type: 'error' });
+        return;
+      }
     }
 
     setIsSaving(true);
     setMessage(null);
     try {
-      await axios.put(`${API_URL}/api/client_items/visuals/${currentViewId}`, {
-        identity: identity.trim(),
-        name: name.trim()
-      });
+      if (equipmentType === 'headgear') {
+        await axios.put(`${API_URL}/api/client_items/visuals/${currentViewId}`, {
+          identity: identity.trim(),
+          name: name.trim()
+        });
+      }
       
       setMessage({ text: t('visual_equipment.save_success' as any) || 'Visual equipment saved successfully!', type: 'success' });
       
@@ -133,7 +137,7 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ itemId
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-400">View ID (ClassNum)</label>
+                <label className="text-sm font-medium text-gray-400">{t('visual_equipment.view_id_label' as any) || 'View ID (ClassNum)'}</label>
                 <input
                   data-testid="input-viewid"
                   type="number"
@@ -202,18 +206,20 @@ export const VisualEquipmentForm: React.FC<VisualEquipmentFormProps> = ({ itemId
               </div>
             )}
 
-            {equipmentType === 'headgear' && (
-              <div className="flex gap-4 mt-8">
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)]"
-                >
-                  <Save size={18} />
-                  {isSaving ? (t('common.saving' as any) || 'Saving...') : (t('client_item_editor.save_visual' as any) || 'Save Visual Identity')}
-                </button>
-              </div>
-            )}
+            <div className="flex gap-4 mt-8">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)]"
+              >
+                <Save size={18} />
+                {isSaving 
+                  ? (t('common.saving' as any) || 'Saving...') 
+                  : equipmentType === 'garment'
+                    ? (t('visual_equipment.save_garment_view' as any) || 'Save View ID (Garment)')
+                    : (t('client_item_editor.save_visual' as any) || 'Save Visual Identity')}
+              </button>
+            </div>
           </div>
         </div>
 
