@@ -86,31 +86,28 @@ async def get_pet_equip_animation(mob: str, equip: str):
     if not sprite_name:
         raise HTTPException(status_code=404, detail="ERROR_MOB_SPRITE_NOT_FOUND")
 
-    # 2. Resolve AegisName → item_id → resource_name via yaml_db first, then iteminfo
-    equip_resource_name: str | None = None
-    try:
-        from app.services.yaml_parser import yaml_db
-        if not yaml_db.is_loading:
-            for item in yaml_db.get_items():
-                if item.get("AegisName") == equip:
-                    item_id = item.get("Id")
-                    if item_id and iteminfo_db.loaded:
-                        equip_resource_name = iteminfo_db.get_resource_name(item_id)
-                    break
-    except Exception:
-        pass
+    # 2. Try to load the baked animation using the custom .act and base .spr
+    from app.services.sprite_parser import get_pet_equipped_animation_data
+    from app.services.yaml_parser import yaml_db
+    from app.services.iteminfo_parser import iteminfo_db
 
-    if not equip_resource_name:
-        equip_resource_name = equip
+    # Find item ID by AegisName
+    item_id = None
+    for item in yaml_db.get_items():
+        if item.get("AegisName") == equip:
+            item_id = item.get("Id")
+            break
 
-    # 3. Combine them and try to load the baked animation
-    combined_name = f"{sprite_name}_{equip_resource_name}"
-    anim_data = get_mob_animation_data(combined_name)
+    equip_resource_name = equip
+    if item_id:
+        item_info = iteminfo_db.get_client_item(item_id)
+        if item_info and item_info.get("identifiedResourceName"):
+            equip_resource_name = item_info.get("identifiedResourceName")
+            
+    anim_data = get_pet_equipped_animation_data(sprite_name, equip_resource_name)
 
-    # 4. Fallback if the equip resource name was incorrect but the AegisName works
-    if not anim_data and equip_resource_name != equip:
-        combined_name_fallback = f"{sprite_name}_{equip}"
-        anim_data = get_mob_animation_data(combined_name_fallback)
+    if not anim_data:
+        raise HTTPException(status_code=404, detail="ERROR_EQUIP_SPRITE_NOT_FOUND")
 
     if not anim_data:
         raise HTTPException(status_code=404, detail="ERROR_EQUIP_SPRITE_NOT_FOUND")
