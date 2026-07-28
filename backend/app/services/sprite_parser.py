@@ -588,8 +588,21 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int) -> 'Image.Ima
     else:
         # ── BGRA32 sprite ────────────────────────────────────────────────────
         # The file stores bytes in B, G, R, A order (little-endian BGRA).
-        # We must NOT apply any colour key — the alpha byte is authoritative.
-        # Applying a colour key here destroys glows (e.g. Arch Plasma halo).
+        #
+        # Transparency rules (matches kRO client behaviour):
+        #   1. Pixels where a == 0  → fully transparent (native alpha).
+        #   2. Pixels where 0 < a < 255 → semi-transparent glow/halo; keep as-is.
+        #   3. Pixels where a == 255 AND colour is one of the known "magic"
+        #      background colours → treat as transparent (colour-key).
+        #
+        # Known magic background colours (in decoded RGBA):
+        #   • (255, 255,   0) – yellow  — most common in kRO BGRA32 sprites
+        #   • (255,   0, 255) – magenta — classic RO indexed legacy colour
+        #   • (  0, 255,   0) – green   — alternate background used in some packs
+        #
+        # The top-left-pixel heuristic is intentionally ABSENT: it is too
+        # aggressive and breaks sprites whose first pixel happens to be part of
+        # the actual image (e.g. glow border pixels).
         if spr_num >= len(spr.rgba_frames):
             return None
         frame_info = spr.rgba_frames[spr_num]
@@ -606,7 +619,17 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int) -> 'Image.Ima
                 g = raw[offset + 1]
                 r = raw[offset + 2]
                 a = raw[offset + 3]
-                pixels.append((r, g, b, a))
+
+                # Apply colour-key only for fully-opaque magic background colours.
+                # Semi-transparent pixels (0 < a < 255) are kept to preserve glows.
+                if a == 255 and (
+                    (r == 255 and g == 255 and b == 0) or   # yellow
+                    (r == 255 and g == 0   and b == 255) or  # magenta
+                    (r == 0   and g == 255 and b == 0)       # green
+                ):
+                    pixels.append((0, 0, 0, 0))
+                else:
+                    pixels.append((r, g, b, a))
             else:
                 pixels.append((0, 0, 0, 0))
 
