@@ -607,38 +607,21 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int) -> 'Image.Ima
         frame_info = spr.rgba_frames[spr_num]
         w = frame_info['width']
         h = frame_info['height']
-        raw = frame_info['data']
-        total = w * h
-
-        colorkey = None
-        if w > 0 and h > 0 and len(raw) >= 4:
-            b0 = raw[0]
-            g0 = raw[1]
-            r0 = raw[2]
-            a0 = raw[3]
-            if a0 == 255:
-                colorkey = (r0, g0, b0)
-
+        raw_data = frame_info['data']
+        
+        total_pixels = w * h
         pixels = []
-        for j in range(total):
+        for j in range(total_pixels):
             offset = j * 4
-            if offset + 3 < len(raw):
-                b = raw[offset]
-                g = raw[offset + 1]
-                r = raw[offset + 2]
-                a = raw[offset + 3]
+            if offset + 3 < len(raw_data):
+                # SPR BGRA32 pixels are stored as little-endian RGBA integers (0xRRGGBBAA).
+                # Therefore, the byte order in the file is A, B, G, R.
+                a = raw_data[offset]
+                b = raw_data[offset + 1]
+                g = raw_data[offset + 2]
+                r = raw_data[offset + 3]
 
-                # Apply colour-key only for fully-opaque magic background colours.
-                # Semi-transparent pixels (0 < a < 255) are kept to preserve glows.
-                if a == 255 and (
-                    (r == 255 and g == 255 and b == 0) or   # yellow
-                    (r == 255 and g == 0   and b == 255) or  # magenta
-                    (r == 0   and g == 255 and b == 0) or    # green
-                    (colorkey and abs(r - colorkey[0]) <= 5 and abs(g - colorkey[1]) <= 5 and abs(b - colorkey[2]) <= 5)
-                ):
-                    pixels.append((0, 0, 0, 0))
-                else:
-                    pixels.append((r, g, b, a))
+                pixels.append((r, g, b, a))
             else:
                 pixels.append((0, 0, 0, 0))
 

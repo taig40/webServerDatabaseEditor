@@ -169,34 +169,19 @@ class SprParser:
             raw_data = frame['data']
             pixels = []
             
-            # Heurística para BGRA32 mal formatados: 
-            # Se o pixel (0,0) for totalmente opaco (A=255), usar ele como colorkey
-            colorkey = None
-            if w > 0 and h > 0 and len(raw_data) >= 4:
-                b0, g0, r0, a0 = raw_data[0:4]
-                if a0 == 255:
-                    colorkey = (r0, g0, b0)
 
             total_pixels = w * h
             for i in range(total_pixels):
                 offset = i * 4
                 if offset + 3 < len(raw_data):
-                    # Stored in BGRA order (B=byte0, G=byte1, R=byte2, A=byte3)
-                    b = raw_data[offset]
-                    g = raw_data[offset + 1]
-                    r = raw_data[offset + 2]
-                    a = raw_data[offset + 3]
+                    # SPR BGRA32 pixels are stored as little-endian RGBA integers (0xRRGGBBAA).
+                    # Therefore, the byte order in the file is A, B, G, R.
+                    a = raw_data[offset]
+                    b = raw_data[offset + 1]
+                    g = raw_data[offset + 2]
+                    r = raw_data[offset + 3]
 
-                    # Apply colour-key for magic colors and our dynamic colorkey
-                    if a == 255 and (
-                        (r == 255 and g == 255 and b == 0) or   # yellow
-                        (r == 255 and g == 0   and b == 255) or  # magenta
-                        (r == 0   and g == 255 and b == 0) or    # green
-                        (colorkey and abs(r - colorkey[0]) <= 5 and abs(g - colorkey[1]) <= 5 and abs(b - colorkey[2]) <= 5)
-                    ):
-                        pixels.append((0, 0, 0, 0))
-                    else:
-                        pixels.append((r, g, b, a))
+                    pixels.append((r, g, b, a))
                 else:
                     pixels.append((0, 0, 0, 0))
             
