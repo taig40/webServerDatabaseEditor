@@ -134,3 +134,32 @@ async def create_achievement(ach_id: int, body: AchievementSavePayload):
         return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{ach_id}", status_code=200)
+async def delete_achievement(ach_id: int):
+    """Permanently removes an achievement from ``db/import/achievement_db.yml`` (and client Lua).
+
+    Args:
+        ach_id: Numeric rAthena achievement ID.
+
+    Returns:
+        dict: ``{"deleted": True, "ach_id": ach_id}`` on success.
+
+    Raises:
+        HTTPException: 503 if the database is still loading; 403 if the achievement belongs
+            to the official rAthena database (outside ``db/import/``); 404 if not found.
+    """
+    if achievement_db.is_loading:
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
+
+    try:
+        deleted = achievement_db.delete_achievement(ach_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail="ERROR_ACHIEVEMENT_NOT_FOUND")
+
+    return {"deleted": True, "ach_id": ach_id}
+

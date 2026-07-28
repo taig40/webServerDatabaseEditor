@@ -764,6 +764,16 @@
     "no_selection": {
       "title": "No Quest Selected",
       "subtitle": "Select a quest from the list on the side to view and edit its targets and drops."
+    },
+    "new_quest_default_title": "New Custom Quest",
+    "delete_success": "Quest #{{id}} deleted successfully.",
+    "delete_error_403": "Cannot delete quests from the official rAthena database.",
+    "delete_error_generic": "Failed to delete quest.",
+    "delete_tooltip": "Delete this custom quest",
+    "delete_rathena_tooltip": "Cannot delete official rAthena quests",
+    "header": {
+      "source": "Source",
+      "source_undefined": "undefined"
     }
   },
   "pet_editor": {
@@ -889,6 +899,14 @@
       "bonus_script_placeholder": "e.g., getexp 500,0; specialeffect 100;"
     },
     "no_selection": "Select an achievement from the list to edit",
+    "delete_success": "Achievement #{{id}} deleted successfully.",
+    "delete_error_403": "Cannot delete achievements from the official rAthena database.",
+    "delete_error_generic": "Failed to delete achievement.",
+    "delete_tooltip": "Delete this custom achievement",
+    "delete_rathena_tooltip": "Cannot delete official rAthena achievements",
+    "autogenerate_details": "Complete the standard requirements.",
+    "autogenerate_condition": "Condition details",
+    "autogenerate_target": "Complete target requirement.",
     "create_modal": {
       "title": "Create New Achievement",
       "subtitle": "Creates the synchronized record in server YML and client Lua.",
@@ -1107,7 +1125,22 @@
     "add_line": "+ Add Line",
     "new_objective": "New objective",
     "alert_create_error": "Error creating quest: {error}",
-    "alert_save_success": "Quest saved successfully!"
+    "alert_save_success": "Quest saved successfully!",
+    "autogenerate_btn": "Generate Client Lua",
+    "autogenerate_info": "Complete the defined mission objectives.",
+    "autogenerate_objective": "Complete the objective."
+  },
+  "source_toggle": {
+    "rathena": "rAthena",
+    "custom": "Custom"
+  },
+  "delete_modal": {
+    "title": "Confirm Deletion",
+    "irreversible_warning": "This action cannot be undone.",
+    "confirm_message": "Are you sure you want to delete",
+    "file_warning": "The file will be permanently modified on disk. Backups are not created automatically.",
+    "deleting": "Deleting…",
+    "confirm_btn": "Yes, Delete"
   },
   "jobs_editor": {
     "title": "Job & Stats Editor",

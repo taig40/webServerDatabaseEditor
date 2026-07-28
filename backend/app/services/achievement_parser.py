@@ -510,5 +510,59 @@ class AchievementDatabase(GenericYamlParser):
             "client": client_data
         }
 
+    def delete_achievement(self, ach_id: int) -> bool:
+        """Permanently removes an achievement from the YAML import file and client Lua cache.
+
+        **Security guard:** only achievements residing under ``db/import/`` (source ``custom``)
+        may be deleted. Achievements from the official rAthena database raise
+        ``PermissionError``, which the API route converts to HTTP 403.
+
+        Args:
+            ach_id: Numeric rAthena achievement ID.
+
+        Returns:
+            bool: ``True`` on success, ``False`` if the achievement was not found.
+
+        Raises:
+            PermissionError: If the achievement belongs to the official rAthena database.
+        """
+        filepath = self.entry_index.get(ach_id)
+        if not filepath:
+            # Achievement may be client-only — remove from client cache if present
+            if ach_id in self.client_cache:
+                del self.client_cache[ach_id]
+                return True
+            return False
+
+        norm_path = filepath.replace('\\', '/')
+        if '/db/import/' not in norm_path:
+            raise PermissionError(
+                f"Achievement {ach_id} resides in '{norm_path}' which is part of the "
+                "official rAthena database. Only achievements in db/import/ can be deleted."
+            )
+
+        data = self.db_cache.get(filepath)
+        if not data:
+            return False
+
+        body = data.get('Body', [])
+        original_len = len(body)
+        data['Body'] = [a for a in body if a.get('Id') != ach_id]
+
+        if len(data['Body']) == original_len:
+            del self.entry_index[ach_id]
+            return False
+
+        self.save_file(filepath)
+        del self.entry_index[ach_id]
+
+        # Remove client Lua entry from memory cache
+        self.client_cache.pop(ach_id, None)
+
+        # Invalidate the merged list so the next call to get_ach_list() is fresh
+        self.cached_ach_list = None  # type: ignore[attr-defined]
+
+        return True
+
 
 achievement_db = AchievementDatabase()

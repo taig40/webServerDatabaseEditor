@@ -158,3 +158,32 @@ async def create_quest_legacy(body: QuestSavePayload):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{quest_id}", status_code=200)
+async def delete_quest(quest_id: int):
+    """Permanently removes a quest from ``db/import/quest_db.yml`` (and client Lua).
+
+    Args:
+        quest_id: Numeric rAthena quest ID.
+
+    Returns:
+        dict: ``{"deleted": True, "quest_id": quest_id}`` on success.
+
+    Raises:
+        HTTPException: 503 if the database is still loading; 403 if the quest belongs
+            to the official rAthena database (outside ``db/import/``); 404 if not found.
+    """
+    if quest_db.is_loading:
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
+
+    try:
+        deleted = quest_db.delete_quest(quest_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail="ERROR_QUEST_NOT_FOUND")
+
+    return {"deleted": True, "quest_id": quest_id}
+

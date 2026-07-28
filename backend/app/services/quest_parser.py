@@ -441,5 +441,59 @@ class QuestDatabase(GenericYamlParser):
             "client": client_data
         }
 
+    def delete_quest(self, quest_id: int) -> bool:
+        """Permanently removes a quest from the YAML import file and client Lua cache.
+
+        **Security guard:** only quests residing under ``db/import/`` (source ``custom``)
+        may be deleted. Quests from the official rAthena database raise
+        ``PermissionError``, which the API route converts to HTTP 403.
+
+        Args:
+            quest_id: Numeric rAthena quest ID.
+
+        Returns:
+            bool: ``True`` on success, ``False`` if the quest was not found.
+
+        Raises:
+            PermissionError: If the quest belongs to the official rAthena database.
+        """
+        filepath = self.entry_index.get(quest_id)
+        if not filepath:
+            # Quest may be client-only — remove from client cache if present
+            if quest_id in self.client_cache:
+                del self.client_cache[quest_id]
+                return True
+            return False
+
+        norm_path = filepath.replace('\\', '/')
+        if '/db/import/' not in norm_path:
+            raise PermissionError(
+                f"Quest {quest_id} resides in '{norm_path}' which is part of the "
+                "official rAthena database. Only quests in db/import/ can be deleted."
+            )
+
+        data = self.db_cache.get(filepath)
+        if not data:
+            return False
+
+        body = data.get('Body', [])
+        original_len = len(body)
+        data['Body'] = [q for q in body if q.get('Id') != quest_id]
+
+        if len(data['Body']) == original_len:
+            del self.entry_index[quest_id]
+            return False
+
+        self.save_file(filepath)
+        del self.entry_index[quest_id]
+
+        # Remove client Lua entry from memory cache
+        self.client_cache.pop(quest_id, None)
+
+        # Invalidate the merged list so the next call to get_quest_list() is fresh
+        self.cached_list = None  # type: ignore[attr-defined]
+
+        return True
+
 
 quest_db = QuestDatabase()

@@ -766,6 +766,16 @@
     "no_selection": {
       "title": "Nenhuma Missão Selecionada",
       "subtitle": "Selecione uma missão na lista ao lado para ver e editar seus alvos e drops."
+    },
+    "new_quest_default_title": "Nova Quest Personalizada",
+    "delete_success": "Quest #{{id}} excluída com sucesso.",
+    "delete_error_403": "Não é possível excluir quests do banco oficial do rAthena.",
+    "delete_error_generic": "Falha ao excluir a quest.",
+    "delete_tooltip": "Excluir esta quest personalizada",
+    "delete_rathena_tooltip": "Não é possível excluir quests oficiais do rAthena",
+    "header": {
+      "source": "Origem",
+      "source_undefined": "indefinido"
     }
   },
   "pet_editor": {
@@ -891,6 +901,14 @@
       "bonus_script_placeholder": "Ex: getexp 500,0; specialeffect 100;"
     },
     "no_selection": "Selecione uma conquista na lista para editar",
+    "delete_success": "Conquista #{{id}} excluída com sucesso.",
+    "delete_error_403": "Não é possível excluir conquistas do banco oficial do rAthena.",
+    "delete_error_generic": "Falha ao excluir a conquista.",
+    "delete_tooltip": "Excluir esta conquista personalizada",
+    "delete_rathena_tooltip": "Não é possível excluir conquistas oficiais do rAthena",
+    "autogenerate_details": "Conclua os requisitos padrão.",
+    "autogenerate_condition": "Detalhes da condição",
+    "autogenerate_target": "Completar requisito alvo.",
     "create_modal": {
       "title": "Criar Nova Conquista",
       "subtitle": "Cria o registro sincronizado no YML do servidor e na Lua do cliente.",
@@ -1109,7 +1127,22 @@
     "add_line": "+ Adicionar Linha",
     "new_objective": "Novo objetivo",
     "alert_create_error": "Erro ao criar quest: {error}",
-    "alert_save_success": "Quest salva com sucesso!"
+    "alert_save_success": "Quest salva com sucesso!",
+    "autogenerate_btn": "Gerar Lua do Cliente",
+    "autogenerate_info": "Completar os objetivos definidos na missão.",
+    "autogenerate_objective": "Completar o objetivo."
+  },
+  "source_toggle": {
+    "rathena": "rAthena",
+    "custom": "Custom"
+  },
+  "delete_modal": {
+    "title": "Confirmar Exclusão",
+    "irreversible_warning": "Esta ação não pode ser desfeita.",
+    "confirm_message": "Tem certeza que deseja excluir",
+    "file_warning": "O arquivo será modificado permanentemente no disco. Backups não são criados automaticamente.",
+    "deleting": "Excluindo\u2026",
+    "confirm_btn": "Sim, Excluir"
   },
   "jobs_editor": {
     "title": "Editor de Classes & Atributos",
