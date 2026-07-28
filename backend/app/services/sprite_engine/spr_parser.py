@@ -174,12 +174,22 @@ class SprParser:
             for i in range(total_pixels):
                 offset = i * 4
                 if offset + 3 < len(raw_data):
-                    # Stored in BGRA format
+                    # Stored in BGRA order (B=byte0, G=byte1, R=byte2, A=byte3)
                     b = raw_data[offset]
                     g = raw_data[offset + 1]
                     r = raw_data[offset + 2]
                     a = raw_data[offset + 3]
-                    pixels.append((r, g, b, a))
+
+                    # Apply colour-key only for fully-opaque magic background colours.
+                    # Semi-transparent pixels (0 < a < 255) are kept to preserve glows.
+                    if a == 255 and (
+                        (r == 255 and g == 255 and b == 0) or   # yellow
+                        (r == 255 and g == 0   and b == 255) or  # magenta
+                        (r == 0   and g == 255 and b == 0)       # green
+                    ):
+                        pixels.append((0, 0, 0, 0))
+                    else:
+                        pixels.append((r, g, b, a))
                 else:
                     pixels.append((0, 0, 0, 0))
             

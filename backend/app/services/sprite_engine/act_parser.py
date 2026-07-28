@@ -124,19 +124,25 @@ class ActParser:
                                 logger.warning(f"Truncated attachment point data in Act {act_idx}, Frame {frame_idx}")
                                 break
                             
-                            # Attachment point coordinates format matches coordinates format
+                            # ACT attachment point layout (16 bytes):
+                            #   bytes  0-3  : reserved / ignored
+                            #   bytes  4-7  : x (int32 or float depending on version)
+                            #   bytes  8-11 : y (int32 or float depending on version)
+                            #   bytes 12-15 : id (int32)
+                            # NOTE: 'attr' is NOT stored per-point in the binary; it is
+                            # only present in some unofficial specs. We store id only.
                             if self.version >= 0x0206:
-                                ap_x, ap_y = struct.unpack('<ff', ap_data[0:8])
+                                ap_x = struct.unpack('<f', ap_data[4:8])[0]
+                                ap_y = struct.unpack('<f', ap_data[8:12])[0]
                             else:
-                                ap_x_int, ap_y_int = struct.unpack('<ii', ap_data[0:8])
-                                ap_x, ap_y = float(ap_x_int), float(ap_y_int)
+                                ap_x = float(struct.unpack('<i', ap_data[4:8])[0])
+                                ap_y = float(struct.unpack('<i', ap_data[8:12])[0])
                                 
-                            ap_id, attr = struct.unpack('<ii', ap_data[8:16])
+                            ap_id = struct.unpack('<i', ap_data[12:16])[0]
                             attach_points.append({
                                 'x': ap_x,
                                 'y': ap_y,
                                 'id': ap_id,
-                                'attr': attr
                             })
 
                     frames.append({
