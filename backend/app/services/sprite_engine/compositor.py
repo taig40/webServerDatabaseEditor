@@ -346,6 +346,21 @@ def compose_character(accessory_name: str, robe_name: str, is_male: bool, direct
         else:
             logger.warning("Hat anchor (id=1) missing on head or accessory. Using fallback placement.")
             
+    # 5b. Compute alignment of Robe using attachment points (Neck anchor: id=0)
+    C_robe = C_body
+    if body_act and robe_act:
+        ap_body_0 = get_attachment_point(body_act, direction, 0, 0)
+        ap_robe_0 = get_attachment_point(robe_act, direction, 0, 0)
+        
+        if ap_body_0 and ap_robe_0:
+            C_robe = (
+                C_body[0] + ap_body_0[0] - ap_robe_0[0],
+                C_body[1] + ap_body_0[1] - ap_robe_0[1]
+            )
+            logger.info(f"Aligned Robe center at {C_robe} using neck anchors.")
+        else:
+            logger.warning("Neck anchor (id=0) missing on body or robe. Using fallback placement.")
+
     # 6. Composite sprites layer-by-layer
     # Z-Index Rule:
     # If facing back (3, 4, 5): Body -> Robe -> Head -> Hat
@@ -356,11 +371,11 @@ def compose_character(accessory_name: str, robe_name: str, is_male: bool, direct
         
         if robe_spr and robe_act:
             logger.info("Drawing Robe sprites (on top of body)...")
-            draw_frame_part(canvas, robe_spr, robe_act, direction, 0, C_body)
+            draw_frame_part(canvas, robe_spr, robe_act, direction, 0, C_robe)
     else:
         if robe_spr and robe_act:
             logger.info("Drawing Robe sprites (behind body)...")
-            draw_frame_part(canvas, robe_spr, robe_act, direction, 0, C_body)
+            draw_frame_part(canvas, robe_spr, robe_act, direction, 0, C_robe)
             
         logger.info("Drawing Body sprites...")
         draw_frame_part(canvas, body_spr, body_act, direction, 0, C_body)
