@@ -360,10 +360,10 @@ class ActParser:
 
 def find_mob_files(sprite_name: str):
     name_lower = sprite_name.lower()
-    
+
     korean_folder_bytes = "몬스터".encode('euc-kr')
     korean_folder_latin = korean_folder_bytes.decode('latin1')
-    
+
     paths_to_try = [
         f"data/sprite/몬스터/{name_lower}",
         f"data/sprite/{korean_folder_latin}/{name_lower}",
@@ -376,13 +376,160 @@ def find_mob_files(sprite_name: str):
         f"data/sprite/homun/{name_lower}_h2",
         f"data/sprite/homunculus/{name_lower}",
     ]
-    
+
     for path in paths_to_try:
         spr_path = f"{path}.spr"
         act_path = f"{path}.act"
         if grf_reader.extract_file(spr_path):
             return spr_path, act_path
     return None, None
+
+
+def find_item_equip_sprite_files(resource_name: str):
+    """Searches GRF paths for a pet accessory (EquipItem) sprite.
+
+    Pet accessories in kRO are stored under ``data/sprite/아이템/`` using the
+    item's ``identifiedResourceName`` from iteminfo.  This function tries the
+    known Korean and ASCII-escaped folder variants so that both GRF packaged
+    with kRO encoding and repacked GRFs are covered.
+
+    Args:
+        resource_name: The item resource name (``identifiedResourceName``),
+            e.g. ``Silk_Ribbon``.
+
+    Returns:
+        tuple[str, str] | tuple[None, None]: Pair of ``(spr_path, act_path)``
+            if found; ``(None, None)`` otherwise.
+    """
+    name_lower = resource_name.lower()
+
+    # Korean "아이템" encoded variants used across different GRF distributions
+    item_folder_variants = [
+        "아이템",
+        "¾ÆÀÌÅÛz",  # common mojibake variant
+        "¾ÆÀÌÅÛ",
+        "item",
+    ]
+
+    paths_to_try = []
+    for folder in item_folder_variants:
+        paths_to_try.append(f"data/sprite/{folder}/{name_lower}")
+        paths_to_try.append(f"data/sprite/{folder}/{resource_name}")
+
+    for path in paths_to_try:
+        spr_path = f"{path}.spr"
+        act_path = f"{path}.act"
+        if grf_reader.extract_file(spr_path):
+            return spr_path, act_path
+    return None, None
+
+
+def get_item_equip_animation_data(resource_name: str) -> dict:
+    """Loads SPR + ACT files for an item equip sprite and returns spritesheet animation data.
+
+    Uses the same pipeline as ``get_mob_animation_data`` — Action 0 (idle,
+    facing south) is packed into a horizontal spritesheet and returned as a
+    JSON-serialisable dict.
+
+    Args:
+        resource_name: The item resource name from iteminfo
+            (e.g. ``Silk_Ribbon``).
+
+    Returns:
+        dict | None: Animation data suitable for the canvas renderer, or
+            ``None`` if the sprite cannot be found or parsed.
+    """
+    spr_path, act_path = find_item_equip_sprite_files(resource_name)
+    if not spr_path or not act_path:
+        return None
+
+    spr_bytes = grf_reader.extract_file(spr_path)
+    act_bytes = grf_reader.extract_file(act_path)
+    if not spr_bytes or not act_bytes:
+        return None
+
+    try:
+        spr = SprParser(spr_bytes)
+        act = ActParser(act_bytes)
+    except Exception as e:
+        print(f"[SpriteParser] Error parsing equip sprite {resource_name}: {e}")
+        return None
+
+    if not act.actions:
+        return None
+
+    action_0_frames = act.actions[0]
+
+    used_spr_indices = set()
+    for frame in action_0_frames:
+        for sprite in frame['sprites']:
+            if sprite['sprite_num'] >= 0:
+                used_spr_indices.add((sprite['sprite_num'], sprite['spr_type']))
+
+    pil_frames = {}
+    for spr_num, spr_type in used_spr_indices:
+        img = _decode_spr_frame(spr, spr_num, spr_type)
+        if img is not None:
+            pil_frames[(spr_num, spr_type)] = img
+
+    if not pil_frames:
+        return None
+
+    import io, base64
+    from PIL import Image
+
+    unique_keys = list(pil_frames.keys())
+    sheet_width = sum(pil_frames[k].width for k in unique_keys)
+    sheet_height = max(pil_frames[k].height for k in unique_keys)
+
+    spritesheet_img = Image.new("RGBA", (sheet_width, sheet_height))
+    layout_map = {}
+    current_x = 0
+    for key in unique_keys:
+        img = pil_frames[key]
+        spritesheet_img.paste(img, (current_x, 0))
+        layout_map[key] = {'x': current_x, 'y': 0, 'w': img.width, 'h': img.height}
+        current_x += img.width
+
+    buffered = io.BytesIO()
+    spritesheet_img.save(buffered, format="PNG")
+    spritesheet_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+    mapped_frames = []
+    for frame in action_0_frames:
+        patches = []
+        for sprite in frame['sprites']:
+            num = sprite['sprite_num']
+            t = sprite['spr_type']
+            if num >= 0 and (num, t) in layout_map:
+                pl = layout_map[(num, t)]
+                patches.append({
+                    'x': sprite['x'],
+                    'y': sprite['y'],
+                    'mirror': sprite['mirror'],
+                    'scale_x': sprite['scale_x'],
+                    'scale_y': sprite['scale_y'],
+                    'rotation': sprite['rotation'],
+                    'sheet_x': pl['x'],
+                    'sheet_y': pl['y'],
+                    'w': pl['w'],
+                    'h': pl['h'],
+                })
+        mapped_frames.append({'patches': patches})
+
+    interval_ms = 150
+    if act.intervals:
+        interval_ms = int(act.intervals[0] * 25)
+        if interval_ms <= 0:
+            interval_ms = 150
+
+    return {
+        'spritesheet': f"data:image/png;base64,{spritesheet_base64}",
+        'frame_duration': interval_ms,
+        'frames': mapped_frames,
+    }
+
+
 
 
 def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int):

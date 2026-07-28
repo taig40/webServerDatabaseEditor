@@ -59,6 +59,61 @@ async def get_pets(
     }
 
 
+@router.get("/{mob}/equip_animation")
+async def get_pet_equip_animation(mob: str, equip: str):
+    """Returns the canvas-ready animation JSON for a pet accessory (EquipItem) sprite.
+
+    Resolves the equip item AegisName to its GRF ``identifiedResourceName`` via
+    iteminfo, then searches the item sprite paths (``data/sprite/아이템/``) for
+    the matching ``.spr/.act`` pair.
+
+    Args:
+        mob: Pet mob AegisName (unused for sprite lookup; included for route
+            symmetry and potential future attachment-point queries).
+        equip: EquipItem AegisName (e.g. ``Silk_Ribbon``).
+
+    Returns:
+        JSONResponse: Spritesheet animation data with 1-year immutable cache
+            headers, or 404 if no sprite is found for the given equip item.
+    """
+    if pet_db.is_loading:
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
+
+    from app.services.sprite_parser import get_item_equip_animation_data
+    from app.services.iteminfo_parser import iteminfo_db
+
+    # Resolve AegisName → item_id → resource_name via yaml_db first, then iteminfo
+    resource_name: str | None = None
+    try:
+        from app.services.yaml_parser import yaml_db
+        if not yaml_db.is_loading:
+            for item in yaml_db.get_items():
+                if item.get("AegisName") == equip:
+                    item_id = item.get("Id")
+                    if item_id and iteminfo_db.loaded:
+                        resource_name = iteminfo_db.get_resource_name(item_id)
+                    break
+    except Exception:
+        pass
+
+    # Fallback: use the AegisName directly as resource_name (common for custom items)
+    if not resource_name:
+        resource_name = equip
+
+    anim_data = get_item_equip_animation_data(resource_name)
+    if not anim_data and resource_name != equip:
+        # Second fallback: try raw AegisName as resource_name
+        anim_data = get_item_equip_animation_data(equip)
+
+    if not anim_data:
+        raise HTTPException(status_code=404, detail="ERROR_EQUIP_SPRITE_NOT_FOUND")
+
+    return JSONResponse(
+        content=anim_data,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
+
+
 @router.get("/{mob}/animation")
 async def get_pet_animation(mob: str):
     """Returns the canvas-ready animation JSON for a pet's base mob sprite.

@@ -1,9 +1,10 @@
 /**
  * PetAnimator.tsx — Canvas-based sprite animator for rAthena pets.
  *
- * Consumes the `/api/pets/{mobAegisName}/animation` endpoint and renders
- * the idle animation frame-by-frame on an HTML Canvas, reusing the same
- * rendering pipeline as {@link MonsterAnimator} but keyed by AegisName.
+ * Renders the pet's idle animation via the `/api/pets/{mobAegisName}/animation`
+ * endpoint.  When `equipAegisName` is provided, a second transparent canvas is
+ * rendered on top using `/api/pets/{mob}/equip_animation?equip={equipAegisName}`,
+ * compositing the accessory sprite over the base mob.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -11,7 +12,8 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { API_URL } from '../config/env';
 import { useLanguageStore } from '../store/useLanguageStore';
 
-/** Single sprite patch drawing instruction from the server. */
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface Patch {
   x: number;
   y: number;
@@ -25,12 +27,10 @@ interface Patch {
   h: number;
 }
 
-/** Animation frame containing layered patches. */
 interface Frame {
   patches: Patch[];
 }
 
-/** Complete spritesheet animation definition returned by the server. */
 interface AnimationData {
   spritesheet: string;
   frame_duration: number;
@@ -41,15 +41,15 @@ interface AnimationData {
 interface PetAnimatorProps {
   /** AegisName of the pet's base mob (e.g. `"PORING"`). */
   mobAegisName: string;
-  /** Accessible label used as the card title and for `data-testid`. */
+  /**
+   * Optional AegisName of the pet accessory item (EquipItem).
+   * When provided, a second canvas layer renders the accessory sprite on top.
+   */
+  equipAegisName?: string;
+  /** Accessible label used for `data-testid`. */
   label?: string;
   /** Canvas preset size. Defaults to `'md'`. */
   size?: 'sm' | 'md' | 'lg';
-  /**
-   * Optional overlay element rendered on top of the canvas (e.g. accessory icon).
-   * Positioned absolutely at the bottom-center of the canvas container.
-   */
-  overlay?: React.ReactNode;
 }
 
 const CANVAS_SIZES = {
@@ -58,15 +58,105 @@ const CANVAS_SIZES = {
   lg: { width: 280, height: 280 },
 } as const;
 
+// ─── Rendering hook ───────────────────────────────────────────────────────────
+
+interface AnimLayer {
+  data: AnimationData;
+  sheet: HTMLImageElement;
+}
+
 /**
- * Renders an animated pet sprite inside a Canvas element.
- * Fetches animation data from `/api/pets/{mobAegisName}/animation`.
+ * Loads animation data + spritesheet image for a given URL.
+ * Returns `null` while loading and `false` on error.
+ */
+function useAnimLayer(url: string | null): AnimLayer | null | false {
+  const [state, setState] = useState<AnimLayer | null | false>(null);
+
+  useEffect(() => {
+    if (!url) return;
+    let active = true;
+    setState(null);
+
+    fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error('not_found');
+        return res.json();
+      })
+      .then((data: AnimationData) => {
+        if (!active) return;
+        const img = new Image();
+        img.src = data.spritesheet;
+        img.onload = () => { if (active) setState({ data, sheet: img }); };
+        img.onerror = () => { if (active) setState(false); };
+      })
+      .catch(() => { if (active) setState(false); });
+
+    return () => { active = false; };
+  }, [url]);
+
+  return state;
+}
+
+// ─── Canvas draw helper ───────────────────────────────────────────────────────
+
+function drawLayer(
+  ctx: CanvasRenderingContext2D,
+  layer: AnimLayer,
+  frameIdx: number,
+  cx: number,
+  cy: number,
+  scale: number,
+) {
+  const frame = layer.data.frames[frameIdx % layer.data.frames.length];
+  if (!frame?.patches) return;
+  frame.patches.forEach((p) => {
+    ctx.save();
+    ctx.translate(cx, cy);
+    const sx = (p.mirror === 1 ? -p.scale_x : p.scale_x) * scale;
+    const sy = p.scale_y * scale;
+    ctx.scale(sx, sy);
+    if (p.rotation !== 0) ctx.rotate((p.rotation * Math.PI) / 180);
+    ctx.drawImage(
+      layer.sheet,
+      p.sheet_x, p.sheet_y, p.w, p.h,
+      p.x - p.w / 2, p.y - p.h / 2, p.w, p.h,
+    );
+    ctx.restore();
+  });
+}
+
+/** Calculates a scale factor so the sprite fits within `targetPx` pixels. */
+function calcAutoScale(layer: AnimLayer, targetPx: number, maxScale: number): number {
+  let minX = 99999, maxX = -99999, minY = 99999, maxY = -99999;
+  layer.data.frames.forEach((frame) => {
+    frame.patches?.forEach((p) => {
+      const hw = (p.w / 2) * Math.abs(p.scale_x);
+      const hh = (p.h / 2) * Math.abs(p.scale_y);
+      if (p.x - hw < minX) minX = p.x - hw;
+      if (p.x + hw > maxX) maxX = p.x + hw;
+      if (p.y - hh < minY) minY = p.y - hh;
+      if (p.y + hh > maxY) maxY = p.y + hh;
+    });
+  });
+  const mw = maxX - minX;
+  const mh = maxY - minY;
+  if (mw > 0 && mh > 0) {
+    return Math.min((targetPx * 0.75) / mw, (targetPx * 0.75) / mh, maxScale);
+  }
+  return 1.0;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+/**
+ * Renders an animated pet sprite on Canvas.
+ * Optionally composites an accessory layer on top via a second endpoint.
  */
 const PetAnimator: React.FC<PetAnimatorProps> = ({
   mobAegisName,
+  equipAegisName,
   label,
   size = 'md',
-  overlay,
 }) => {
   const t = useLanguageStore((s) => s.t);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -74,92 +164,31 @@ const PetAnimator: React.FC<PetAnimatorProps> = ({
   const currentFrameRef = useRef<number>(0);
   const lastFrameTimeRef = useRef<number>(0);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [animData, setAnimData] = useState<AnimationData | null>(null);
-  const [sheet, setSheet] = useState<HTMLImageElement | null>(null);
-  const [autoScale, setAutoScale] = useState(1.0);
-
   const dims = CANVAS_SIZES[size];
   const testId = `pet-animator-${label ?? mobAegisName}`;
 
-  // Fetch animation JSON whenever the AegisName changes
+  const baseUrl = mobAegisName
+    ? `${API_URL}/api/pets/${encodeURIComponent(mobAegisName)}/animation`
+    : null;
+
+  const equipUrl =
+    equipAegisName && mobAegisName
+      ? `${API_URL}/api/pets/${encodeURIComponent(mobAegisName)}/equip_animation?equip=${encodeURIComponent(equipAegisName)}`
+      : null;
+
+  const baseLayer = useAnimLayer(baseUrl);
+  const equipLayer = useAnimLayer(equipUrl);
+
+  // Auto-scale based on base layer bounding box
+  const autoScale = React.useMemo(() => {
+    if (!baseLayer) return 1.0;
+    const raw = calcAutoScale(baseLayer, dims.width, size === 'sm' ? 1.0 : 1.5);
+    return Math.max(raw, 0.35);
+  }, [baseLayer, dims.width, size]);
+
+  // Composite render loop — draws base + equip layer every frame
   useEffect(() => {
-    if (!mobAegisName) return;
-    let active = true;
-    setLoading(true);
-    setError(null);
-    setAnimData(null);
-    setSheet(null);
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
-
-    fetch(`${API_URL}/api/pets/${encodeURIComponent(mobAegisName)}/animation`)
-      .then((res) => {
-        if (!res.ok) throw new Error(t('monster_animator.animation_not_found'));
-        return res.json();
-      })
-      .then((data: AnimationData) => {
-        if (!active) return;
-        setAnimData(data);
-        const img = new Image();
-        img.src = data.spritesheet;
-        img.onload = () => {
-          if (!active) return;
-          setSheet(img);
-          setLoading(false);
-        };
-        img.onerror = () => {
-          if (!active) return;
-          setError(t('monster_animator.error_spritesheet'));
-          setLoading(false);
-        };
-      })
-      .catch((err: Error) => {
-        if (!active) return;
-        setError(err.message || t('common.error'));
-        setLoading(false);
-      });
-
-    return () => {
-      active = false;
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
-  }, [mobAegisName]);
-
-  // Auto-scale: fit the sprite bounding box within 75% of the canvas
-  useEffect(() => {
-    if (!animData) return;
-    let minX = 99999, maxX = -99999, minY = 99999, maxY = -99999;
-    animData.frames.forEach((frame) => {
-      frame.patches?.forEach((p) => {
-        const hw = (p.w / 2) * Math.abs(p.scale_x);
-        const hh = (p.h / 2) * Math.abs(p.scale_y);
-        if (p.x - hw < minX) minX = p.x - hw;
-        if (p.x + hw > maxX) maxX = p.x + hw;
-        if (p.y - hh < minY) minY = p.y - hh;
-        if (p.y + hh > maxY) maxY = p.y + hh;
-      });
-    });
-    const mw = maxX - minX;
-    const mh = maxY - minY;
-    if (mw > 0 && mh > 0) {
-      const s = Math.min(
-        (dims.width * 0.75) / mw,
-        (dims.height * 0.75) / mh,
-        size === 'sm' ? 1.0 : 1.5,
-      );
-      setAutoScale(Math.max(s, 0.35));
-    } else {
-      setAutoScale(1.0);
-    }
-  }, [animData, dims.width, dims.height, size]);
-
-  // Render loop
-  useEffect(() => {
-    if (!sheet || !animData || !canvasRef.current) return;
+    if (!baseLayer || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -168,25 +197,22 @@ const PetAnimator: React.FC<PetAnimatorProps> = ({
     lastFrameTimeRef.current = performance.now();
 
     const renderLoop = (time: number) => {
-      const duration = animData.frame_duration || 150;
+      const duration = baseLayer.data.frame_duration || 150;
       if (time - lastFrameTimeRef.current >= duration) {
-        currentFrameRef.current = (currentFrameRef.current + 1) % animData.frames.length;
+        currentFrameRef.current = (currentFrameRef.current + 1) % baseLayer.data.frames.length;
         lastFrameTimeRef.current = time;
       }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const frame = animData.frames[currentFrameRef.current];
-      if (frame?.patches) {
-        frame.patches.forEach((p) => {
-          ctx.save();
-          ctx.translate(canvas.width / 2, canvas.height * 0.75);
-          const sx = (p.mirror === 1 ? -p.scale_x : p.scale_x) * autoScale;
-          const sy = p.scale_y * autoScale;
-          ctx.scale(sx, sy);
-          if (p.rotation !== 0) ctx.rotate((p.rotation * Math.PI) / 180);
-          ctx.drawImage(sheet, p.sheet_x, p.sheet_y, p.w, p.h, p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
-          ctx.restore();
-        });
+      const cx = canvas.width / 2;
+      const cy = canvas.height * 0.75;
+
+      // Layer 1: base mob sprite
+      drawLayer(ctx, baseLayer, currentFrameRef.current, cx, cy, autoScale);
+
+      // Layer 2: accessory sprite (on top, same scale & origin so it aligns naturally)
+      if (equipLayer !== null && equipLayer !== false) {
+        drawLayer(ctx, equipLayer, currentFrameRef.current, cx, cy, autoScale);
       }
 
       animFrameRef.current = requestAnimationFrame(renderLoop);
@@ -196,9 +222,11 @@ const PetAnimator: React.FC<PetAnimatorProps> = ({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [sheet, animData, autoScale]);
+  }, [baseLayer, equipLayer, autoScale]);
 
-  if (loading) {
+  // ── States ────────────────────────────────────────────────────────────────
+
+  if (baseLayer === null) {
     return (
       <div
         data-testid={testId}
@@ -211,7 +239,7 @@ const PetAnimator: React.FC<PetAnimatorProps> = ({
     );
   }
 
-  if (error || !animData) {
+  if (baseLayer === false) {
     return (
       <div
         data-testid={testId}
@@ -236,13 +264,14 @@ const PetAnimator: React.FC<PetAnimatorProps> = ({
         height={dims.height}
         className="pixelated"
       />
-      {overlay && (
-        <div className="absolute bottom-2 right-2 pointer-events-none">
-          {overlay}
+      {/* Equip loading indicator */}
+      {equipUrl && equipLayer === null && (
+        <div className="absolute bottom-1 right-1 opacity-50">
+          <Loader2 size={10} className="animate-spin text-pink-400" />
         </div>
       )}
       <div className="absolute bottom-1 left-2 text-[9px] text-gray-500 bg-dark-900/80 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-        {animData.frames.length}f
+        {baseLayer.data.frames.length}f
       </div>
     </div>
   );

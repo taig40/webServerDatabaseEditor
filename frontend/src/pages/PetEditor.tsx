@@ -147,16 +147,16 @@ export const PetEditor: React.FC = () => {
     }
   };
 
-  /** Returns the URL for the egg icon, falling back to resource_name lookup. */
+  /** Returns the URL for the egg icon using the AegisName-aware backend route. */
   const eggIconUrl = (eggItem: string | undefined) => {
     if (!eggItem) return FALLBACK_EGG;
-    return `${API_URL}/api/images/item_icon?resource_name=${encodeURIComponent(eggItem)}`;
+    return `${API_URL}/api/images/item_by_aegis/${encodeURIComponent(eggItem)}`;
   };
 
   /** Returns the URL for the equip item icon (accessory overlay). */
   const equipIconUrl = (equipItem: string | undefined) => {
     if (!equipItem) return null;
-    return `${API_URL}/api/images/item_icon?resource_name=${encodeURIComponent(equipItem)}`;
+    return `${API_URL}/api/images/item_by_aegis/${encodeURIComponent(equipItem)}`;
   };
 
   return (
@@ -406,26 +406,7 @@ export const PetEditor: React.FC = () => {
                         mobAegisName={selectedPet.Mob}
                         label="pet-accessory"
                         size="md"
-                        overlay={
-                          selectedPet.EquipItem ? (
-                            <div
-                              data-testid="pet-accessory-overlay"
-                              className="w-8 h-8 rounded border border-white/10 bg-dark-900/70 overflow-hidden"
-                              title={t('pet_editor.viewer.equip_preview')}
-                            >
-                              <img
-                                src={equipIconUrl(selectedPet.EquipItem) ?? ''}
-                                alt={selectedPet.EquipItem}
-                                loading="lazy"
-                                decoding="async"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                                className="w-full h-full object-contain pixelated"
-                              />
-                            </div>
-                          ) : undefined
-                        }
+                        equipAegisName={selectedPet.EquipItem || undefined}
                       />
                     </div>
                   </div>
