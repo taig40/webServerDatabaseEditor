@@ -627,6 +627,8 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int) -> 'Image.Ima
 
         img = Image.new("RGBA", (w, h))
         img.putdata(pixels)
+        # SPR BGRA32 frames are stored bottom-up
+        img = img.transpose(Image.FLIP_TOP_BOTTOM)
         return img
 
 

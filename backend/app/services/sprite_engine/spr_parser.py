@@ -187,6 +187,8 @@ class SprParser:
             
             img = Image.new("RGBA", (w, h))
             img.putdata(pixels)
+            # SPR BGRA32 frames are stored bottom-up
+            img = img.transpose(Image.FLIP_TOP_BOTTOM)
             self.images.append(img)
 
     def get_images(self) -> List[Image.Image]:
