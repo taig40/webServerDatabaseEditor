@@ -123,7 +123,7 @@ export const VisualBrowserModal: React.FC<VisualBrowserModalProps> = ({
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {filtered.map(item => {
-                const previewSrc = `${API_URL}/api/visualizer/preview?resource_name=${item.sprite_name}&is_male=true&direction=0`;
+                const previewSrc = `${API_URL}/api/visualizer/preview?resource_name=${item.sprite_name}&is_male=true&direction=0&_t=${Date.now()}`;
                 return (
                   <div
                     key={item.view_id}

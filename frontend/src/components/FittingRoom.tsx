@@ -34,7 +34,8 @@ export const FittingRoom: React.FC<FittingRoomProps> = ({ resourceName, equipmen
   const resolvedResource = equipmentType === 'garment' ? '' : encodeURIComponent(resourceName ?? '');
   const resolvedRobe = equipmentType === 'garment' ? encodeURIComponent(resourceName ?? '') : encodeURIComponent(robeName);
   
-  const previewUrl = `${API_URL}/api/visualizer/preview?resource_name=${resolvedResource}&robe_name=${resolvedRobe}&is_male=${isMale}&direction=${direction}`;
+  const timestamp = Date.now();
+  const previewUrl = `${API_URL}/api/visualizer/preview?resource_name=${resolvedResource}&robe_name=${resolvedRobe}&is_male=${isMale}&direction=${direction}&_t=${timestamp}`;
 
   return (
     <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl flex flex-col items-center">
