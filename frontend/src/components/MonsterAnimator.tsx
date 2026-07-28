@@ -122,7 +122,7 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
       animationFrameIdRef.current = null;
     }
 
-    fetch(`${API_URL}/api/mobs/${mobId}/animation?_t=${spriteKey}`)
+    fetch(`${API_URL}/api/mobs/${mobId}/animation?_t=${spriteKey}&_v=2`)
       .then(res => {
         if (!res.ok) throw new Error(t('monster_animator.animation_not_found'));
         return res.json();
@@ -190,12 +190,18 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
       if (frame && frame.patches) {
         frame.patches.forEach((patch: Patch) => {
           ctx.save();
-          ctx.translate(anchorX, anchorY);
 
+          // 1. Translate to the anchor + patch offset (scaled by autoScale)
+          const destX = anchorX + patch.x * autoScale;
+          const destY = anchorY + patch.y * autoScale;
+          ctx.translate(destX, destY);
+
+          // 2. Apply patch scale (and flip) with autoScale
           const scaleX = (patch.mirror === 1 ? -patch.scale_x : patch.scale_x) * autoScale;
           const scaleY = patch.scale_y * autoScale;
           ctx.scale(scaleX, scaleY);
 
+          // 3. Apply rotation around the center
           if (patch.rotation !== 0) {
             ctx.rotate((patch.rotation * Math.PI) / 180);
           }
@@ -204,17 +210,15 @@ const MonsterAnimator: React.FC<MonsterAnimatorProps> = ({ mobId, mobName, size 
           const alpha = patch.rgba ? patch.rgba[3] / 255.0 : 1.0;
           ctx.globalAlpha = alpha;
 
-          const destX = patch.x - patch.w / 2;
-          const destY = patch.y - patch.h / 2;
-
+          // 4. Draw image centered at (0,0)
           ctx.drawImage(
             spritesheetImg,
             patch.sheet_x,
             patch.sheet_y,
             patch.w,
             patch.h,
-            destX,
-            destY,
+            -patch.w / 2,
+            -patch.h / 2,
             patch.w,
             patch.h
           );

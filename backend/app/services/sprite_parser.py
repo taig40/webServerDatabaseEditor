@@ -600,9 +600,8 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int) -> 'Image.Ima
         #   • (255,   0, 255) – magenta — classic RO indexed legacy colour
         #   • (  0, 255,   0) – green   — alternate background used in some packs
         #
-        # The top-left-pixel heuristic is intentionally ABSENT: it is too
-        # aggressive and breaks sprites whose first pixel happens to be part of
-        # the actual image (e.g. glow border pixels).
+        # The top-left-pixel heuristic is included to fix badly converted custom sprites
+        # (e.g. Gold Majestic Goat) that use a solid color background with A=255.
         if spr_num >= len(spr.rgba_frames):
             return None
         frame_info = spr.rgba_frames[spr_num]
@@ -610,6 +609,15 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int) -> 'Image.Ima
         h = frame_info['height']
         raw = frame_info['data']
         total = w * h
+
+        colorkey = None
+        if w > 0 and h > 0 and len(raw) >= 4:
+            b0 = raw[0]
+            g0 = raw[1]
+            r0 = raw[2]
+            a0 = raw[3]
+            if a0 == 255:
+                colorkey = (r0, g0, b0)
 
         pixels = []
         for j in range(total):
@@ -625,7 +633,8 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int) -> 'Image.Ima
                 if a == 255 and (
                     (r == 255 and g == 255 and b == 0) or   # yellow
                     (r == 255 and g == 0   and b == 255) or  # magenta
-                    (r == 0   and g == 255 and b == 0)       # green
+                    (r == 0   and g == 255 and b == 0) or    # green
+                    (colorkey and abs(r - colorkey[0]) <= 5 and abs(g - colorkey[1]) <= 5 and abs(b - colorkey[2]) <= 5)
                 ):
                     pixels.append((0, 0, 0, 0))
                 else:

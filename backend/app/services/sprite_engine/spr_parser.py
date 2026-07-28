@@ -165,11 +165,18 @@ class SprParser:
 
         # Convert RGBA frames
         for frame in self.rgba_frames:
-            w = frame['width']
-            h = frame['height']
+            w, h = frame['width'], frame['height']
             raw_data = frame['data']
             pixels = []
             
+            # Heurística para BGRA32 mal formatados: 
+            # Se o pixel (0,0) for totalmente opaco (A=255), usar ele como colorkey
+            colorkey = None
+            if w > 0 and h > 0 and len(raw_data) >= 4:
+                b0, g0, r0, a0 = raw_data[0:4]
+                if a0 == 255:
+                    colorkey = (r0, g0, b0)
+
             total_pixels = w * h
             for i in range(total_pixels):
                 offset = i * 4
@@ -180,12 +187,12 @@ class SprParser:
                     r = raw_data[offset + 2]
                     a = raw_data[offset + 3]
 
-                    # Apply colour-key only for fully-opaque magic background colours.
-                    # Semi-transparent pixels (0 < a < 255) are kept to preserve glows.
+                    # Apply colour-key for magic colors and our dynamic colorkey
                     if a == 255 and (
                         (r == 255 and g == 255 and b == 0) or   # yellow
                         (r == 255 and g == 0   and b == 255) or  # magenta
-                        (r == 0   and g == 255 and b == 0)       # green
+                        (r == 0   and g == 255 and b == 0) or    # green
+                        (colorkey and abs(r - colorkey[0]) <= 5 and abs(g - colorkey[1]) <= 5 and abs(b - colorkey[2]) <= 5)
                     ):
                         pixels.append((0, 0, 0, 0))
                     else:
