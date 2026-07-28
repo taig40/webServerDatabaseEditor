@@ -553,11 +553,16 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int):
         
         bg_r, bg_g, bg_b, _ = spr.palette[0] if spr.palette else (255, 0, 255, 0)
         
+        # Second fallback: The top-left pixel is almost always the background color.
+        # This catches dirty sprites where the creator missed palette[0].
+        tl_idx = raw[0] if len(raw) > 0 else 0
+        tl_r, tl_g, tl_b, _ = spr.palette[tl_idx] if (spr.palette and tl_idx < len(spr.palette)) else (255, 0, 255, 0)
+        
         for j in range(total):
             idx = raw[j] if j < len(raw) else 0
             if idx < len(spr.palette):
                 r, g, b, a = spr.palette[idx]
-                if r == bg_r and g == bg_g and b == bg_b:
+                if (r == bg_r and g == bg_g and b == bg_b) or (r == tl_r and g == tl_g and b == tl_b):
                     pixels.append((0, 0, 0, 0))
                 else:
                     pixels.append((r, g, b, a))
@@ -576,6 +581,13 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int):
         raw = frame_info['data']
         total = w * h
         pixels = []
+        
+        # Top left pixel colorkey for dirty RGBA frames
+        if len(raw) >= 4:
+            tl_b, tl_g, tl_r = raw[0], raw[1], raw[2]
+        else:
+            tl_r, tl_g, tl_b = 255, 0, 255
+            
         for j in range(total):
             offset = j * 4
             if offset + 3 < len(raw):
@@ -583,7 +595,15 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int):
                 g = raw[offset + 1]
                 r = raw[offset + 2]
                 a = raw[offset + 3]
-                pixels.append((r, g, b, a))
+                
+                # Check for standard solid backgrounds that mistakenly have high alpha
+                if (r == tl_r and g == tl_g and b == tl_b) or \
+                   (r == 255 and g == 0 and b == 255) or \
+                   (r == 0 and g == 255 and b == 0) or \
+                   (r == 255 and g == 255 and b == 0):
+                    pixels.append((0, 0, 0, 0))
+                else:
+                    pixels.append((r, g, b, a))
             else:
                 pixels.append((0, 0, 0, 0))
         img = Image.new("RGBA", (w, h))
