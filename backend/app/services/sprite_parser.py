@@ -550,10 +550,17 @@ def _decode_spr_frame(spr: SprParser, spr_num: int, spr_type: int):
         raw = frame_info['data']
         total = w * h
         pixels = []
+        
+        bg_r, bg_g, bg_b, _ = spr.palette[0] if spr.palette else (255, 0, 255, 0)
+        
         for j in range(total):
             idx = raw[j] if j < len(raw) else 0
             if idx < len(spr.palette):
-                pixels.append(spr.palette[idx])
+                r, g, b, a = spr.palette[idx]
+                if r == bg_r and g == bg_g and b == bg_b:
+                    pixels.append((0, 0, 0, 0))
+                else:
+                    pixels.append((r, g, b, a))
             else:
                 pixels.append((0, 0, 0, 0))
         img = Image.new("RGBA", (w, h))
