@@ -1,6 +1,7 @@
 """pets.py — API endpoints for Pet DB (pet_db.yml)."""
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Any, Optional
 from app.services.pet_parser import pet_db
@@ -56,6 +57,44 @@ async def get_pets(
         "limit": limit,
         "pets": pets[skip : skip + limit],
     }
+
+
+@router.get("/{mob}/animation")
+async def get_pet_animation(mob: str):
+    """Returns the canvas-ready animation JSON for a pet's base mob sprite.
+
+    Resolves the pet AegisName to its GRF sprite name using the same
+    ``get_sprite_name_for_mob`` pipeline as the mob animation route.
+
+    Args:
+        mob: Pet mob AegisName (e.g. ``PORING``, ``LUNATIC``).
+
+    Returns:
+        JSONResponse: Animation data object with 1-year immutable cache headers.
+            Fields: ``spritesheet`` (base64 PNG data-URI), ``frame_duration`` (ms),
+            ``frames`` (list of patch lists).
+
+    Raises:
+        HTTPException: 503 if the pet database is still loading;
+            404 if no sprite data could be resolved for the given AegisName.
+    """
+    if pet_db.is_loading:
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
+
+    from app.services.sprite_parser import get_sprite_name_for_mob, get_mob_animation_data
+
+    sprite_name = get_sprite_name_for_mob(0, fallback_aegis=mob)
+    if not sprite_name:
+        raise HTTPException(status_code=404, detail="ERROR_SPRITE_NOT_FOUND")
+
+    anim_data = get_mob_animation_data(sprite_name)
+    if not anim_data:
+        raise HTTPException(status_code=404, detail="ERROR_ANIMATION_NOT_FOUND")
+
+    return JSONResponse(
+        content=anim_data,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 
 @router.get("/{mob}")

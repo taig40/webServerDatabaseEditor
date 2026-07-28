@@ -826,6 +826,11 @@
     "no_selection": {
       "title": "No Pet Selected",
       "subtitle": "Select a pet from the list on the side to view and edit details."
+    },
+    "viewer": {
+      "pet_label": "Pet (Normal)",
+      "pet_equip_label": "Pet + Accessory",
+      "equip_preview": "Accessory Preview"
     }
   },
   "achievement_editor": {

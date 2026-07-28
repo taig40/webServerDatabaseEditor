@@ -15,7 +15,7 @@ import { useLanguageStore } from '../store/useLanguageStore';
 export type SourceTab = 'rathena' | 'custom';
 
 /** Accent colour theme applied to the active tab. */
-export type SourceAccentColor = 'indigo' | 'violet' | 'emerald';
+export type SourceAccentColor = 'indigo' | 'violet' | 'emerald' | 'pink';
 
 export interface SourceToggleBarProps {
   /** Currently active source tab. */
@@ -52,6 +52,10 @@ const ACTIVE_CLASSES: Record<SourceAccentColor, { rathena: string; custom: strin
   },
   emerald: {
     rathena: 'bg-violet-600/80 text-white shadow-md shadow-violet-900/40',
+    custom:  'bg-emerald-600/80 text-white shadow-md shadow-emerald-900/40',
+  },
+  pink: {
+    rathena: 'bg-pink-600/80 text-white shadow-md shadow-pink-900/40',
     custom:  'bg-emerald-600/80 text-white shadow-md shadow-emerald-900/40',
   },
 };

@@ -828,6 +828,11 @@
     "no_selection": {
       "title": "Nenhum Mascote Selecionado",
       "subtitle": "Selecione um mascote na lista ao lado para ver e editar detalhes."
+    },
+    "viewer": {
+      "pet_label": "Pet (Normal)",
+      "pet_equip_label": "Pet + Acessório",
+      "equip_preview": "Prévia do Acessório"
     }
   },
   "achievement_editor": {
