@@ -73,7 +73,10 @@ function useAnimLayer(url: string | null): AnimLayer | null | false {
   const [state, setState] = useState<AnimLayer | null | false>(null);
 
   useEffect(() => {
-    if (!url) return;
+    if (!url) {
+      setState(null);
+      return;
+    }
     let active = true;
     setState(null);
 
@@ -150,7 +153,7 @@ function calcAutoScale(layer: AnimLayer, targetPx: number, maxScale: number): nu
 
 /**
  * Renders an animated pet sprite on Canvas.
- * Optionally composites an accessory layer on top via a second endpoint.
+ * Optionally renders the equipped pet sprite via a second endpoint if available.
  */
 const PetAnimator: React.FC<PetAnimatorProps> = ({
   mobAegisName,
@@ -186,7 +189,7 @@ const PetAnimator: React.FC<PetAnimatorProps> = ({
     return Math.max(raw, 0.35);
   }, [baseLayer, dims.width, size]);
 
-  // Composite render loop — draws base + equip layer every frame
+  // Composite render loop — draws equip layer if available, otherwise base
   useEffect(() => {
     if (!baseLayer || !canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -207,12 +210,12 @@ const PetAnimator: React.FC<PetAnimatorProps> = ({
       const cx = canvas.width / 2;
       const cy = canvas.height * 0.75;
 
-      // Layer 1: base mob sprite
-      drawLayer(ctx, baseLayer, currentFrameRef.current, cx, cy, autoScale);
-
-      // Layer 2: accessory sprite (on top, same scale & origin so it aligns naturally)
+      // In kRO, pet equipments are full sprites (pet body + accessory).
+      // We draw the equipped sprite if loaded; otherwise we draw the base sprite.
       if (equipLayer !== null && equipLayer !== false) {
         drawLayer(ctx, equipLayer, currentFrameRef.current, cx, cy, autoScale);
+      } else {
+        drawLayer(ctx, baseLayer, currentFrameRef.current, cx, cy, autoScale);
       }
 
       animFrameRef.current = requestAnimationFrame(renderLoop);

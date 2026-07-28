@@ -61,29 +61,33 @@ async def get_pets(
 
 @router.get("/{mob}/equip_animation")
 async def get_pet_equip_animation(mob: str, equip: str):
-    """Returns the canvas-ready animation JSON for a pet accessory (EquipItem) sprite.
+    """Returns the canvas-ready animation JSON for a pet equipped with an accessory.
 
-    Resolves the equip item AegisName to its GRF ``identifiedResourceName`` via
-    iteminfo, then searches the item sprite paths (``data/sprite/아이템/``) for
-    the matching ``.spr/.act`` pair.
+    In kRO, pet equipments are not rendered dynamically as separate layers; instead, 
+    a completely separate baked sprite is provided in the mob folder, typically named
+    ``{mob_sprite_name}_{equip_resource_name}.spr``.
 
     Args:
-        mob: Pet mob AegisName (unused for sprite lookup; included for route
-            symmetry and potential future attachment-point queries).
-        equip: EquipItem AegisName (e.g. ``Silk_Ribbon``).
+        mob: Pet mob AegisName (e.g. ``ISIS``).
+        equip: EquipItem AegisName (e.g. ``Queen's_Hair_Ornament``).
 
     Returns:
         JSONResponse: Spritesheet animation data with 1-year immutable cache
-            headers, or 404 if no sprite is found for the given equip item.
+            headers, or 404 if the combined equipped sprite is not found.
     """
     if pet_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
 
-    from app.services.sprite_parser import get_item_equip_animation_data
+    from app.services.sprite_parser import get_sprite_name_for_mob, get_mob_animation_data
     from app.services.iteminfo_parser import iteminfo_db
 
-    # Resolve AegisName → item_id → resource_name via yaml_db first, then iteminfo
-    resource_name: str | None = None
+    # 1. Resolve base mob sprite name
+    sprite_name = get_sprite_name_for_mob(0, mob)
+    if not sprite_name:
+        raise HTTPException(status_code=404, detail="ERROR_MOB_SPRITE_NOT_FOUND")
+
+    # 2. Resolve AegisName → item_id → resource_name via yaml_db first, then iteminfo
+    equip_resource_name: str | None = None
     try:
         from app.services.yaml_parser import yaml_db
         if not yaml_db.is_loading:
@@ -91,19 +95,22 @@ async def get_pet_equip_animation(mob: str, equip: str):
                 if item.get("AegisName") == equip:
                     item_id = item.get("Id")
                     if item_id and iteminfo_db.loaded:
-                        resource_name = iteminfo_db.get_resource_name(item_id)
+                        equip_resource_name = iteminfo_db.get_resource_name(item_id)
                     break
     except Exception:
         pass
 
-    # Fallback: use the AegisName directly as resource_name (common for custom items)
-    if not resource_name:
-        resource_name = equip
+    if not equip_resource_name:
+        equip_resource_name = equip
 
-    anim_data = get_item_equip_animation_data(resource_name)
-    if not anim_data and resource_name != equip:
-        # Second fallback: try raw AegisName as resource_name
-        anim_data = get_item_equip_animation_data(equip)
+    # 3. Combine them and try to load the baked animation
+    combined_name = f"{sprite_name}_{equip_resource_name}"
+    anim_data = get_mob_animation_data(combined_name)
+
+    # 4. Fallback if the equip resource name was incorrect but the AegisName works
+    if not anim_data and equip_resource_name != equip:
+        combined_name_fallback = f"{sprite_name}_{equip}"
+        anim_data = get_mob_animation_data(combined_name_fallback)
 
     if not anim_data:
         raise HTTPException(status_code=404, detail="ERROR_EQUIP_SPRITE_NOT_FOUND")
