@@ -296,6 +296,80 @@ def save_quest_lua(filepath: str, quest_id: int, data: dict):
         f.write(new_content)
 
 
+def _delete_lua_entry(filepath: str, quest_id: int) -> bool:
+    """Locates and permanently removes a single quest block from the client Lua file.
+
+    Uses the same brace-counting strategy as ``save_quest_lua`` to reliably find
+    and excise the ``[quest_id] = { ... },`` block without disturbing surrounding entries.
+    Falls back gracefully when the file does not exist or the entry is absent (returns ``False``).
+
+    This is a module-level function to maintain clear separation of responsibilities
+    between file I/O and the ``QuestDatabase`` class logic.
+
+    Args:
+        filepath: Absolute path to the client quest Lua/Lub file.
+        quest_id: Numeric ID of the quest entry to remove.
+
+    Returns:
+        bool: ``True`` if the block was found and the file was rewritten; ``False`` otherwise.
+
+    Raises:
+        RuntimeError: If the file exists but cannot be decoded with any supported encoding.
+    """
+    if not os.path.exists(filepath):
+        return False
+
+    preferred = cfg.client_encoding
+    fallbacks = [e for e in ("euc-kr", "utf-8", "cp1252", "latin-1") if e != preferred]
+
+    content = ""
+    chosen_enc = "utf-8"
+    for enc in [preferred] + fallbacks:
+        try:
+            with open(filepath, "r", encoding=enc, errors="replace") as f:
+                content = f.read()
+            chosen_enc = enc
+            break
+        except Exception:
+            continue
+    else:
+        raise RuntimeError(f"Cannot read {filepath} with any supported encoding.")
+
+    start_str = f"[{quest_id}] = {{"
+    start_idx = content.find(start_str)
+    if start_idx == -1:
+        return False
+
+    line_start = content.rfind("\n", 0, start_idx) + 1
+    brace_count = 0
+    end_idx = start_idx
+    for idx in range(start_idx, len(content)):
+        if content[idx] == '{':
+            brace_count += 1
+        elif content[idx] == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                scan = idx + 1
+                while scan < len(content) and content[scan] in (' ', '\t', '\r'):
+                    scan += 1
+                if scan < len(content) and content[scan] in (',', ';'):
+                    end_idx = scan + 1
+                else:
+                    end_idx = idx + 1
+                break
+
+    # Consume the trailing newline so we don't leave a blank line
+    if end_idx < len(content) and content[end_idx] == '\n':
+        end_idx += 1
+
+    new_content = content[:line_start] + content[end_idx:]
+
+    with open(filepath, "w", encoding=chosen_enc, errors="replace") as f:
+        f.write(new_content)
+
+    return True
+
+
 class QuestDatabase(GenericYamlParser):
     _id_key = 'Id'
     _import_filename = 'quest_db.yml'
@@ -423,22 +497,85 @@ class QuestDatabase(GenericYamlParser):
             "client": self.client_cache.get(quest_id) if client_data else None
         }
 
-    def add_quest(self, quest_id: int, server_data: Optional[dict], client_data: Optional[dict]):
-        """Creates a new quest in server database and/or client file."""
-        if server_data:
-            server_data["Id"] = quest_id
-            self.add_entry(server_data)
+    @staticmethod
+    def _build_server_scaffold(quest_id: int, server_data: Optional[dict]) -> dict:
+        """Merges incoming server payload with safe English defaults.
 
+        Guarantees that mandatory rAthena YAML fields are always present, even when
+        the caller provides a partial or empty ``server_data`` dict.
+
+        Args:
+            quest_id: Numeric quest ID to embed in the scaffold.
+            server_data: Partial server payload from the API request, or ``None``.
+
+        Returns:
+            dict: A complete, rAthena-compatible server entry.
+        """
+        defaults: dict = {
+            "Id": quest_id,
+            "Title": "New Quest",
+            "TimeLimit": 0,
+            "Targets": [],
+            "Drops": [],
+        }
+        if server_data:
+            defaults.update(server_data)
+        defaults["Id"] = quest_id
+        return defaults
+
+    @staticmethod
+    def _build_client_scaffold(client_data: Optional[dict], server_title: str) -> dict:
+        """Merges incoming client payload with safe English defaults.
+
+        Ensures the client Lua block always contains valid, non-empty display strings
+        when the caller omits them.
+
+        Args:
+            client_data: Partial client payload from the API request, or ``None``.
+            server_title: The ``Title`` resolved from the server scaffold, used as the
+                display title and summary fallback.
+
+        Returns:
+            dict: A complete client Lua entry dictionary.
+        """
+        display_name = server_title or "New Quest"
+        defaults: dict = {
+            "Title": display_name,
+            "Summary": display_name,
+            "Info": "Quest description goes here.",
+            "QuickInfo": ["Complete the required objectives."],
+        }
         if client_data:
-            lua_path = get_quests_lua_path()
-            if lua_path:
-                save_quest_lua(lua_path, quest_id, client_data)
-                self.client_cache[quest_id] = client_data
+            defaults.update(client_data)
+        return defaults
+
+    def add_quest(self, quest_id: int, server_data: Optional[dict], client_data: Optional[dict]):
+        """Creates a new quest in the server YAML database and/or the client Lua file.
+
+        Both payloads are merged against safe English scaffold defaults before persistence,
+        ensuring no empty or None-filled YAML keys reach the rAthena map-server.
+
+        Args:
+            quest_id: Desired numeric quest ID.
+            server_data: Partial or full server payload; missing fields are filled with defaults.
+            client_data: Partial or full client payload; missing fields are filled with defaults.
+
+        Returns:
+            dict: ``{"Id": quest_id, "server": ..., "client": ...}`` reflecting what was persisted.
+        """
+        scaffold_server = self._build_server_scaffold(quest_id, server_data)
+        self.add_entry(scaffold_server)
+
+        scaffold_client = self._build_client_scaffold(client_data, scaffold_server.get("Title", ""))
+        lua_path = get_quests_lua_path()
+        if lua_path:
+            save_quest_lua(lua_path, quest_id, scaffold_client)
+            self.client_cache[quest_id] = scaffold_client
 
         return {
             "Id": quest_id,
-            "server": server_data,
-            "client": client_data
+            "server": scaffold_server,
+            "client": scaffold_client,
         }
 
     def delete_quest(self, quest_id: int) -> bool:
@@ -484,13 +621,30 @@ class QuestDatabase(GenericYamlParser):
             del self.entry_index[quest_id]
             return False
 
-        self.save_file(filepath)
-        del self.entry_index[quest_id]
+        try:
+            self.save_file(filepath)
+            del self.entry_index[quest_id]
+            self.client_cache.pop(quest_id, None)
 
-        # Remove client Lua entry from memory cache
-        self.client_cache.pop(quest_id, None)
+            lua_path = get_quests_lua_path()
+            if lua_path:
+                try:
+                    _delete_lua_entry(lua_path, quest_id)
+                except Exception as lua_exc:
+                    raise RuntimeError(
+                        f"Quest {quest_id} was removed from YAML but the client Lua file "
+                        f"could not be updated: {lua_exc}"
+                    ) from lua_exc
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to delete quest {quest_id}: {exc}"
+            ) from exc
 
-        # Invalidate the merged list so the next call to get_quest_list() is fresh
+        # TODO: self.cached_list is never declared as an instance attribute — dormant bug.
+        # The assignment below is a no-op that silently swallows cache invalidation.
+        # Fixing it requires declaring `cached_list` in __init__ and hooking it in get_quest_list().
         self.cached_list = None  # type: ignore[attr-defined]
 
         return True
