@@ -56,3 +56,8 @@ backend/*.txt
 playwright-report/
 test-results/
 .playwright-artifacts-*/
+
+# Tauri
+frontend/src-tauri/target/
+frontend/src-tauri/binaries/
+frontend/src-tauri/gen/

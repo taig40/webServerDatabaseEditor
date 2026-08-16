@@ -70,32 +70,17 @@ function StatusBadge({ status }: { status?: { status: string } }) {
   return <span className="flex items-center gap-1 text-[10px] text-red-400 font-medium"><AlertTriangle size={11} /> {t('settings.grf.validation.not_found') || 'Não encontrado'}</span>;
 }
 
-// Universal Browse Dialog supporting Electron, Tauri, and Web API Fallback
+// Universal Browse Dialog supporting Tauri v2 and Web API Fallback
 async function openBrowseDialog(
   type: 'directory' | 'file',
   initialPath?: string,
   filters?: { name: string; extensions: string[] }[],
   ext?: string
 ): Promise<string | null> {
-  // 1. Electron wrapper
-  if (typeof window !== 'undefined' && (window as any).electronAPI) {
+  // 1. Tauri v2 — dynamic import from @tauri-apps/plugin-dialog
+  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
     try {
-      if (type === 'directory') {
-        const res = await (window as any).electronAPI.selectDirectory();
-        if (res) return res;
-      } else {
-        const res = await (window as any).electronAPI.selectFile(filters);
-        if (res) return res;
-      }
-    } catch (err) {
-      console.warn('[ConfigForm] Erro no dialog do Electron:', err);
-    }
-  }
-
-  // 2. Tauri wrapper
-  if (typeof window !== 'undefined' && (window as any).__TAURI__) {
-    try {
-      const { open } = (window as any).__TAURI__.dialog;
+      const { open } = await import('@tauri-apps/plugin-dialog');
       const selected = await open({
         directory: type === 'directory',
         multiple: false,
@@ -103,11 +88,11 @@ async function openBrowseDialog(
       });
       if (typeof selected === 'string') return selected;
     } catch (err) {
-      console.warn('[ConfigForm] Erro no dialog do Tauri:', err);
+      console.warn('[ConfigForm] Tauri dialog error:', err);
     }
   }
 
-  // 3. Fallback Web API (/api/settings/browse)
+  // 2. Fallback Web API (/api/settings/browse)
   try {
     const res = await axios.post(`${API_BASE}/api/settings/browse`, {
       type: type === 'directory' ? 'dir' : 'file',
@@ -118,7 +103,7 @@ async function openBrowseDialog(
       return res.data.path;
     }
   } catch (err) {
-    console.error('[ConfigForm] Erro no browse via API Web:', err);
+    console.error('[ConfigForm] Web API browse error:', err);
   }
 
   return null;

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicatbayramov/tauri/refs/heads/dev/crates/tauri-config-schema/schema.json",
+  "productName": "rAthena Web Editor",
+  "version": "1.0.0",
+  "identifier": "com.rathena.webeditor",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "rAthena Web Editor — Desktop Edition",
+        "width": 1480,
+        "height": 920,
+        "minWidth": 1100,
+        "minHeight": 700,
+        "decorations": true,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/rathena-sde-backend"
+    ]
+  },
+  "plugins": {}
+}

@@ -72,13 +72,22 @@ if (targetApiUrl && !targetApiUrl.startsWith('http://') && !targetApiUrl.startsW
 export default defineConfig({
   base: './',
   plugins: [react()],
+  // Prevent Vite from obscuring Rust errors in Tauri dev mode
+  clearScreen: false,
   server: {
     port: 5173,
+    // Tauri requires the dev server to listen on all interfaces
+    host: process.env.TAURI_ENV_PLATFORM ? '0.0.0.0' : undefined,
+    strictPort: true,
     proxy: {
       '/api': {
         target: targetApiUrl,
         changeOrigin: true,
       },
     },
+    hmr: process.env.TAURI_ENV_PLATFORM
+      ? { protocol: 'ws', host: '127.0.0.1', port: 5173 }
+      : undefined,
   },
 })
+
