@@ -1,9 +1,23 @@
 #!/usr/bin/env python3
 """
 run_server.py — Entrypoint para PyInstaller e execução do servidor embutido.
+
+Guard de stdout/stderr: quando executado como sidecar pelo Tauri (sem TTY),
+sys.stdout e sys.stderr podem ser None, causando crash no logger do uvicorn
+(AttributeError: 'NoneType' object has no attribute 'isatty').
+O bloco abaixo redireciona para os.devnull antes de qualquer import de logging.
 """
 
 import os
+import sys
+
+# --- Guard de TTY para sidecar Tauri / PyInstaller --noconsole ---
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
+# ----------------------------------------------------------------
+
 import argparse
 import uvicorn
 from app.main import app

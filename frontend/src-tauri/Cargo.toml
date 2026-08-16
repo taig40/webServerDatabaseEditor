@@ -2,7 +2,7 @@
 name = "rathena-web-editor"
 version = "1.0.0"
 description = "rAthena Database Editor — Desktop Edition (Tauri v2)"
-authors = ["rAthena Community"]
+authors = ["Taig4o"]
 edition = "2021"
 
 [lib]
