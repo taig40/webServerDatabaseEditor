@@ -30,7 +30,7 @@ interface ClientQuestData {
 interface ServerQuestData {
   Id: number;
   Title: string;
-  TimeLimit?: number;
+  TimeLimit?: number | string;
   Targets?: { Mob: number | string; Count: number; Race?: string; Size?: string; Element?: string; MinLevel?: number; MaxLevel?: number; Location?: string; MapName?: string }[];
   Drops?: { Mob: number | string; Item: number | string; Count?: number; Rate: number }[];
   /** Source annotation injected by the backend. */
@@ -137,7 +137,7 @@ export const QuestEditor: React.FC = () => {
     if (!selectedQuestId) return;
     setQuests(prev => prev.map(q => {
       if (q.Id !== selectedQuestId) return q;
-      const s = { ...(q.server || { Id: selectedQuestId, Title: '', TimeLimit: 0, Targets: [], Drops: [] }), [field]: val };
+      const s = { ...(q.server || { Id: selectedQuestId, Title: '', Targets: [], Drops: [] }), [field]: val };
       return { ...q, server: s };
     }));
   };
@@ -147,7 +147,7 @@ export const QuestEditor: React.FC = () => {
     setQuests(prev => prev.map(q => {
       if (q.Id !== selectedQuestId) return q;
       const c = { ...(q.client || { Title: '', Summary: '', Info: '', QuickInfo: [] }), [field]: val };
-      const s = q.server ? { ...q.server } : { Id: selectedQuestId, Title: '', TimeLimit: 0, Targets: [], Drops: [] };
+      const s = q.server ? { ...q.server } : { Id: selectedQuestId, Title: '', Targets: [], Drops: [] };
       // Keep server Title in sync when the client Title is edited
       if (field === 'Title') s.Title = val;
       return { ...q, client: c, server: s };
@@ -169,7 +169,7 @@ export const QuestEditor: React.FC = () => {
 
   const handleAddTarget = () => {
     if (!selectedQuest) return;
-    const s = selectedQuest.server || { Id: selectedQuestId!, Title: '', TimeLimit: 0, Targets: [], Drops: [] };
+    const s = selectedQuest.server || { Id: selectedQuestId!, Title: '', Targets: [], Drops: [] };
     updateServerField('Targets', [...(s.Targets || []), { Mob: 1002, Count: 10 }]);
   };
 
@@ -187,7 +187,7 @@ export const QuestEditor: React.FC = () => {
 
   const handleAddDrop = () => {
     if (!selectedQuest) return;
-    const s = selectedQuest.server || { Id: selectedQuestId!, Title: '', TimeLimit: 0, Targets: [], Drops: [] };
+    const s = selectedQuest.server || { Id: selectedQuestId!, Title: '', Targets: [], Drops: [] };
     updateServerField('Drops', [...(s.Drops || []), { Mob: 1002, Item: 501, Rate: 10000 }]);
   };
 
@@ -266,7 +266,7 @@ export const QuestEditor: React.FC = () => {
     }
 
     try {
-      const server = { Id: newId, Title: newTitle, TimeLimit: 0, Targets: [], Drops: [] };
+      const server = { Id: newId, Title: newTitle, Targets: [], Drops: [] };
       const client = {
         Title: newTitle,
         Summary: newTitle,
@@ -478,9 +478,10 @@ export const QuestEditor: React.FC = () => {
                       <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{t('quest_editor.fields.time_limit')}</label>
                         <input
-                          type="number"
-                          value={selectedQuest.server?.TimeLimit || 0}
-                          onChange={(e) => updateServerField('TimeLimit', parseInt(e.target.value) || 0)}
+                          type="text"
+                          value={selectedQuest.server?.TimeLimit || ''}
+                          onChange={(e) => updateServerField('TimeLimit', e.target.value)}
+                          placeholder="Ex: 360000s, +3d 4h, 00:00:00"
                           className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none"
                         />
                       </div>

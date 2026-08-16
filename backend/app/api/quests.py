@@ -4,12 +4,13 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Any, Optional
 from app.services.quest_parser import quest_db
+from app.models.quest import QuestUpdateModel
 
 router = APIRouter()
 
 
 class QuestSavePayload(BaseModel):
-    server_data: Optional[dict[str, Any]] = None
+    server_data: Optional[QuestUpdateModel] = None
     client_data: Optional[dict[str, Any]] = None
 
 
@@ -93,7 +94,8 @@ async def update_quest(quest_id: int, body: QuestSavePayload):
     if quest_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     try:
-        result = quest_db.update_quest(quest_id, body.server_data, body.client_data)
+        server_data_dict = body.server_data.model_dump(exclude_none=True, exclude_defaults=True) if body.server_data else None
+        result = quest_db.update_quest(quest_id, server_data_dict, body.client_data)
         if result is None:
             raise HTTPException(status_code=404, detail="ERROR_QUEST_NOT_FOUND")
         return result
@@ -118,7 +120,8 @@ async def create_quest_with_id(quest_id: int, body: QuestSavePayload):
     if quest_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
     try:
-        result = quest_db.add_quest(quest_id, body.server_data, body.client_data)
+        server_data_dict = body.server_data.model_dump(exclude_none=True, exclude_defaults=True) if body.server_data else None
+        result = quest_db.add_quest(quest_id, server_data_dict, body.client_data)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -145,8 +148,11 @@ async def create_quest_legacy(body: QuestSavePayload):
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
 
     quest_id = None
-    if body.server_data and "Id" in body.server_data:
-        quest_id = int(body.server_data["Id"])
+    server_data_dict = None
+    if body.server_data:
+        server_data_dict = body.server_data.model_dump(exclude_none=True, exclude_defaults=True)
+        if "Id" in server_data_dict:
+            quest_id = int(server_data_dict["Id"])
     elif body.client_data and "Id" in body.client_data:
         quest_id = int(body.client_data["Id"])
 
@@ -154,7 +160,7 @@ async def create_quest_legacy(body: QuestSavePayload):
         raise HTTPException(status_code=400, detail="ERROR_ID_REQUIRED")
 
     try:
-        result = quest_db.add_quest(quest_id, body.server_data, body.client_data)
+        result = quest_db.add_quest(quest_id, server_data_dict, body.client_data)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
