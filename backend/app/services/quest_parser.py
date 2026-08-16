@@ -514,7 +514,7 @@ class QuestDatabase(GenericYamlParser):
         defaults: dict = {
             "Id": quest_id,
             "Title": "New Quest",
-            "TimeLimit": 0,
+            "TimeLimit": "0h",
             "Targets": [],
             "Drops": [],
         }
