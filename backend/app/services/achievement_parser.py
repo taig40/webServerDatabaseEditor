@@ -242,6 +242,76 @@ def parse_lua_block(block: str) -> dict:
     return data
 
 
+def _delete_lua_entry(filepath: str, ach_id: int) -> bool:
+    """Locates and permanently removes a single achievement block from the client Lua file.
+
+    Uses the same brace-counting strategy as ``save_achievement_lua`` to reliably find
+    and excise the ``[ach_id] = { ... },`` block without disturbing surrounding entries.
+    Falls back gracefully when the file does not exist or the entry is absent (returns ``False``).
+
+    Args:
+        filepath: Absolute path to the client ``achievements.lub`` / ``achievements.lua`` file.
+        ach_id: Numeric ID of the achievement entry to remove.
+
+    Returns:
+        bool: ``True`` if the block was found and the file was rewritten; ``False`` otherwise.
+
+    Raises:
+        RuntimeError: If the file exists but cannot be decoded with any supported encoding.
+    """
+    if not os.path.exists(filepath):
+        return False
+
+    preferred = cfg.client_encoding
+    fallbacks = [e for e in ("euc-kr", "utf-8", "cp1252", "latin-1") if e != preferred]
+
+    content = ""
+    chosen_enc = "utf-8"
+    for enc in [preferred] + fallbacks:
+        try:
+            with open(filepath, "r", encoding=enc, errors="replace") as f:
+                content = f.read()
+            chosen_enc = enc
+            break
+        except Exception:
+            continue
+    else:
+        raise RuntimeError(f"Cannot read {filepath} with any supported encoding.")
+
+    start_str = f"[{ach_id}] = {{"
+    start_idx = content.find(start_str)
+    if start_idx == -1:
+        return False
+
+    line_start = content.rfind("\n", 0, start_idx) + 1
+    brace_count = 0
+    end_idx = start_idx
+    for idx in range(start_idx, len(content)):
+        if content[idx] == '{':
+            brace_count += 1
+        elif content[idx] == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                scan = idx + 1
+                while scan < len(content) and content[scan] in (' ', '\t', '\r'):
+                    scan += 1
+                if scan < len(content) and content[scan] in (',', ';'):
+                    end_idx = scan + 1
+                else:
+                    end_idx = idx + 1
+                break
+
+    # Consume the trailing newline so we don't leave a blank line
+    if end_idx < len(content) and content[end_idx] == '\n':
+        end_idx += 1
+
+    new_content = content[:line_start] + content[end_idx:]
+
+    with open(filepath, "w", encoding=chosen_enc, errors="replace") as f:
+        f.write(new_content)
+
+    return True
+
 def serialize_lua_block(ach_id: int, data: dict) -> str:
     """Formats a dictionary into standard Lua block notation matching the original format.
 
@@ -377,7 +447,7 @@ class AchievementDatabase(GenericYamlParser):
 
     _id_key = 'Id'
     _import_filename = 'achievement_db.yml'
-    _label = 'conquistas'
+    _label = 'achievements'
     _header_type = 'ACHIEVEMENT_DB'
     _header_version = 2
 
@@ -492,26 +562,107 @@ class AchievementDatabase(GenericYamlParser):
             "client": self.client_cache.get(ach_id) if client_data else None
         }
 
-    def add_achievement(self, ach_id: int, server_data: Optional[dict], client_data: Optional[dict]):
-        """Creates a new achievement in server database and/or client file."""
-        if server_data:
-            server_data["Id"] = ach_id
-            self.add_entry(server_data)
+    @staticmethod
+    def _build_server_scaffold(ach_id: int, server_data: Optional[dict]) -> dict:
+        """Merges incoming server payload with safe English defaults.
 
+        Guarantees that mandatory rAthena YAML fields are always present, even when
+        the caller provides a partial or empty ``server_data`` dict.
+
+        Args:
+            ach_id: Numeric achievement ID to embed in the scaffold.
+            server_data: Partial server payload from the API request, or ``None``.
+
+        Returns:
+            dict: A complete, rAthena-compatible server entry.
+        """
+        defaults: dict = {
+            "Id": ach_id,
+            "Group": "Adventure",
+            "Name": "New Achievement",
+            "Score": 10,
+            "Targets": [],
+        }
+        if server_data:
+            defaults.update(server_data)
+        defaults["Id"] = ach_id
+        return defaults
+
+    @staticmethod
+    def _build_client_scaffold(client_data: Optional[dict], server_name: str) -> dict:
+        """Merges incoming client payload with safe English defaults.
+
+        Ensures the client Lua block always contains valid, non-empty display strings
+        when the caller omits them.
+
+        Args:
+            client_data: Partial client payload from the API request, or ``None``.
+            server_name: The ``Name`` resolved from the server scaffold, used as the
+                display title and summary fallback.
+
+        Returns:
+            dict: A complete client Lua entry dictionary.
+        """
+        display_name = server_name or "New Achievement"
+        defaults: dict = {
+            "UI_Type": 0,
+            "group": "ADVENTURE",
+            "major": 2,
+            "minor": 0,
+            "title": display_name,
+            "summary": display_name,
+            "details": "Achievement description goes here.",
+            "resource": ["Complete the required conditions."],
+            "reward_item": None,
+            "reward_title": None,
+            "reward_buff": None,
+            "score": 10,
+        }
         if client_data:
-            lua_path = get_achievements_lua_path()
-            if lua_path:
-                save_achievement_lua(lua_path, ach_id, client_data)
-                self.client_cache[ach_id] = client_data
+            defaults.update(client_data)
+        return defaults
+
+    def add_achievement(self, ach_id: int, server_data: Optional[dict], client_data: Optional[dict]):
+        """Creates a new achievement in the server YAML database and/or the client Lua file.
+
+        Both payloads are merged against safe English scaffold defaults before persistence,
+        ensuring no empty or None-filled YAML keys reach the rAthena map-server.
+
+        Args:
+            ach_id: Desired numeric achievement ID.
+            server_data: Partial or full server payload; missing fields are filled with defaults.
+            client_data: Partial or full client payload; missing fields are filled with defaults.
+
+        Returns:
+            dict: ``{"Id": ach_id, "server": ..., "client": ...}`` reflecting what was persisted.
+        """
+        scaffold_server = self._build_server_scaffold(ach_id, server_data)
+        self.add_entry(scaffold_server)
+
+        scaffold_client = self._build_client_scaffold(client_data, scaffold_server.get("Name", ""))
+        lua_path = get_achievements_lua_path()
+        if lua_path:
+            save_achievement_lua(lua_path, ach_id, scaffold_client)
+            self.client_cache[ach_id] = scaffold_client
 
         return {
             "Id": ach_id,
-            "server": server_data,
-            "client": client_data
+            "server": scaffold_server,
+            "client": scaffold_client,
         }
 
     def delete_achievement(self, ach_id: int) -> bool:
-        """Permanently removes an achievement from the YAML import file and client Lua cache.
+        """Permanently removes an achievement from the YAML import file and the client Lua file.
+
+        Executes a synchronized two-phase delete:
+
+        1. Removes the entry from ``db/import/achievement_db.yml`` and writes to disk.
+        2. Calls ``_delete_lua_entry`` to locate and excise the matching block from
+           ``achievements.lub`` and writes to disk.
+
+        If the YAML phase succeeds but the Lua phase raises an exception, the in-memory
+        state is kept consistent (YAML index is already updated) and a ``RuntimeError`` is
+        re-raised so the API layer can return HTTP 500, signalling the caller to investigate.
 
         **Security guard:** only achievements residing under ``db/import/`` (source ``custom``)
         may be deleted. Achievements from the official rAthena database raise
@@ -525,11 +676,14 @@ class AchievementDatabase(GenericYamlParser):
 
         Raises:
             PermissionError: If the achievement belongs to the official rAthena database.
+            RuntimeError: If the YAML was removed but the Lua file could not be updated.
         """
         filepath = self.entry_index.get(ach_id)
         if not filepath:
-            # Achievement may be client-only — remove from client cache if present
             if ach_id in self.client_cache:
+                lua_path = get_achievements_lua_path()
+                if lua_path:
+                    _delete_lua_entry(lua_path, ach_id)
                 del self.client_cache[ach_id]
                 return True
             return False
@@ -555,11 +709,19 @@ class AchievementDatabase(GenericYamlParser):
 
         self.save_file(filepath)
         del self.entry_index[ach_id]
-
-        # Remove client Lua entry from memory cache
         self.client_cache.pop(ach_id, None)
 
-        # Invalidate the merged list so the next call to get_ach_list() is fresh
+        lua_path = get_achievements_lua_path()
+        if lua_path:
+            try:
+                _delete_lua_entry(lua_path, ach_id)
+            except Exception as lua_exc:
+                raise RuntimeError(
+                    f"Achievement {ach_id} was removed from YAML but the client Lua file "
+                    f"could not be updated: {lua_exc}"
+                ) from lua_exc
+
+        # TODO: self.cached_ach_list is never declared as an instance attribute — dormant bug.
         self.cached_ach_list = None  # type: ignore[attr-defined]
 
         return True

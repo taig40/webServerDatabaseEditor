@@ -36,7 +36,7 @@ class GenericYamlParser:
     _import_filename: str = ''   # must be set by sub-class (e.g. 'skill_db.yml')
 
     # Human-readable label for loading messages
-    _label: str = 'entradas'
+    _label: str = 'entries'
 
     def __init__(self):
         # RLock prevents concurrent thread corruption in generic parsers
@@ -53,7 +53,7 @@ class GenericYamlParser:
         self.rathena_root: str = ''
 
         self.is_loading: bool = False
-        self.loading_status: str = 'Aguardando inicialização...'
+        self.loading_status: str = 'Awaiting initialization...'
         self.entries_loaded: int = 0
 
     def load_db_async(self, main_filepath: str):
@@ -66,7 +66,7 @@ class GenericYamlParser:
             return
         self.is_loading = True
         self.entries_loaded = 0
-        self.loading_status = f'Iniciando leitura de {self._import_filename}...'
+        self.loading_status = f'Starting load of {self._import_filename}...'
         t = threading.Thread(target=self._load_sync, args=(main_filepath,), daemon=True)
         t.start()
 
@@ -75,12 +75,12 @@ class GenericYamlParser:
         try:
             self.load_db(main_filepath)
         except Exception as e:
-            print(f'[!] Erro fatal ao carregar {self._import_filename}: {e}')
-            self.loading_status = f'Erro: {e}'
+            print(f'[!] Fatal error loading {self._import_filename}: {e}')
+            self.loading_status = f'Error: {e}'
         finally:
             self.is_loading = False
-            if 'Erro' not in self.loading_status:
-                self.loading_status = 'Carregamento Finalizado.'
+            if 'Error' not in self.loading_status:
+                self.loading_status = 'Load complete.'
 
     def load_db(self, main_filepath: str):
         """Loads the main YAML file, deduces the rAthena root, and forces a load of the import override.
@@ -91,7 +91,7 @@ class GenericYamlParser:
         with self.lock:
             main_filepath = main_filepath.replace('\\', '/')
             if not os.path.exists(main_filepath):
-                self.loading_status = f'Arquivo não encontrado: {main_filepath}'
+                self.loading_status = f'File not found: {main_filepath}'
                 print(f'[!] {self.loading_status}')
                 return
 
@@ -108,7 +108,7 @@ class GenericYamlParser:
             # Always force-load the custom import file even if it's not in Footer.Imports
             import_path = f'{self.rathena_root}/db/import/{self._import_filename}'.replace('\\', '/')
             if os.path.exists(import_path) and import_path not in self.db_cache:
-                print(f'[*] Forçando carregamento customizado: {import_path}')
+                print(f'[*] Force-loading custom import: {import_path}')
                 self._load_file(import_path)
 
     def _load_file(self, filepath: str):
@@ -120,12 +120,12 @@ class GenericYamlParser:
             filepath: Absolute path to the YAML file to load.
         """
         if not os.path.exists(filepath):
-            print(f'[!] Import não encontrado: {filepath}')
+            print(f'[!] Import not found: {filepath}')
             return
         if filepath in self.db_cache:
             return
 
-        self.loading_status = f'Lendo {os.path.basename(filepath)}...'
+        self.loading_status = f'Reading {os.path.basename(filepath)}...'
         try:
             from app.core.cache_manager import load_yaml_with_cache
             data = load_yaml_with_cache(filepath, self.yaml)
@@ -140,7 +140,7 @@ class GenericYamlParser:
                         count += 1
                         self.entries_loaded += 1
 
-            print(f'[*] {count} {self._label} carregados de: {os.path.basename(filepath)}')
+            print(f'[*] {count} {self._label} loaded from: {os.path.basename(filepath)}')
 
             if data and 'Footer' in data and 'Imports' in data['Footer']:
                 for imp in data['Footer']['Imports']:
