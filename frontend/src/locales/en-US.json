@@ -26,7 +26,13 @@
     "file": "Loading file: {{file}}",
     "progress": "{{value}}% completed",
     "readingFiles": "Reading files...",
-    "connectionFailed": "Connection failed! Please verify if the Backend server is running."
+    "connectionFailed": "Connection failed! Please verify if the Backend server is running.",
+    "connectionFailedPort": "Could not connect to the backend server on port 8000.",
+    "retrying": "Retrying connection... ({{attempt}}/{{max}})",
+    "syncingDatabases": "Synchronizing databases in the background...",
+    "databasesReady": "Databases loaded and ready!",
+    "databasesError": "Connection error while loading databases.",
+    "cacheError": "Connection error with cache server."
   },
   "settings": {
     "title": "Application Settings",

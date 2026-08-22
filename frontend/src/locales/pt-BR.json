@@ -26,7 +26,13 @@
     "file": "Carregando arquivo: {{file}}",
     "progress": "{{value}}% concluído",
     "readingFiles": "Lendo arquivos...",
-    "connectionFailed": "Falha na conexão! Verifique se o servidor Backend está em execução."
+    "connectionFailed": "Falha na conexão! Verifique se o servidor Backend está em execução.",
+    "connectionFailedPort": "Não foi possível conectar ao servidor backend na porta 8000.",
+    "retrying": "Tentando reconectar... ({{attempt}}/{{max}})",
+    "syncingDatabases": "Sincronizando bancos de dados em segundo plano...",
+    "databasesReady": "Bancos de dados carregados e prontos!",
+    "databasesError": "Erro de conexão ao carregar bancos de dados.",
+    "cacheError": "Erro de conexão com o servidor de cache."
   },
   "settings": {
     "title": "Configurações do Sistema",

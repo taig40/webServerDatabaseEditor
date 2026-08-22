@@ -45,14 +45,18 @@ function App() {
   const [statusMessage, setStatusMessage] = useState('');
   const [connectionError, setConnectionError] = useState(false);
 
+  const MAX_RETRY_ATTEMPTS = 15;
+  const INITIAL_RETRY_DELAY_MS = 500;
+  const MAX_RETRY_DELAY_MS = 3000;
+
   const startCacheInitialization = () => {
-    setStatusMessage(t('global_loading.readingFiles'));
+    setStatusMessage(t('loading.readingFiles'));
     const es = new EventSource(getSSEUrl('/api/system/initialize-cache'));
-    const toastId = toast.info('Sincronizando bancos de dados em segundo plano...', 0);
+    const toastId = toast.info(t('loading.syncingDatabases'), 0);
 
     es.onopen = () => {
       setConnectionError(false);
-      setStatusMessage(t('global_loading.readingFiles'));
+      setStatusMessage(t('loading.readingFiles'));
     };
 
     es.onmessage = (event) => {
@@ -67,12 +71,12 @@ function App() {
         } else if (data.status === 'complete') {
           es.close();
           toast.dismiss(toastId);
-          toast.success('Bancos de dados carregados e prontos!');
+          toast.success(t('loading.databasesReady'));
           setIsCacheReady(true);
         } else if (data.status === 'loading') {
           if (data.file) setCurrentLoadingFile(data.file);
           if (typeof data.progress === 'number') setLoadingProgress(data.progress);
-          setStatusMessage(t('global_loading.readingFiles'));
+          setStatusMessage(t('loading.readingFiles'));
         }
       } catch (e) {
         console.error('[App] Erro ao processar evento SSE de inicialização:', e);
@@ -82,9 +86,9 @@ function App() {
     es.onerror = (err) => {
       console.error('[App] Erro de conexão com SSE /api/system/initialize-cache:', err);
       setConnectionError(true);
-      setStatusMessage(t('global_loading.connectionFailed'));
+      setStatusMessage(t('loading.connectionFailed'));
       toast.dismiss(toastId);
-      toast.error('Erro de conexão ao carregar bancos de dados.');
+      toast.error(t('loading.databasesError'));
       es.close();
     };
 
@@ -94,31 +98,57 @@ function App() {
   useEffect(() => {
     let esInstance: EventSource | null = null;
     let cancelled = false;
+    let attempt = 0;
 
-    setStatusMessage(t('global_loading.connecting'));
+    setStatusMessage(t('loading.connecting'));
 
-    axios.get(`${API_URL}/api/status`)
-      .then((res) => {
-        if (cancelled) return;
-        if (res.data && res.data.status === 'setup_required') {
-          setSetupRequired(true);
-          setIsCacheReady(true);
-        } else {
-          esInstance = startCacheInitialization();
-        }
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        console.error('[App] Falha de conexão ao verificar status do servidor:', err);
-        setConnectionError(true);
-        setStatusMessage(t('global_loading.connectionFailedPort'));
-      });
+    const tryConnect = () => {
+      if (cancelled) return;
+
+      attempt += 1;
+
+      if (attempt > 1) {
+        setStatusMessage(
+          t('loading.retrying', { attempt: String(attempt - 1), max: String(MAX_RETRY_ATTEMPTS) })
+        );
+      }
+
+      axios.get(`${API_URL}/api/status`)
+        .then((res) => {
+          if (cancelled) return;
+          setConnectionError(false);
+          if (res.data && res.data.status === 'setup_required') {
+            setSetupRequired(true);
+            setIsCacheReady(true);
+          } else {
+            esInstance = startCacheInitialization();
+          }
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          console.warn(`[App] Tentativa ${attempt}/${MAX_RETRY_ATTEMPTS} falhou:`, err.message);
+
+          if (attempt >= MAX_RETRY_ATTEMPTS) {
+            console.error('[App] Número máximo de tentativas atingido. Conexão falhou.');
+            setConnectionError(true);
+            setStatusMessage(t('loading.connectionFailedPort'));
+            return;
+          }
+
+          // Exponential backoff capped at MAX_RETRY_DELAY_MS
+          const delay = Math.min(INITIAL_RETRY_DELAY_MS * 2 ** (attempt - 1), MAX_RETRY_DELAY_MS);
+          setTimeout(tryConnect, delay);
+        });
+    };
+
+    tryConnect();
 
     return () => {
       cancelled = true;
       if (esInstance) esInstance.close();
     };
   }, [t]);
+
 
   const fetchLookup = useItemLookupStore(state => state.fetchLookup);
 
