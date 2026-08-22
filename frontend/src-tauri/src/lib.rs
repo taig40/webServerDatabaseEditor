@@ -52,14 +52,19 @@ impl SidecarState {
 
 /// Force-kills a process by PID using OS-level APIs.
 ///
-/// * **Windows**: `taskkill /F /PID <pid>` — calls `TerminateProcess`
-///   internally, which cannot be caught or ignored by user-space code.
+/// * **Windows**: `taskkill /F /T /PID <pid>`
+///   - `/F` = force termination (calls TerminateProcess, cannot be ignored)
+///   - `/T` = terminate the entire process TREE, including children.
+///     This is critical for PyInstaller onefile executables: the .exe we
+///     spawn is a bootloader that immediately spawns a second Python
+///     interpreter as a child. Without /T, only the bootloader is killed
+///     and the Python child survives as an orphan in the background.
 /// * **Unix/macOS**: `SIGKILL` via `libc::kill` — also unblockable.
 fn force_kill_by_pid(pid: u32) {
     #[cfg(target_os = "windows")]
     {
         let _ = std::process::Command::new("taskkill")
-            .args(["/F", "/PID", &pid.to_string()])
+            .args(["/F", "/T", "/PID", &pid.to_string()])
             .output();
     }
     #[cfg(not(target_os = "windows"))]
