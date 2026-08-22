@@ -52,7 +52,7 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
 
     const numericId = parseInt(dpId, 10);
     if (!numericId || isNaN(numericId) || numericId <= 0) {
-      setError(t('divinepride.invalid_response'));
+      setError(t('divinepride.invalid_response' as any));
       return;
     }
 
@@ -176,10 +176,10 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
 
             {previewData && (
               <div className="mt-4 p-4 bg-emerald-900/20 border border-emerald-800/30 rounded-lg">
-                <h3 className="text-emerald-400 font-medium text-sm mb-2">{t('divinepride.panel_found_title')}</h3>
+                <h3 className="text-emerald-400 font-medium text-sm mb-2">{t('divinepride.panel_found_title' as any)}</h3>
                 <ul className="text-sm text-gray-300 space-y-1">
                   <li><strong>ID:</strong> {previewData.mapped.Id}</li>
-                  <li><strong>{t('divinepride.panel_resource_item')}:</strong> {previewData.mapped.Name}</li>
+                  <li><strong>{t('divinepride.panel_resource_item' as any)}:</strong> {previewData.mapped.Name}</li>
                   <li><strong>AegisName:</strong> {previewData.mapped.AegisName}</li>
                 </ul>
               </div>

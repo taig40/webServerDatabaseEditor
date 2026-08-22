@@ -91,7 +91,7 @@ export const SettingsScreen: React.FC = () => {
 
       toast.success(t('settings.updated_success'));
     } catch (err: any) {
-      const detail = err?.response?.data?.detail || err?.message || t('settings.save_error');
+      const detail = err?.response?.data?.detail || err?.message || t('settings.save_error' as any);
       toast.error(detail);
     } finally {
       setIsSaving(false);
