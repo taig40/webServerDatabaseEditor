@@ -215,7 +215,7 @@ export const ConfigForm: React.FC<ConfigFormProps> = ({
       if (initialData.api_url !== undefined) setApiUrl(initialData.api_url || '');
       if (initialData.server_encoding !== undefined) setServerEncoding(initialData.server_encoding || 'utf-8');
       if (initialData.client_encoding !== undefined) setClientEncoding(initialData.client_encoding || 'latin1');
-      if (initialData.cors_origins !== undefined) setCorsOrigins(initialData.cors_origins || '');
+      // cors_origins is managed server-side; not exposed in UI
       if (initialData.encoding_options !== undefined) setEncodingOptions(initialData.encoding_options || []);
     }
   }, [initialData]);
@@ -570,28 +570,6 @@ export const ConfigForm: React.FC<ConfigFormProps> = ({
               placeholder={t('divinepride.api_key_placeholder') || 'Insira sua chave de API aqui'}
               disabled={isSaving}
               className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 font-mono placeholder-gray-600 focus:outline-none focus:border-amber-500/80 transition-all"
-            />
-          </div>
-        </SectionCard>
-      </div>
-
-      {/* ── Advanced CORS ── */}
-      <div className="xl:col-span-2">
-        <SectionCard icon={Server} title={t('settings.advanced.title') || 'Configurações Avançadas de Servidor'} iconClass="text-gray-400">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">
-              {t('settings.advanced.cors_label') || 'CORS Origins Customizados'}
-            </label>
-            <p className="text-[11px] text-gray-500 -mt-0.5">
-              {t('settings.advanced.cors_sublabel') || 'Lista separada por vírgulas de origens permitidas para acessar a API do editor.'}
-            </p>
-            <input
-              type="text"
-              value={corsOrigins}
-              onChange={e => setCorsOrigins(e.target.value)}
-              placeholder="http://localhost:5173, http://127.0.0.1:5173"
-              disabled={isSaving}
-              className="w-full bg-[#0f0f14] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 font-mono placeholder-gray-600 focus:outline-none focus:border-violet-500/80 transition-all"
             />
           </div>
         </SectionCard>

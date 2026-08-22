@@ -42,7 +42,7 @@ export const SettingsScreen: React.FC = () => {
         });
       })
       .catch(err => {
-        console.error('[SettingsScreen] Erro ao carregar configurações:', err);
+        console.error('[SettingsScreen] Failed to load settings:', err);
       })
       .finally(() => setIsLoading(false));
   }, []);
@@ -56,7 +56,7 @@ export const SettingsScreen: React.FC = () => {
     axios.get(`${API_BASE}/api/settings/validate`)
       .then(r => setValidation(r.data))
       .catch(err => {
-        console.error('[SettingsScreen] Erro ao validar paths:', err);
+        console.error('[SettingsScreen] Failed to validate paths:', err);
       })
       .finally(() => setIsValidating(false));
   }, []);
@@ -89,9 +89,9 @@ export const SettingsScreen: React.FC = () => {
         grf_list: normalised,
       });
 
-      toast.success(t('settings.updated_success') || 'Configurações atualizadas com sucesso!');
+      toast.success(t('settings.updated_success'));
     } catch (err: any) {
-      const detail = err?.response?.data?.detail || err?.message || 'Erro ao atualizar configurações.';
+      const detail = err?.response?.data?.detail || err?.message || t('settings.save_error');
       toast.error(detail);
     } finally {
       setIsSaving(false);
@@ -104,10 +104,10 @@ export const SettingsScreen: React.FC = () => {
     try {
       const r = await axios.post(`${API_BASE}/api/settings/reload`);
       setReloadStatus(r.data);
-      toast.success(t('settings.reload_success') || 'Cache e bancos de dados recarregados.');
+      toast.success(t('settings.reload_success'));
     } catch (err: any) {
       setReloadStatus(null);
-      toast.error(t('settings.reload_error') || 'Erro ao recarregar cache.');
+      toast.error(t('settings.reload_error'));
     } finally {
       setIsReloading(false);
     }
@@ -117,7 +117,7 @@ export const SettingsScreen: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-full gap-3 text-gray-500">
         <Loader2 size={20} className="animate-spin" />
-        <span className="text-sm">{t('common.loading') || 'Carregando configurações...'}</span>
+        <span className="text-sm">{t('common.loading')}</span>
       </div>
     );
   }

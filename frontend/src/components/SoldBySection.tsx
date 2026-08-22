@@ -129,7 +129,7 @@ export const SoldBySection: React.FC<SoldBySectionProps> = ({ itemId, onSelectSh
                 </button>
                 <div
                   className="p-1.5 text-gray-500 group-hover:text-cyan-400 transition-colors"
-                  title="Ver inventário da loja"
+                  title={t('item_detail.view_shop_inventory' as any)}
                 >
                   <ExternalLink size={12} />
                 </div>

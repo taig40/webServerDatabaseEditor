@@ -60,28 +60,23 @@ interface Module {
 
 /** Pre-configured list of all editor modules categorized by group. */
 const MODULES: Module[] = [
-  { id: 'items', label: 'Itens', sublabel: 'item_db.yml', icon: Package, group: 'server', available: true },
-  { id: 'mobs', label: 'Monstros', sublabel: 'mob_db.yml', icon: Skull, group: 'server', available: true },
-  { id: 'skills', label: 'Habilidades', sublabel: 'skill_db.yml', icon: Zap, group: 'server', available: true },
-  { id: 'job_database', label: 'Classes & Atributos', sublabel: 'job_stats.yml', icon: Shield, group: 'server', available: true },
-  { id: 'exp_tables', label: 'Tabelas de Experiência', sublabel: 'job_exp.yml', icon: TrendingUp, group: 'server', available: true },
-  { id: 'skill_tree', label: 'Árvore de Habilidades', sublabel: 'skill_tree.yml', icon: Network, group: 'server', available: true },
+  { id: 'items', label: 'Items', sublabel: 'item_db.yml', icon: Package, group: 'server', available: true },
+  { id: 'mobs', label: 'Monsters', sublabel: 'mob_db.yml', icon: Skull, group: 'server', available: true },
+  { id: 'skills', label: 'Skills', sublabel: 'skill_db.yml', icon: Zap, group: 'server', available: true },
+  { id: 'job_database', label: 'Job Database', sublabel: 'job_stats.yml', icon: Shield, group: 'server', available: true },
+  { id: 'exp_tables', label: 'Experience Tables', sublabel: 'job_exp.yml', icon: TrendingUp, group: 'server', available: true },
+  { id: 'skill_tree', label: 'Skill Tree', sublabel: 'skill_tree.yml', icon: Network, group: 'server', available: true },
   { id: 'server_quests', label: 'Quests', sublabel: 'quest_db.yml', icon: Scroll, group: 'server', available: true },
-  { id: 'item_combos', label: 'Combos de Itens', sublabel: 'item_combos.yml', icon: Layers, group: 'server', available: true },
-  { id: 'server_achievements', label: 'Conquistas', sublabel: 'achievement_db.yml', icon: Trophy, group: 'server', available: true },
-  { id: 'pets', label: 'Mascotes', sublabel: 'pet_db.yml', icon: Star, group: 'server', available: true },
-  { id: 'random_options', label: 'Opções Aleatórias', sublabel: 'item_randomopt_group.yml', icon: Sparkles, group: 'server', available: true },
+  { id: 'item_combos', label: 'Item Combos', sublabel: 'item_combos.yml', icon: Layers, group: 'server', available: true },
+  { id: 'server_achievements', label: 'Achievements', sublabel: 'achievement_db.yml', icon: Trophy, group: 'server', available: true },
+  { id: 'pets', label: 'Pets', sublabel: 'pet_db.yml', icon: Star, group: 'server', available: true },
+  { id: 'random_options', label: 'Random Options', sublabel: 'item_randomopt_group.yml', icon: Sparkles, group: 'server', available: true },
   { id: 'map_engine', label: 'Map Engine', sublabel: 'map_drops.yml', icon: Map, group: 'server', available: true },
-  { id: 'size_fix_editor', label: 'Penalidades de tamanho', sublabel: 'size_fix.yml', icon: Scale, group: 'server', available: true },
-  { id: 'client_items', label: 'Itens (Cliente)', sublabel: 'iteminfo.lua', icon: BookOpen, group: 'client', available: true },
-  { id: 'constants', label: 'Constantes', sublabel: 'const.yml', icon: FlaskConical, group: 'misc', available: true },
+  { id: 'size_fix_editor', label: 'Size Penalties', sublabel: 'size_fix.yml', icon: Scale, group: 'server', available: true },
+  { id: 'client_items', label: 'Client Items', sublabel: 'iteminfo.lua', icon: BookOpen, group: 'client', available: true },
+  { id: 'constants', label: 'Constants', sublabel: 'const.yml', icon: FlaskConical, group: 'misc', available: true },
 ];
 
-const GROUP_LABELS: Record<string, string> = {
-  server: 'Servidor',
-  client: 'Cliente',
-  misc: 'Outros',
-};
 
 /** Props for the main application shell layout. */
 interface LayoutProps {
