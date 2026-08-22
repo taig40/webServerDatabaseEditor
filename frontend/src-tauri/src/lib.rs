@@ -4,16 +4,24 @@
 // Spawns the FastAPI backend as a sidecar process on startup and
 // ensures it is terminated when the application exits.
 //
-// Cleanup strategy:
-//   - `shutting_down` AtomicBool is set to true BEFORE killing the sidecar.
-//     The async event-consumer task checks this flag before attempting a
-//     restart, preventing a "zombie restart" when the OS kill signal causes
-//     the process to exit with an exit code that matches our restart sentinel.
-//   - The child PID is stored separately from the CommandChild handle so we
-//     can force-kill via the OS even after the Tauri handle is dropped.
-//   - On Windows we use `taskkill /F /PID` which calls TerminateProcess
-//     directly — impossible to intercept by Python signal handlers or the
-//     PyInstaller bootloader.
+// Cleanup strategy (Windows):
+//   PyInstaller onefile executables run as TWO processes:
+//     PID X: rathena-sde-backend.exe (bootloader) — what we track
+//     PID Y: rathena-sde-backend.exe (Python interpreter) — child of X
+//
+//   The ORDER of kill operations is critical:
+//     1. taskkill /F /T /PID X  — kills X and all children while X is alive.
+//        /T traverses the process tree in a toolhelp32 snapshot; if X is
+//        already dead the snapshot won't list X's children (they're orphans).
+//     2. taskkill /F /IM rathena-sde-backend.exe — belt-and-suspenders fallback
+//        that kills any surviving instance by image name.
+//     3. child.kill()  — drops Tauri's internal process handle (may be no-op).
+//
+//   If we call child.kill() (TerminateProcess) first, X dies before step 1
+//   runs, Y becomes an orphan, and taskkill /T can no longer discover it.
+//
+//   The `shutting_down` AtomicBool is set to `true` before any kill operation
+//   so the async event-consumer task never restarts the process on shutdown.
 
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -29,7 +37,7 @@ use tauri_plugin_shell::process::CommandChild;
 struct SidecarState {
     /// Tauri child handle — keeps the Shell plugin aware of the process.
     child: Mutex<Option<CommandChild>>,
-    /// Raw OS PID — used for force-kill after the Tauri handle is dropped.
+    /// Raw OS PID — used for tree-kill before the Tauri handle is dropped.
     pid: Mutex<Option<u32>>,
     /// Set to `true` before any kill call so the event-consumer task never
     /// restarts the process during app shutdown.
@@ -50,21 +58,24 @@ impl SidecarState {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Force-kills a process by PID using OS-level APIs.
+/// Force-kills the sidecar process tree using OS-level APIs.
 ///
-/// * **Windows**: `taskkill /F /T /PID <pid>`
-///   - `/F` = force termination (calls TerminateProcess, cannot be ignored)
-///   - `/T` = terminate the entire process TREE, including children.
-///     This is critical for PyInstaller onefile executables: the .exe we
-///     spawn is a bootloader that immediately spawns a second Python
-///     interpreter as a child. Without /T, only the bootloader is killed
-///     and the Python child survives as an orphan in the background.
-/// * **Unix/macOS**: `SIGKILL` via `libc::kill` — also unblockable.
-fn force_kill_by_pid(pid: u32) {
+/// Must be called while the parent process is still alive so that the OS
+/// process-tree snapshot includes its children.
+fn force_kill_tree(pid: u32) {
     #[cfg(target_os = "windows")]
     {
+        // Step 1: kill the entire tree (parent + all descendants).
+        // This MUST happen before child.kill() / TerminateProcess so the
+        // parent (bootloader) is still alive when taskkill takes its snapshot.
         let _ = std::process::Command::new("taskkill")
             .args(["/F", "/T", "/PID", &pid.to_string()])
+            .output();
+
+        // Step 2: belt-and-suspenders — kill any surviving instance by name.
+        // Handles edge cases where the child became an orphan before step 1.
+        let _ = std::process::Command::new("taskkill")
+            .args(["/F", "/IM", "rathena-sde-backend.exe"])
             .output();
     }
     #[cfg(not(target_os = "windows"))]
@@ -75,29 +86,36 @@ fn force_kill_by_pid(pid: u32) {
     }
 }
 
-/// Sets the shutdown flag then terminates the sidecar.
+/// Sets the shutdown flag then terminates the sidecar process tree.
 ///
-/// The flag is set **before** any kill call so that the async event-consumer
-/// task — which may observe the `Terminated` event on another thread — sees
-/// `shutting_down == true` and skips the restart logic.
+/// Ordering is critical:
+///   1. Set `shutting_down` so the async task skips the restart logic.
+///   2. Extract PID from state.
+///   3. Extract child handle from state.
+///   4. Run `force_kill_tree(pid)` — kills tree while parent is alive.
+///   5. Drop the Tauri child handle (child.kill) — releases Shell plugin resources.
 fn kill_sidecar(app: &tauri::AppHandle) {
     let state = app.state::<SidecarState>();
 
-    // Signal the async task to never restart the process from this point on.
+    // 1. Signal the async task to never restart after this point.
     state.shutting_down.store(true, Ordering::SeqCst);
 
-    // Drop the Tauri child handle (closes stdin/stdout pipes).
+    // 2 & 3. Extract both handles atomically before any kill call.
+    //    PID is extracted first so it is available for the tree-kill even
+    //    if the child handle extraction has any issue.
+    let maybe_pid   = state.pid.lock().ok().and_then(|mut g| g.take());
     let maybe_child = state.child.lock().ok().and_then(|mut g| g.take());
-    if let Some(child) = maybe_child {
-        println!("[Tauri] Sending kill signal to sidecar...");
-        let _ = child.kill();
+
+    // 4. Tree-kill FIRST — parent (bootloader) must still be alive.
+    if let Some(pid) = maybe_pid {
+        println!("[Tauri] Force-killing sidecar tree (PID {})...", pid);
+        force_kill_tree(pid);
+        println!("[Tauri] Sidecar tree killed.");
     }
 
-    // Force-kill by PID to guarantee the OS process is gone.
-    let maybe_pid = state.pid.lock().ok().and_then(|mut g| g.take());
-    if let Some(pid) = maybe_pid {
-        println!("[Tauri] Force-killing sidecar PID {}...", pid);
-        force_kill_by_pid(pid);
+    // 5. Drop the Tauri child handle last (process is already dead at this point).
+    if let Some(child) = maybe_child {
+        let _ = child.kill();
     }
 }
 
@@ -108,7 +126,7 @@ fn kill_sidecar(app: &tauri::AppHandle) {
 /// Spawns the FastAPI sidecar binary, stores its handle + PID in app state,
 /// and starts an async task that consumes stdout/stderr events.
 ///
-/// **Restart on exit code 3**: When `/api/setup` finishes writing the
+/// **Restart on exit code 3**: When `/api/setup` finishes writing
 /// `config.conf`, it calls `os._exit(3)` to signal that a backend restart is
 /// needed with the new configuration. We detect that code here and re-spawn,
 /// **unless** `shutting_down` is already `true` (app is closing).
@@ -127,8 +145,8 @@ fn spawn_sidecar(app: &tauri::AppHandle) {
     let pid = child.pid();
     println!("[Tauri] FastAPI sidecar started (PID: {})", pid);
 
-    // Store both the child handle and the PID; reset the shutdown flag so a
-    // fresh instance can still be restarted after a code-3 exit.
+    // Store both the child handle and the PID.
+    // Reset shutting_down so the new instance can be restarted after code-3.
     {
         let state = app.state::<SidecarState>();
         state.shutting_down.store(false, Ordering::SeqCst);
@@ -155,10 +173,12 @@ fn spawn_sidecar(app: &tauri::AppHandle) {
                         payload.code, payload.signal
                     );
 
-                    // Only restart for the setup sentinel (code 3) AND only
-                    // when the app is NOT shutting down.  Without the second
-                    // guard, a force-kill during app exit could cause the OS
-                    // to report an exit code that triggers a zombie restart.
+                    // Restart ONLY for the setup sentinel (code 3) AND ONLY
+                    // when the app is NOT shutting down.
+                    // The shutting_down flag is set BEFORE kill_sidecar sends
+                    // any kill signal, guaranteeing that this branch is never
+                    // taken during app shutdown even if the OS reports an
+                    // unexpected exit code.
                     if payload.code == Some(3) {
                         let is_shutting_down = app_handle
                             .state::<SidecarState>()
@@ -169,7 +189,7 @@ fn spawn_sidecar(app: &tauri::AppHandle) {
                             println!("[Tauri] Restarting sidecar (setup complete)...");
                             spawn_sidecar(&app_handle);
                         } else {
-                            println!("[Tauri] Shutdown in progress — skipping restart.");
+                            println!("[Tauri] Shutdown in progress — skipping sidecar restart.");
                         }
                     }
                     break;
@@ -201,8 +221,8 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("[Tauri] Fatal error while building the application")
         .run(|app, event| {
-            // ExitRequested fires before the process exits — the ideal hook
-            // for synchronous cleanup.  Exit fires afterwards as a safety net.
+            // ExitRequested fires before the process exits — synchronous cleanup.
+            // Exit fires afterwards as a safety net (kill_sidecar is idempotent).
             if matches!(event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
                 kill_sidecar(app);
             }
