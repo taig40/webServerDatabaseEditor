@@ -91,6 +91,11 @@ pub fn run() {
                 kill_sidecar(window.app_handle());
             }
         })
-        .run(tauri::generate_context!())
-        .expect("[Tauri] Fatal error while running the application");
+        .build(tauri::generate_context!())
+        .expect("[Tauri] Fatal error while building the application")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                kill_sidecar(app);
+            }
+        });
 }

@@ -131,8 +131,9 @@ default_origins = [
     # Tauri v2 WebView origins — required for the desktop sidecar to communicate
     # with the FastAPI backend. Without these, every request from the Tauri
     # webview is rejected at the CORS preflight stage.
-    "tauri://localhost",         # Tauri v2 on Windows / Linux
+    "tauri://localhost",         # Tauri v2 on Linux
     "https://tauri.localhost",   # Tauri v2 on macOS / alternative config
+    "http://tauri.localhost",    # Tauri v2 on Windows (WebView2)
 ]
 cors_origins_str = os.environ.get("CORS_ORIGINS", "")
 if cors_origins_str:
