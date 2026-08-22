@@ -46,11 +46,10 @@ const DropItemInput: React.FC<{
         onBlur={() => setIsFocused(false)}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`w-full bg-dark-900 border ${
-          isValid
+        className={`w-full bg-dark-900 border ${isValid
             ? 'border-emerald-500/30 focus:border-emerald-500'
             : 'border-white/10 focus:border-violet-500'
-        } rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none font-mono pr-8`}
+          } rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none font-mono pr-8`}
       />
       {isValid && (
         <span
@@ -255,7 +254,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
           });
           setAllSkillsMap(map);
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [activeTab, mob.Id]);
 
@@ -456,15 +455,13 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
                 {/* SPR file picker */}
                 <div
                   onClick={() => sprInputRef.current?.click()}
-                  className={`flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all mb-3 ${
-                    sprFile
+                  className={`flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all mb-3 ${sprFile
                       ? 'border-violet-500/60 bg-violet-600/10'
                       : 'border-white/10 hover:border-white/20 bg-dark-900/60'
-                  }`}
+                    }`}
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                    sprFile ? 'bg-violet-600 text-white' : 'bg-dark-700 text-gray-500'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${sprFile ? 'bg-violet-600 text-white' : 'bg-dark-700 text-gray-500'
+                    }`}>
                     SPR
                   </div>
                   <div className="flex-1 min-w-0">
@@ -491,15 +488,13 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
                 {/* ACT file picker */}
                 <div
                   onClick={() => actInputRef.current?.click()}
-                  className={`flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all mb-4 ${
-                    actFile
+                  className={`flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all mb-4 ${actFile
                       ? 'border-cyan-500/60 bg-cyan-600/10'
                       : 'border-white/10 hover:border-white/20 bg-dark-900/60'
-                  }`}
+                    }`}
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                    actFile ? 'bg-cyan-600 text-white' : 'bg-dark-700 text-gray-500'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${actFile ? 'bg-cyan-600 text-white' : 'bg-dark-700 text-gray-500'
+                    }`}>
                     ACT
                   </div>
                   <div className="flex-1 min-w-0">
@@ -565,6 +560,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
                 <span>ID: <span className="text-violet-400">{mob.Id}</span></span>
                 <button
                   type="button"
+                  disabled
                   onClick={() => setShowDPPanel(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all shadow-sm"
                   title={t('divinepride.import_button')}
@@ -574,7 +570,7 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
                 </button>
               </span>
               <span className="bg-dark-800 px-2 py-0.5 rounded border border-white/10 flex items-center gap-1">
-                Aegis: 
+                Aegis:
                 <input
                   type="text"
                   value={local.AegisName || local.SpriteName || ''}
@@ -597,11 +593,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
               </span>
             </div>
             {dpMessage && (
-              <div className={`mt-2.5 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
-                dpMessage.type === 'success'
+              <div className={`mt-2.5 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border ${dpMessage.type === 'success'
                   ? 'bg-emerald-950/80 border-emerald-700/60 text-emerald-300'
                   : 'bg-red-950/80 border-red-700/60 text-red-300'
-              }`}>
+                }`}>
                 <AlertCircle size={14} />
                 <span>{dpMessage.text}</span>
               </div>
@@ -629,11 +624,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
           <button
             onClick={handleSave}
             disabled={!isModified || isSaving}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-lg ${
-              isModified
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-lg ${isModified
                 ? 'bg-violet-600 hover:bg-violet-700 text-white cursor-pointer shadow-violet-600/20'
                 : 'bg-dark-800 text-gray-500 border border-dark-700 cursor-not-allowed'
-            }`}
+              }`}
           >
             <Save size={15} />
             {isSaving ? t('common.saving') : t('common.save')}
@@ -656,11 +650,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-t font-semibold capitalize transition-all ${
-              activeTab === tab
+            className={`px-4 py-2 rounded-t font-semibold capitalize transition-all ${activeTab === tab
                 ? 'bg-dark-800 border-t-2 border-violet-500 text-white'
                 : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
-            }`}
+              }`}
           >
             {tab === 'status' && t('monster_detail.tabs.status')}
             {tab === 'drops' && t('monster_detail.tabs.drops')}
@@ -947,11 +940,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
                       key={modeKey}
                       type="button"
                       onClick={() => setModes(modeKey, !active)}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
-                        active
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${active
                           ? 'bg-violet-600/20 border-violet-500/50 text-violet-300 shadow-inner shadow-violet-900/20'
                           : 'bg-dark-900/60 border-white/5 text-gray-500 hover:border-white/10 hover:text-gray-400'
-                      }`}
+                        }`}
                     >
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${active ? 'bg-violet-400 animate-pulse' : 'bg-gray-700'}`} />
                       {modeKey}
@@ -1031,11 +1023,10 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
                         </span>
                       </div>
                       <div className="text-center">
-                        <span className={`px-1.5 py-0.5 rounded font-bold ${
-                          skill.rate >= 5000 ? 'bg-green-500/20 border border-green-500/30 text-green-300' :
-                          skill.rate >= 1000 ? 'bg-blue-500/20 border border-blue-500/30 text-blue-300' :
-                          'bg-dark-800 border border-white/10 text-gray-400'
-                        }`}>
+                        <span className={`px-1.5 py-0.5 rounded font-bold ${skill.rate >= 5000 ? 'bg-green-500/20 border border-green-500/30 text-green-300' :
+                            skill.rate >= 1000 ? 'bg-blue-500/20 border border-blue-500/30 text-blue-300' :
+                              'bg-dark-800 border border-white/10 text-gray-400'
+                          }`}>
                           {Number(((skill.rate ?? 0) / 100).toFixed(2))}%
                         </span>
                       </div>

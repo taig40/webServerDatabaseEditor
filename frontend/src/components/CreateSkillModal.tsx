@@ -172,7 +172,7 @@ const CreateSkillModal: React.FC<CreateSkillModalProps> = ({ onClose, onSkillCre
                 <button
                   type="button"
                   onClick={handleFetchDP}
-                  disabled={dpLoading}
+                  disabled
                   className="px-3 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-medium flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer disabled:opacity-50"
                   title={t('components.modals.new_skill.dp_fill_btn')}
                 >

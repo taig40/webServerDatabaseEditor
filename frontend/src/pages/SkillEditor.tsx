@@ -97,8 +97,8 @@ export const SkillEditor: React.FC = () => {
     const list = sourceTab === 'rathena' ? rathenaSkills : customSkills;
     if (!searchText.trim()) return list;
     const q = searchText.toLowerCase();
-    return list.filter(s => 
-      String(s.Id).includes(q) || 
+    return list.filter(s =>
+      String(s.Id).includes(q) ||
       String(s.Name || '').toLowerCase().includes(q) ||
       String(s.Description || '').toLowerCase().includes(q)
     );
@@ -224,11 +224,10 @@ export const SkillEditor: React.FC = () => {
           <div className="flex gap-1 mb-3 bg-dark-900/60 rounded-lg p-1 border border-white/5">
             <button
               onClick={() => { setSourceTab('rathena'); setSelectedSkillId(null); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all duration-200 ${
-                sourceTab === 'rathena'
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all duration-200 ${sourceTab === 'rathena'
                   ? 'bg-amber-600/80 text-white shadow-md shadow-amber-900/40'
                   : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
-              }`}
+                }`}
             >
               <Database size={12} /> rAthena
               <span className={`ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded ${sourceTab === 'rathena' ? 'bg-white/15 text-white' : 'bg-dark-700 text-gray-500'}`}>
@@ -237,11 +236,10 @@ export const SkillEditor: React.FC = () => {
             </button>
             <button
               onClick={() => { setSourceTab('custom'); setSelectedSkillId(null); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all duration-200 ${
-                sourceTab === 'custom'
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all duration-200 ${sourceTab === 'custom'
                   ? 'bg-emerald-600/80 text-white shadow-md shadow-emerald-900/40'
                   : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
-              }`}
+                }`}
             >
               <Sparkles size={12} /> Custom
               <span className={`ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded ${sourceTab === 'custom' ? 'bg-white/15 text-white' : 'bg-dark-700 text-gray-500'}`}>
@@ -282,13 +280,12 @@ export const SkillEditor: React.FC = () => {
                       setSelectedSkillId(skill.Id);
                       setIsNew(false);
                     }}
-                    className={`flex items-center justify-between p-3 cursor-pointer border-b border-white/5 transition-all duration-150 ${
-                      isSelected
+                    className={`flex items-center justify-between p-3 cursor-pointer border-b border-white/5 transition-all duration-150 ${isSelected
                         ? isCustom
                           ? 'bg-gradient-to-r from-emerald-600/20 to-transparent border-l-2 border-l-emerald-500'
                           : 'bg-gradient-to-r from-amber-600/20 to-transparent border-l-2 border-l-amber-500'
                         : 'hover:bg-dark-800/50 border-l-2 border-l-transparent'
-                    }`}
+                      }`}
                   >
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className={`text-sm truncate font-medium ${isSelected ? 'text-white font-semibold' : 'text-gray-300'}`}>
@@ -320,6 +317,7 @@ export const SkillEditor: React.FC = () => {
                   <span className="flex items-center gap-1.5 bg-dark-800 px-2 py-0.5 rounded border border-white/10 text-xs font-mono">
                     <span>ID: <span className="text-amber-400">{selectedSkill.Id}</span></span>
                     <button
+                      disabled
                       type="button"
                       onClick={() => setShowDPPanel(true)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all shadow-sm cursor-pointer"
@@ -376,11 +374,10 @@ export const SkillEditor: React.FC = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center gap-2 py-3 text-xs font-semibold border-b-2 transition-colors ${
-                      activeTab === tab.id
+                    className={`flex items-center gap-2 py-3 text-xs font-semibold border-b-2 transition-colors ${activeTab === tab.id
                         ? 'border-amber-500 text-amber-400'
                         : 'border-transparent text-gray-400 hover:text-gray-200'
-                    }`}
+                      }`}
                   >
                     <Icon size={14} />
                     <span>{tab.label}</span>
@@ -622,7 +619,7 @@ export const SkillEditor: React.FC = () => {
                       <Sword size={16} className="text-blue-500" />
                       {t('skill_editor.requirements_panel.combat_title')}
                     </h3>
-                    
+
                     {/* Weapons Multi-Select Tag Layout */}
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
@@ -658,11 +655,10 @@ export const SkillEditor: React.FC = () => {
                                 }
                                 handleUpdateNestedField('Requires', 'Weapon', Object.keys(current).length > 0 ? current : undefined);
                               }}
-                              className={`px-2.5 py-1 rounded text-xs font-semibold font-mono border transition-all ${
-                                isRequired
+                              className={`px-2.5 py-1 rounded text-xs font-semibold font-mono border transition-all ${isRequired
                                   ? 'bg-blue-600/20 border-blue-500 text-blue-300'
                                   : 'bg-dark-900 border-white/5 text-gray-500 hover:text-gray-300'
-                              }`}
+                                }`}
                             >
                               {wp}
                             </button>
@@ -693,11 +689,10 @@ export const SkillEditor: React.FC = () => {
                                   }
                                   handleUpdateNestedField('Requires', 'Ammo', Object.keys(current).length > 0 ? current : undefined);
                                 }}
-                                className={`px-2.5 py-1 rounded text-xs font-semibold font-mono border transition-all ${
-                                  isRequired
+                                className={`px-2.5 py-1 rounded text-xs font-semibold font-mono border transition-all ${isRequired
                                     ? 'bg-amber-600/20 border-amber-500 text-amber-300'
                                     : 'bg-dark-900 border-white/5 text-gray-500 hover:text-gray-300'
-                                }`}
+                                  }`}
                               >
                                 {am}
                               </button>
@@ -723,7 +718,7 @@ export const SkillEditor: React.FC = () => {
                       {t('skill_editor.requirements_panel.special_title')}
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      
+
                       <div className="flex flex-col gap-1">
                         <label className="text-xs font-medium text-gray-400">{t('skill_editor.fields.state')}</label>
                         <select
@@ -972,11 +967,10 @@ export const SkillEditor: React.FC = () => {
       {/* Floating Toast Notification */}
       {toastMessage && (
         <div
-          className={`fixed bottom-6 right-6 z-[999] flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold shadow-2xl animate-in fade-in ${
-            toastMessage.type === 'success'
+          className={`fixed bottom-6 right-6 z-[999] flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold shadow-2xl animate-in fade-in ${toastMessage.type === 'success'
               ? 'bg-emerald-950/95 text-emerald-300 border border-emerald-500/40 shadow-emerald-950/50'
               : 'bg-rose-950/95 text-rose-300 border border-rose-500/40 shadow-rose-950/50'
-          }`}
+            }`}
         >
           {toastMessage.type === 'success' ? (
             <CheckCircle className="w-4 h-4 text-emerald-400" />

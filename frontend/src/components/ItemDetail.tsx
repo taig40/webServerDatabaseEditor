@@ -18,18 +18,18 @@ import Select from 'react-select';
 
 /** Pre-defined list of valid equipment locations for react-select. */
 const LOCATION_OPTIONS = [
-  'Head_Top', 'Head_Mid', 'Head_Low', 'Armor', 'Right_Hand', 'Left_Hand', 'Garment', 
-  'Shoes', 'Right_Accessory', 'Left_Accessory', 'Costume_Head_Top', 'Costume_Head_Mid', 
-  'Costume_Head_Low', 'Costume_Garment', 'Ammo', 'Shadow_Armor', 'Shadow_Weapon', 
-  'Shadow_Shield', 'Shadow_Shoes', 'Shadow_Right_Accessory', 'Shadow_Left_Accessory', 
+  'Head_Top', 'Head_Mid', 'Head_Low', 'Armor', 'Right_Hand', 'Left_Hand', 'Garment',
+  'Shoes', 'Right_Accessory', 'Left_Accessory', 'Costume_Head_Top', 'Costume_Head_Mid',
+  'Costume_Head_Low', 'Costume_Garment', 'Ammo', 'Shadow_Armor', 'Shadow_Weapon',
+  'Shadow_Shield', 'Shadow_Shoes', 'Shadow_Right_Accessory', 'Shadow_Left_Accessory',
   'Both_Hand', 'Both_Accessory'
 ].map(l => ({ value: l, label: l }));
 
 /** Pre-defined list of class/job restrictions for react-select multi-tag selection. */
 const JOB_OPTIONS = [
-  'All', 'Acolyte', 'Alchemist', 'Archer', 'Assassin', 'BardDancer', 'Blacksmith', 
-  'Crusader', 'Gunslinger', 'Hunter', 'KagerouOboro', 'Knight', 'Mage', 'Merchant', 
-  'Monk', 'Ninja', 'Novice', 'Priest', 'Rebellion', 'Rogue', 'Sage', 'SoulLinker', 
+  'All', 'Acolyte', 'Alchemist', 'Archer', 'Assassin', 'BardDancer', 'Blacksmith',
+  'Crusader', 'Gunslinger', 'Hunter', 'KagerouOboro', 'Knight', 'Mage', 'Merchant',
+  'Monk', 'Ninja', 'Novice', 'Priest', 'Rebellion', 'Rogue', 'Sage', 'SoulLinker',
   'StarGladiator', 'Summoner', 'SuperNovice', 'Swordman', 'Taekwon', 'Thief', 'Wizard'
 ].map(j => ({ value: j, label: j }));
 
@@ -103,7 +103,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
 
   useEffect(() => {
     setLocalItem(item);
-    
+
     const fetchDrops = async () => {
       setIsLoadingDrops(true);
       try {
@@ -115,7 +115,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
         setIsLoadingDrops(false);
       }
     };
-    
+
     fetchDrops();
   }, [item.Id]);
 
@@ -207,7 +207,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
 
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-dark-900 text-gray-200">
-      
+
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-white/5 bg-gradient-to-r from-violet-600/10 to-transparent">
         <div className="flex items-center">
@@ -227,6 +227,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
                 <span>ID: <span className="text-violet-400">{localItem.Id}</span></span>
                 <button
                   type="button"
+                  disabled
                   onClick={() => setShowDPPanel(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all shadow-sm"
                   title={t('divinepride.import_button')}
@@ -236,7 +237,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
                 </button>
               </span>
               <span className="flex items-center gap-1 bg-dark-800 px-2 py-0.5 rounded border border-white/10">
-                AegisName: 
+                AegisName:
                 <input
                   data-testid="input-aegisname"
                   type="text"
@@ -248,11 +249,10 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
               </span>
             </div>
             {dpMessage && (
-              <div className={`mt-2 px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
-                dpMessage.type === 'success'
+              <div className={`mt-2 px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-2 border ${dpMessage.type === 'success'
                   ? 'bg-emerald-950/80 border-emerald-700/60 text-emerald-300'
                   : 'bg-red-950/80 border-red-700/60 text-red-300'
-              }`}>
+                }`}>
                 <AlertCircle size={14} />
                 <span>{dpMessage.text}</span>
               </div>
@@ -280,11 +280,10 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
           <button
             onClick={handleSaveClick}
             disabled={!isModified || isSaving}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-lg ${
-              isModified
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-lg ${isModified
                 ? 'bg-primary hover:bg-blue-600 text-white cursor-pointer shadow-primary/20'
                 : 'bg-dark-800 text-gray-500 border border-dark-700 cursor-not-allowed'
-            }`}
+              }`}
           >
             <Save size={16} />
             {isSaving ? t('common.saving') : t('item_detail.save_changes')}
@@ -303,18 +302,18 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
 
       {/* Forms Grid */}
       <div className="p-6 grid grid-cols-1 xl:grid-cols-2 gap-6">
-        
+
         {/* Basic Stats Card */}
         <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl">
           <div className="flex items-center gap-2 mb-4 text-white border-b border-white/5 pb-2">
             <Package size={18} className="text-violet-400" />
             <h3 className="font-semibold">{t('item_detail.basic_stats')}</h3>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Type</label>
-              <select 
+              <select
                 value={localItem.Type || ''}
                 onChange={e => handleFieldChange('Type', e.target.value)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:border-violet-500 focus:outline-none transition-colors"
@@ -327,7 +326,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Subtype</label>
-              <select 
+              <select
                 value={localItem.SubType || ''}
                 onChange={e => handleFieldChange('SubType', e.target.value)}
                 disabled={!['Weapon', 'Ammo', 'Card'].includes(localItem.Type)}
@@ -341,8 +340,8 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Buy</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={localItem.Buy ?? ''}
                 onChange={e => handleFieldChange('Buy', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
@@ -350,8 +349,8 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Sell</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={localItem.Sell ?? ''}
                 onChange={e => handleFieldChange('Sell', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
@@ -359,8 +358,8 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Weight (x10)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={localItem.Weight ?? ''}
                 onChange={e => handleFieldChange('Weight', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
@@ -368,9 +367,9 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">View ID</label>
-              <input 
+              <input
                 data-testid="input-viewid"
-                type="number" 
+                type="number"
                 value={localItem.View ?? ''}
                 onChange={e => handleFieldChange('View', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
@@ -385,12 +384,12 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             <Sword size={18} className="text-red-400" />
             <h3 className="font-semibold">{t('item_detail.combat_equip')}</h3>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Attack</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={localItem.Attack ?? ''}
                 onChange={e => handleFieldChange('Attack', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-red-500/50 focus:outline-none transition-colors"
@@ -398,8 +397,8 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Magic Attack (Matk)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={localItem.MagicAttack ?? ''}
                 onChange={e => handleFieldChange('MagicAttack', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-blue-500/50 focus:outline-none transition-colors"
@@ -407,8 +406,8 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Defense</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={localItem.Defense ?? ''}
                 onChange={e => handleFieldChange('Defense', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-green-500/50 focus:outline-none transition-colors"
@@ -416,8 +415,8 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Slots</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={localItem.Slots ?? ''}
                 onChange={e => handleFieldChange('Slots', e.target.value, true)}
                 className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
@@ -426,8 +425,8 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             {localItem.Type === 'Weapon' && (
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Weapon Level</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={localItem.WeaponLevel ?? ''}
                   onChange={e => handleFieldChange('WeaponLevel', e.target.value, true)}
                   className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-violet-500 focus:outline-none transition-colors"
@@ -437,7 +436,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             {localItem.Type === 'Armor' && (
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Armor Level</label>
-                <select 
+                <select
                   value={localItem.ArmorLevel ?? 1}
                   onChange={e => handleFieldChange('ArmorLevel', e.target.value, true)}
                   className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:border-violet-500 focus:outline-none transition-colors"
@@ -449,7 +448,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             )}
             <div className="flex items-center gap-4 col-span-2 mt-2">
               <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-white transition-colors">
-                <input 
+                <input
                   type="checkbox"
                   checked={localItem.Refineable || false}
                   onChange={e => handleFieldChange('Refineable', e.target.checked)}
@@ -458,7 +457,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
                 Refineable
               </label>
               <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-white transition-colors">
-                <input 
+                <input
                   type="checkbox"
                   checked={localItem.Gradable || false}
                   onChange={e => handleFieldChange('Gradable', e.target.checked)}
@@ -477,80 +476,80 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             <Users size={18} className="text-emerald-400" />
             <h3 className="font-semibold">{t('item_detail.restrictions')}</h3>
           </div>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-               <label className="block text-xs text-gray-500 mb-1">Equip Level Min</label>
-               <input 
-                  type="number" 
-                  value={localItem.EquipLevelMin ?? ''}
-                  onChange={e => handleFieldChange('EquipLevelMin', e.target.value, true)}
-                  className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
-               />
+              <label className="block text-xs text-gray-500 mb-1">Equip Level Min</label>
+              <input
+                type="number"
+                value={localItem.EquipLevelMin ?? ''}
+                onChange={e => handleFieldChange('EquipLevelMin', e.target.value, true)}
+                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
+              />
             </div>
             <div>
-               <label className="block text-xs text-gray-500 mb-1">Equip Level Max</label>
-               <input 
-                  type="number" 
-                  value={localItem.EquipLevelMax ?? ''}
-                  onChange={e => handleFieldChange('EquipLevelMax', e.target.value, true)}
-                  className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
-               />
+              <label className="block text-xs text-gray-500 mb-1">Equip Level Max</label>
+              <input
+                type="number"
+                value={localItem.EquipLevelMax ?? ''}
+                onChange={e => handleFieldChange('EquipLevelMax', e.target.value, true)}
+                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
+              />
             </div>
             <div>
-               <label className="block text-xs text-gray-500 mb-1">Gender</label>
-               <select 
-                  value={localItem.Gender || 'Both'}
-                  onChange={e => handleFieldChange('Gender', e.target.value)}
-                  className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:border-emerald-500/50 focus:outline-none transition-colors"
-               >
-                  <option value="Both">Both</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-               </select>
+              <label className="block text-xs text-gray-500 mb-1">Gender</label>
+              <select
+                value={localItem.Gender || 'Both'}
+                onChange={e => handleFieldChange('Gender', e.target.value)}
+                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:border-emerald-500/50 focus:outline-none transition-colors"
+              >
+                <option value="Both">Both</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
             </div>
             <div>
-               <label className="block text-xs text-gray-500 mb-1">Classes (Upper)</label>
-               <select
-                  value={(!localItem.Classes || localItem.Classes.All) ? 'All' : Object.entries(localItem.Classes).find(([_, v]) => v === true)?.[0] || 'All'}
-                  onChange={e => {
-                    const val = e.target.value;
-                    handleFieldChange('Classes', val === 'All' ? { All: true } : { [val]: true });
-                  }}
-                  className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:border-emerald-500/50 focus:outline-none transition-colors"
-               >
-                 {['All', 'Normal', 'Upper', 'Baby', 'Third', 'Third_Upper', 'Third_Baby', 'Fourth', 'All_Upper', 'All_Baby', 'All_Third'].map(opt => (
-                   <option key={opt} value={opt}>{opt}</option>
-                 ))}
-               </select>
+              <label className="block text-xs text-gray-500 mb-1">Classes (Upper)</label>
+              <select
+                value={(!localItem.Classes || localItem.Classes.All) ? 'All' : Object.entries(localItem.Classes).find(([_, v]) => v === true)?.[0] || 'All'}
+                onChange={e => {
+                  const val = e.target.value;
+                  handleFieldChange('Classes', val === 'All' ? { All: true } : { [val]: true });
+                }}
+                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:border-emerald-500/50 focus:outline-none transition-colors"
+              >
+                {['All', 'Normal', 'Upper', 'Baby', 'Third', 'Third_Upper', 'Third_Baby', 'Fourth', 'All_Upper', 'All_Baby', 'All_Third'].map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-             <div>
-                <label className="block text-xs text-gray-500 mb-1">Applicable Jobs</label>
-                <Select
-                  isMulti
-                  options={JOB_OPTIONS}
-                  value={getJobsValue()}
-                  onChange={handleJobsChange}
-                  styles={customSelectStyles}
-                  placeholder="Select jobs..."
-                  menuPortalTarget={document.body}
-                />
-             </div>
-             <div>
-                <label className="block text-xs text-gray-500 mb-1">Locations (Equip Placement)</label>
-                <Select
-                  isMulti
-                  options={LOCATION_OPTIONS}
-                  value={getLocationsValue()}
-                  onChange={handleLocationsChange}
-                  styles={customSelectStyles}
-                  placeholder="Select locations..."
-                  menuPortalTarget={document.body}
-                />
-             </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Applicable Jobs</label>
+              <Select
+                isMulti
+                options={JOB_OPTIONS}
+                value={getJobsValue()}
+                onChange={handleJobsChange}
+                styles={customSelectStyles}
+                placeholder="Select jobs..."
+                menuPortalTarget={document.body}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Locations (Equip Placement)</label>
+              <Select
+                isMulti
+                options={LOCATION_OPTIONS}
+                value={getLocationsValue()}
+                onChange={handleLocationsChange}
+                styles={customSelectStyles}
+                placeholder="Select locations..."
+                menuPortalTarget={document.body}
+              />
+            </div>
           </div>
         </div>
 
@@ -560,7 +559,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
             <Box size={18} className="text-blue-400" />
             <h3 className="font-semibold">{t('item_detail.scripts')}</h3>
           </div>
-          
+
           <div className="space-y-6">
             <div>
               <label className="block text-xs font-mono text-gray-400 mb-2">{t('item_detail.main_script')}</label>
@@ -573,7 +572,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
                   beforeMount={(monaco) => initRathenaItemScript(monaco)}
                   onMount={(editor, monaco) => validateItemScript(monaco, editor.getModel(), t)}
                   onChange={(val) => {
-                    setLocalItem({...localItem, Script: val || '' });
+                    setLocalItem({ ...localItem, Script: val || '' });
                   }}
                   options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false }}
                 />
@@ -592,7 +591,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
                     beforeMount={(monaco) => initRathenaItemScript(monaco)}
                     onMount={(editor, monaco) => validateItemScript(monaco, editor.getModel(), t)}
                     onChange={(val) => {
-                      setLocalItem({...localItem, EquipScript: val || '' });
+                      setLocalItem({ ...localItem, EquipScript: val || '' });
                     }}
                     options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false }}
                   />
@@ -609,7 +608,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
                     beforeMount={(monaco) => initRathenaItemScript(monaco)}
                     onMount={(editor, monaco) => validateItemScript(monaco, editor.getModel(), t)}
                     onChange={(val) => {
-                      setLocalItem({...localItem, UnEquipScript: val || '' });
+                      setLocalItem({ ...localItem, UnEquipScript: val || '' });
                     }}
                     options={{ minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false }}
                   />
@@ -621,7 +620,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
 
         {/* Dropped By Table (Spans full width) */}
         <div className="bg-dark-800/50 rounded-2xl border border-white/5 p-5 backdrop-blur-sm shadow-xl xl:col-span-2">
-           <div className="flex items-center gap-2 mb-4 text-white border-b border-white/5 pb-2">
+          <div className="flex items-center gap-2 mb-4 text-white border-b border-white/5 pb-2">
             <Shield size={18} className="text-yellow-400" />
             <h3 className="font-semibold">{t('item_detail.dropped_by')}</h3>
           </div>
@@ -673,14 +672,14 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
           itemId={item.Id}
           onSelectShop={(shop) => setSelectedShop(shop)}
         />
-        
+
       </div>
-      
+
       {selectedShop && (
-         <NpcShopModal 
-            shop={selectedShop} 
-            onClose={() => setSelectedShop(null)} 
-         />
+        <NpcShopModal
+          shop={selectedShop}
+          onClose={() => setSelectedShop(null)}
+        />
       )}
 
       <DivinePrideImporterPanel

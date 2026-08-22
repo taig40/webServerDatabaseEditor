@@ -21,7 +21,7 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
   onImportSuccess
 }) => {
   const t = useLanguageStore((state) => state.t);
-  
+
   const [dpId, setDpId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -117,7 +117,7 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <div className="bg-[#0b0b12] border border-gray-800 rounded-xl shadow-2xl flex flex-col w-full max-w-5xl h-[80vh] overflow-hidden">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/50">
           <div>
@@ -129,7 +129,7 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
               {t('divinepride.panel_subtitle')}
             </p>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
           >
@@ -139,10 +139,10 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
 
         {/* Content - Split View */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
-          
+
           {/* Left Column - Input */}
           <div className="w-1/3 p-6 border-r border-gray-800 bg-[#12121a] flex flex-col gap-6">
-            
+
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-300">
                 {t('divinepride.panel_id_label')} ({resourceType === 'monster' ? t('divinepride.panel_resource_monster') : t('divinepride.panel_resource_item')})
@@ -158,7 +158,7 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
                 />
                 <button
                   onClick={handleFetch}
-                  disabled={isLoading || !dpId}
+                  disabled
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-400 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -193,7 +193,7 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
               <Code2 className="w-4 h-4" />
               {t('divinepride.panel_preview_title')}
             </div>
-            
+
             <div className="flex-1 overflow-auto custom-scrollbar relative">
               {isLoading ? (
                 <div className="absolute inset-0 flex items-center justify-center text-emerald-500">
@@ -224,17 +224,15 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
                         {previewData.combos.map((combo: any, idx: number) => (
                           <div
                             key={idx}
-                            className={`rounded-lg border ${
-                              combo.has_missing_items
+                            className={`rounded-lg border ${combo.has_missing_items
                                 ? 'border-yellow-700/50 bg-yellow-900/10'
                                 : 'border-emerald-800/40 bg-emerald-900/10'
-                            }`}
+                              }`}
                           >
-                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-t-lg text-xs font-medium ${
-                              combo.has_missing_items
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-t-lg text-xs font-medium ${combo.has_missing_items
                                 ? 'text-yellow-400 bg-yellow-900/20'
                                 : 'text-emerald-400 bg-emerald-900/20'
-                            }`}>
+                              }`}>
                               <span>{combo.has_missing_items ? '⚠' : '✓'}</span>
                               <span>
                                 {combo.has_missing_items
