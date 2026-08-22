@@ -79,6 +79,9 @@ export default defineConfig({
     // Tauri requires the dev server to listen on all interfaces
     host: process.env.TAURI_ENV_PLATFORM ? '0.0.0.0' : undefined,
     strictPort: true,
+    watch: {
+      ignored: ['**/src-tauri/**'],
+    },
     proxy: {
       '/api': {
         target: targetApiUrl,

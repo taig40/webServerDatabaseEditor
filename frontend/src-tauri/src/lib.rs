@@ -35,6 +35,8 @@ fn spawn_sidecar(app: &tauri::AppHandle) {
     let mut guard = state.0.lock().expect("Failed to lock sidecar state");
     *guard = Some(child);
 
+    let app_handle = app.clone();
+
     // Spawn a background thread to consume sidecar stdout/stderr events
     tauri::async_runtime::spawn(async move {
         use tauri_plugin_shell::process::CommandEvent;
@@ -53,6 +55,10 @@ fn spawn_sidecar(app: &tauri::AppHandle) {
                         "[Tauri] Sidecar terminated (code: {:?}, signal: {:?})",
                         payload.code, payload.signal
                     );
+                    if payload.code == Some(3) {
+                        println!("[Tauri] Restarting sidecar due to exit code 3...");
+                        spawn_sidecar(&app_handle);
+                    }
                     break;
                 }
                 CommandEvent::Error(err) => {
