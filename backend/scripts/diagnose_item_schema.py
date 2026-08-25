@@ -19,7 +19,8 @@ from app.models.item import ItemDBModel
 from collections import defaultdict
 
 # ── Configuracoes ──────────────────────────────────────────────────────────────
-ITEM_DB_PATH = r"C:\Users\taiga\Documents\rAthena\emulador\rathena\db\re\item_db.yml"
+base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ITEM_DB_PATH = os.path.join(base_dir, "..", "emulador", "rathena", "db", "re", "item_db.yml")   
 MAX_ERRORS   = 20   # Mostrar no maximo N erros distintos no console
 # ──────────────────────────────────────────────────────────────────────────────
 

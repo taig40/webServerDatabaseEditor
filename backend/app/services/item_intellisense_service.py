@@ -38,9 +38,7 @@ class ItemIntellisenseService:
 
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         candidates.extend([
-            r"c:\Users\taiga\Documents\rAthena\emulador\rathena\doc\item_bonus.txt",
-            os.path.join(base_dir, "..", "emulador", "rathena", "doc", "item_bonus.txt"),
-            os.path.join(base_dir, "doc", "item_bonus.txt"),
+            os.path.join(base_dir, "..", "doc", "item_bonus.txt"),
         ])
 
         for p in candidates:
