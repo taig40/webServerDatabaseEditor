@@ -12,7 +12,8 @@
     "line": "Line",
     "config_by_level": "Configure by Level",
     "single_value": "Single Value",
-    "single_value_placeholder": "Single value for all levels"
+    "single_value_placeholder": "Single value for all levels",
+    "none": "None"
   },
   "loading": {
     "connecting": "Connecting to Backend...",
@@ -825,7 +826,22 @@
     },
     "detail": {
       "subtitle": "Pet (Monster AegisName)",
-      "save_button": "Save to db/import/pet_db.yml"
+      "save_button": "Save to db/import/pet_db.yml",
+      "delete_btn": "Delete",
+      "delete_confirm": "Are you sure you want to delete this custom pet? It will revert to the original rAthena settings if one exists."
+    },
+    "delete_success": "Pet deleted successfully!",
+    "delete_error": "Error deleting pet.",
+    "new_modal": {
+      "title": "Create New Pet",
+      "error_required": "Please select a monster.",
+      "error_create": "Error creating pet.",
+      "fields": {
+        "mob_label": "Monster (Mob)",
+        "mob_placeholder": "Click to select a monster..."
+      },
+      "create_btn": "Create Pet",
+      "select_mob": "Select a Monster"
     },
     "source": {
       "custom": "Custom Import",

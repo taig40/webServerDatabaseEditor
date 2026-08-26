@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { Virtuoso } from 'react-virtuoso';
 import { API_URL } from '../config/env';
-import { Search, Heart, Plus, Sliders, Shield, FileText } from 'lucide-react';
+import { Search, Heart, Plus, Sliders, Shield, FileText, Trash2 } from 'lucide-react';
 import { RepeatableGroup } from '../components/RepeatableGroup';
 import { ReferencePicker } from '../components/ReferencePicker';
 import { PercentBadge } from '../components/PercentBadge';
 import { ScriptEditor } from '../components/ScriptEditor';
 import { SourceToggleBar } from '../components/SourceToggleBar';
 import PetAnimator from '../components/PetAnimator';
+import { NewPetModal } from '../components/NewPetModal';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { toast } from '../store/useToastStore';
 
@@ -58,6 +59,8 @@ export const PetEditor: React.FC = () => {
     type: 'item' | 'mob';
     targetField: string;
   }>({ open: false, type: 'item', targetField: '' });
+  const [isNewPetModalOpen, setIsNewPetModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchPets();
@@ -101,7 +104,7 @@ export const PetEditor: React.FC = () => {
     if (!selectedPet) return;
     setIsSaving(true);
     try {
-      await axios.put(`${API_URL}/api/pets/${selectedPet.Mob}`, { data: selectedPet });
+      await axios.put(`${API_URL}/api/pets/${selectedPet.Mob}`, selectedPet);
       toast.success(t('pet_editor.save_success'));
       setPets((prev) =>
         prev.map((p) => (p.Mob === selectedPet.Mob ? { ...selectedPet, _source: 'custom' } : p)),
@@ -114,36 +117,21 @@ export const PetEditor: React.FC = () => {
     }
   };
 
-  const handleCreateNewPet = async () => {
+  const handleDeletePet = async () => {
+    if (!selectedPet) return;
+    const confirmed = window.confirm(t('pet_editor.detail.delete_confirm'));
+    if (!confirmed) return;
+
+    setIsDeleting(true);
     try {
-      const newPet: Partial<PetEntry> = {
-        Mob: 'NOVO_PET_MOB',
-        TameItem: 'Apple',
-        EggItem: 'Poring_Egg',
-        EquipItem: 'Backpack',
-        FoodItem: 'Apple',
-        Fullness: 80,
-        HungryDelay: 60,
-        HungerIncrease: 20,
-        IntimacyStart: 250,
-        IntimacyFed: 50,
-        IntimacyOverfed: -100,
-        IntimacyHungry: -50,
-        IntimacyOwnerDie: -20,
-        CaptureRate: 1500,
-        AttackRate: 100,
-        RetaliateRate: 100,
-        ChangeTargetRate: 100,
-        Script: '',
-        SupportScript: '',
-      };
-      const res = await axios.post(`${API_URL}/api/pets/`, { data: newPet });
-      const created: PetEntry = { ...res.data, _source: 'custom' };
-      setPets((prev) => [created, ...prev]);
-      setSelectedMob(created.Mob);
-      setSourceTab('custom');
-    } catch {
-      toast.error(t('pet_editor.create_error'));
+      await axios.delete(`${API_URL}/api/pets/${selectedPet.Mob}`);
+      toast.success(t('pet_editor.delete_success'));
+      setPets((prev) => prev.filter((p) => p.Mob !== selectedPet.Mob));
+      setSelectedMob(null);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || t('pet_editor.delete_error'));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -170,7 +158,7 @@ export const PetEditor: React.FC = () => {
               {t('pet_editor.sidebar.title')}
             </h2>
             <button
-              onClick={handleCreateNewPet}
+              onClick={() => setIsNewPetModalOpen(true)}
               className="p-1.5 bg-pink-600/20 hover:bg-pink-600/40 text-pink-400 rounded transition-colors"
               title={t('pet_editor.sidebar.add_pet')}
             >
@@ -282,15 +270,28 @@ export const PetEditor: React.FC = () => {
                   {t('pet_editor.detail.subtitle')}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={handleSavePet}
-                disabled={isSaving}
-                className="flex items-center gap-2 bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-500 hover:to-pink-400 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-pink-900/30 transition-all disabled:opacity-50"
-              >
-                <Heart size={16} />
-                <span>{t('pet_editor.detail.save_button')}</span>
-              </button>
+              <div className="flex gap-2 items-center">
+                {selectedPet._source === 'custom' && (
+                  <button
+                    type="button"
+                    onClick={handleDeletePet}
+                    disabled={isDeleting || isSaving}
+                    className="flex items-center justify-center p-2 rounded-lg text-gray-500 hover:bg-red-500/20 hover:text-red-400 transition-all disabled:opacity-50"
+                    title={t('pet_editor.detail.delete_btn')}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSavePet}
+                  disabled={isSaving || isDeleting}
+                  className="flex items-center gap-2 bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-500 hover:to-pink-400 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-pink-900/30 transition-all disabled:opacity-50"
+                >
+                  <Heart size={16} />
+                  <span>{t('pet_editor.detail.save_button')}</span>
+                </button>
+              </div>
             </div>
 
             {/* Sub-tabs */}
@@ -330,56 +331,61 @@ export const PetEditor: React.FC = () => {
                       <label className="text-xs font-medium text-gray-400">
                         {t('pet_editor.fields.mob')}
                       </label>
-                      <input
-                        type="text"
-                        value={selectedPet.Mob ?? ''}
-                        onChange={(e) => handleUpdateField('Mob', e.target.value)}
-                        className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-pink-500/50"
-                      />
+                      <div
+                        onClick={() => setPickerConfig({ open: true, type: 'mob', targetField: 'Mob' })}
+                        className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm font-mono text-white hover:border-pink-500/50 cursor-pointer flex justify-between items-center transition-colors"
+                      >
+                        <span>{selectedPet.Mob || t('common.none')}</span>
+                        <Search size={14} className="text-gray-500" />
+                      </div>
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-medium text-gray-400">
                         {t('pet_editor.fields.tame_item')}
                       </label>
-                      <input
-                        type="text"
-                        value={selectedPet.TameItem ?? ''}
-                        onChange={(e) => handleUpdateField('TameItem', e.target.value)}
-                        className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-pink-500/50"
-                      />
+                      <div
+                        onClick={() => setPickerConfig({ open: true, type: 'item', targetField: 'TameItem' })}
+                        className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm font-mono text-white hover:border-pink-500/50 cursor-pointer flex justify-between items-center transition-colors"
+                      >
+                        <span>{selectedPet.TameItem || t('common.none')}</span>
+                        <Search size={14} className="text-gray-500" />
+                      </div>
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-medium text-gray-400">
                         {t('pet_editor.fields.egg_item')}
                       </label>
-                      <input
-                        type="text"
-                        value={selectedPet.EggItem ?? ''}
-                        onChange={(e) => handleUpdateField('EggItem', e.target.value)}
-                        className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-pink-500/50"
-                      />
+                      <div
+                        onClick={() => setPickerConfig({ open: true, type: 'item', targetField: 'EggItem' })}
+                        className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm font-mono text-white hover:border-pink-500/50 cursor-pointer flex justify-between items-center transition-colors"
+                      >
+                        <span>{selectedPet.EggItem || t('common.none')}</span>
+                        <Search size={14} className="text-gray-500" />
+                      </div>
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-medium text-gray-400">
                         {t('pet_editor.fields.equip_item')}
                       </label>
-                      <input
-                        type="text"
-                        value={selectedPet.EquipItem ?? ''}
-                        onChange={(e) => handleUpdateField('EquipItem', e.target.value)}
-                        className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-pink-500/50"
-                      />
+                      <div
+                        onClick={() => setPickerConfig({ open: true, type: 'item', targetField: 'EquipItem' })}
+                        className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm font-mono text-white hover:border-pink-500/50 cursor-pointer flex justify-between items-center transition-colors"
+                      >
+                        <span>{selectedPet.EquipItem || t('common.none')}</span>
+                        <Search size={14} className="text-gray-500" />
+                      </div>
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-medium text-gray-400">
                         {t('pet_editor.fields.food_item')}
                       </label>
-                      <input
-                        type="text"
-                        value={selectedPet.FoodItem ?? ''}
-                        onChange={(e) => handleUpdateField('FoodItem', e.target.value)}
-                        className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-pink-500/50"
-                      />
+                      <div
+                        onClick={() => setPickerConfig({ open: true, type: 'item', targetField: 'FoodItem' })}
+                        className="bg-dark-900 border border-dark-700 rounded px-3 py-2 text-sm font-mono text-white hover:border-pink-500/50 cursor-pointer flex justify-between items-center transition-colors"
+                      >
+                        <span>{selectedPet.FoodItem || t('common.none')}</span>
+                        <Search size={14} className="text-gray-500" />
+                      </div>
                     </div>
                   </div>
 
@@ -561,8 +567,20 @@ export const PetEditor: React.FC = () => {
         type={pickerConfig.type}
         onSelect={(_id, name) => {
           if (pickerConfig.targetField) handleUpdateField(pickerConfig.targetField, name);
+          setPickerConfig({ ...pickerConfig, open: false });
         }}
       />
+      {isNewPetModalOpen && (
+        <NewPetModal
+          onClose={() => setIsNewPetModalOpen(false)}
+          onPetCreated={(pet) => {
+            setPets((prev) => [{ ...pet, _source: 'custom' }, ...prev]);
+            setSelectedMob(pet.Mob);
+            setSourceTab('custom');
+            setIsNewPetModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

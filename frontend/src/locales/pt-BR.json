@@ -12,7 +12,8 @@
     "line": "Linha",
     "config_by_level": "Configurar por Nível",
     "single_value": "Valor Único",
-    "single_value_placeholder": "Valor único para todos os níveis"
+    "single_value_placeholder": "Valor único para todos os níveis",
+    "none": "Nenhum"
   },
   "loading": {
     "connecting": "Conectando ao Backend...",
@@ -827,7 +828,22 @@
     },
     "detail": {
       "subtitle": "Mascote (AegisName do Monstro)",
-      "save_button": "Salvar em db/import/pet_db.yml"
+      "save_button": "Salvar em db/import/pet_db.yml",
+      "delete_btn": "Excluir",
+      "delete_confirm": "Tem certeza que deseja excluir este pet customizado? Ele retornará aos padrões do rAthena original caso exista."
+    },
+    "delete_success": "Pet excluído com sucesso!",
+    "delete_error": "Erro ao excluir pet.",
+    "new_modal": {
+      "title": "Criar Novo Pet",
+      "error_required": "Por favor, selecione um monstro.",
+      "error_create": "Erro ao criar pet.",
+      "fields": {
+        "mob_label": "Monstro (Mob)",
+        "mob_placeholder": "Clique para selecionar um monstro..."
+      },
+      "create_btn": "Criar Pet",
+      "select_mob": "Selecionar um Monstro"
     },
     "source": {
       "custom": "Custom Import",

@@ -320,3 +320,30 @@ class GenericYamlParser:
             if id_value is not None:
                 self.entry_index[id_value] = import_path
             return entry_data
+
+    def delete_entry(self, id_value: str) -> bool:
+        """
+        Delete an entry only if it is in db/import/.
+        If it's from the base rAthena core, block the deletion.
+        """
+        with self.lock:
+            filepath = self.entry_index.get(id_value)
+            if not filepath:
+                return False
+
+            norm = filepath.replace('\\', '/')
+            if '/db/import/' not in norm:
+                raise ValueError("Cannot delete official rAthena entries. Customizations only.")
+
+            import_data = self.db_cache.get(filepath)
+            if not import_data or 'Body' not in import_data:
+                return False
+
+            body_list = import_data['Body']
+            for i, entry in enumerate(body_list):
+                if entry.get(self._id_key) == id_value:
+                    del body_list[i]
+                    self.save_file(filepath)
+                    del self.entry_index[id_value]
+                    return True
+            return False

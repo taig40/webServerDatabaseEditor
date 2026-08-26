@@ -5,16 +5,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Any, Optional
 from app.services.pet_parser import pet_db
+from app.models.pet import PetCreateRequest, PetUpdateRequest
 
 router = APIRouter()
-
-
-class PetUpdate(BaseModel):
-    data: dict[str, Any]
-
-
-class PetCreate(BaseModel):
-    data: dict[str, Any]
 
 
 @router.get("/status")
@@ -178,7 +171,7 @@ async def get_pet(mob: str):
 
 
 @router.put("/{mob}")
-async def update_pet(mob: str, body: PetUpdate):
+async def update_pet(mob: str, body: PetUpdateRequest):
     """Updates an existing pet entry.
 
     Args:
@@ -193,14 +186,15 @@ async def update_pet(mob: str, body: PetUpdate):
     """
     if pet_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
-    result = pet_db.update_pet(mob, body.data)
+    clean_data = body.model_dump(exclude_none=True)
+    result = pet_db.update_pet(mob, clean_data)
     if result is None:
         raise HTTPException(status_code=404, detail="ERROR_PET_NOT_FOUND")
     return result
 
 
 @router.post("/")
-async def create_pet(body: PetCreate):
+async def create_pet(body: PetCreateRequest):
     """Creates a new pet entry in ``db/import/pet_db.yml``.
 
     Args:
@@ -214,5 +208,31 @@ async def create_pet(body: PetCreate):
     """
     if pet_db.is_loading:
         raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
-    result = pet_db.add_pet(body.data)
+    
+    clean_data = body.model_dump(exclude_none=True, exclude_defaults=True)
+    result = pet_db.add_pet(clean_data)
     return result
+
+@router.delete("/{mob}")
+async def delete_pet(mob: str):
+    """Deletes a custom pet entry from ``db/import/pet_db.yml``.
+
+    Args:
+        mob: Pet mob AegisName or numeric ID as a string.
+
+    Returns:
+        dict: Status message.
+
+    Raises:
+        HTTPException: 503 if loading, 404 if not found, 403 if official.
+    """
+    if pet_db.is_loading:
+        raise HTTPException(status_code=503, detail="ERROR_DATABASE_LOADING")
+    
+    try:
+        success = pet_db.delete_pet(mob)
+        if not success:
+            raise HTTPException(status_code=404, detail="ERROR_PET_NOT_FOUND")
+        return {"status": "ok", "message": "Pet deleted successfully."}
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))

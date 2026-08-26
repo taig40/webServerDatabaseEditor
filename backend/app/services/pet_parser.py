@@ -22,5 +22,7 @@ class PetDatabase(GenericYamlParser):
     def add_pet(self, pet_data: dict):
         return self.add_entry(pet_data)
 
+    def delete_pet(self, mob: str) -> bool:
+        return self.delete_entry(mob)
 
 pet_db = PetDatabase()
