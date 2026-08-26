@@ -8,6 +8,7 @@ import { useLanguageStore } from '../store/useLanguageStore';
 import { getDivinePrideApiKey, setDivinePrideApiKey } from '../utils/divinePride';
 import { toast, useToastStore } from '../store/useToastStore';
 import { ConfigForm, ConfigFormData } from '../components/ConfigForm';
+import BackupPanel from '../components/BackupPanel';
 
 const API_BASE = API_URL || 'http://127.0.0.1:8000';
 
@@ -202,6 +203,11 @@ export const SettingsScreen: React.FC = () => {
           validation={validation}
           onSubmit={handleSettingsUpdate}
         />
+
+        {/* Backup & Restore Section */}
+        <div className="mt-8">
+          <BackupPanel />
+        </div>
       </div>
     </div>
   );
