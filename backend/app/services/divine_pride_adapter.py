@@ -781,7 +781,7 @@ class DivinePrideAdapter:
         class_str = raw_class if raw_class in _VALID_CLASSES else _CLASS_MAP.get(_safe_int(raw_class, 0), "Normal")
 
         # AI — live API does not expose ai; default to "01" (passive)
-        raw_ai = str(raw.get("ai") or raw.get("aiFlag") or "01").strip()
+        raw_ai = str(raw.get("ai") or raw.get("aiFlags") or "01").strip()
         m = re.search(r"(\d+)$", raw_ai)
         ai_str = m.group(1).zfill(2) if m else "01"
 
@@ -908,9 +908,8 @@ class DivinePrideAdapter:
             "Int":             _safe_int(raw.get("int"), 1),
             "Dex":             _safe_int(raw.get("dex"), 1),
             "Luk":             _safe_int(raw.get("luk"), 1),
-            # AttackRange (distance) - usually not directly exposed if `attackRange` holds damage. Default to 1.
-            "AttackRange":     1,
-            "SkillRange":      _safe_int(raw.get("aggroRange") or raw.get("skillRange") or raw.get("range"), 10),
+            "AttackRange":     _safe_int(str(raw.get("range") or "1"), 1),
+            "SkillRange":      _safe_int(raw.get("aggroRange") or raw.get("skillRange"), 10),
             "ChaseRange":      _safe_int(raw.get("escapeRange") or raw.get("chaseRange"), 12),
             "Size":            size_str,
             "Race":            race_str,
