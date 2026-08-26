@@ -573,10 +573,9 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
                 Aegis:
                 <input
                   type="text"
-                  value={local.AegisName || local.SpriteName || ''}
+                  value={local.AegisName || ''}
                   onChange={e => {
                     set('AegisName', e.target.value);
-                    set('SpriteName', e.target.value);
                   }}
                   className="bg-transparent text-blue-400 font-mono focus:outline-none focus:border-b focus:border-blue-500/50 w-32"
                   placeholder="AegisName"

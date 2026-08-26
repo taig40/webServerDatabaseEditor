@@ -36,10 +36,10 @@ class ItemIntellisenseService:
         if env_path:
             candidates.append(env_path)
 
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        candidates.extend([
-            os.path.join(base_dir, "..", "doc", "item_bonus.txt"),
-        ])
+        from app.core.config import get_rathena_root
+        rathena_root = get_rathena_root()
+        if rathena_root:
+            candidates.append(os.path.join(rathena_root, "doc", "item_bonus.txt"))
 
         for p in candidates:
             if os.path.exists(p):

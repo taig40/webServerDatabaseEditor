@@ -484,7 +484,7 @@ class YamlDatabase:
             self._wrap_scripts_for_dump(data)
             
             try:
-                with open(filepath, 'w', encoding='utf-8') as f:
+                with open(filepath, 'w', encoding='utf-8', newline='') as f:
                     self.yaml.dump(data, f)
             finally:
                 # Restore the keys back to their original dictionary objects

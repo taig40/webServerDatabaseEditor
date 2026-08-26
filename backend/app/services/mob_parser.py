@@ -276,7 +276,7 @@ class MobDatabase:
         self._wrap_scripts_for_dump(data)
 
         try:
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, 'w', encoding='utf-8', newline='') as f:
                 self.yaml.dump(data, f)
         finally:
             for obj, k, val in removed_keys:
@@ -406,7 +406,7 @@ class MobDatabase:
         if import_db_path not in self.db_cache:
             if not os.path.exists(import_db_path):
                 os.makedirs(os.path.dirname(import_db_path), exist_ok=True)
-                with open(import_db_path, 'w', encoding='utf-8') as f:
+                with open(import_db_path, 'w', encoding='utf-8', newline='') as f:
                     f.write("Header:\n  Type: MOB_DB\n  Version: 5\n\nBody:\n")
             self._load_file(import_db_path)
             

@@ -40,13 +40,16 @@ const NewMobModal: React.FC<NewMobModalProps> = ({ onClose, onMobCreated }) => {
     setLoading(true);
     setError('');
 
-    if (formData.Id <= 0) { setError(t('components.modals.new_mob.error_id')); setLoading(false); return; }
+    if (!((formData.Id > 1000 && formData.Id < 3999) || (formData.Id > 20020 && formData.Id < 31999))) {
+      setError(t('components.modals.new_mob.error_id') + ' (Valids: 1001-3998 or 20021-31998)');
+      setLoading(false);
+      return;
+    }
     if (!formData.AegisName || !formData.Name) { setError(t('components.modals.new_mob.error_required')); setLoading(false); return; }
 
     try {
       const payload = {
-        ...formData,
-        SpriteName: formData.AegisName
+        ...formData
       };
       const response = await axios.post(`${API_URL}/api/mobs/`, payload);
       onMobCreated(response.data);

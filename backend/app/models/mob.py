@@ -84,7 +84,7 @@ class MobDBModel(rAthenaBaseModel):
     """
     # ── Obrigatórios ──
     Id:         int
-    SpriteName: str
+    AegisName:  str
     Name:       str
 
     # ── Identidade ──
@@ -173,7 +173,6 @@ class MobDBModelUpdate(rAthenaBaseModel):
     """
     # ── Antes obrigatórios, agora opcionais no update ──
     Id:         Optional[int] = None
-    SpriteName: Optional[str] = None
     AegisName:  Optional[str] = None
     Name:       Optional[str] = None
 
