@@ -762,10 +762,9 @@ class DivinePrideAdapter:
 
         mob_id = _safe_int(raw.get("id"), 0)
         name   = str(raw.get("name") or f"MOB_{mob_id}")
-        aegis  = str(raw.get("dbname") or raw.get("aegisName") or f"MOB_{mob_id}")
         # Live API: spriteName (not sprite)
-        sprite = str(raw.get("spriteName") or raw.get("sprite") or aegis)
-
+        sprite = str(raw.get("spriteName") or raw.get("sprite"))
+        aegis  = str(sprite or f"MOB_{mob_id}")
         # Element — live API: string "Water 1"; legacy: int encoded as level*10+type
         element_str, element_level = _get_element(raw.get("element") or 0)
         # elementLevel is also provided directly in the live payload
@@ -786,9 +785,21 @@ class DivinePrideAdapter:
         m = re.search(r"(\d+)$", raw_ai)
         ai_str = m.group(1).zfill(2) if m else "01"
 
-        # Attack — live API: ``attackRange`` is a string range ("1 - 1"); stats are flat.
-        attack  = _safe_int(raw.get("atk1") or raw.get("attack"), 0)
-        attack2 = _safe_int(raw.get("atk2") or raw.get("attack2"), 0)
+        # Attack — live API: ``attackRange`` is often a string range representing damage (e.g., "4.067 - 889").
+        attack = 0
+        attack2 = 0
+        raw_atk = raw.get("attackRange") or raw.get("attack") or raw.get("atk1")
+        if isinstance(raw_atk, dict):
+            attack = _safe_int(raw_atk.get("minimum"), 0)
+            attack2 = _safe_int(raw_atk.get("maximum"), 0)
+        elif isinstance(raw_atk, str) and "-" in raw_atk:
+            clean_atk = raw_atk.replace(".", "").replace(",", "")
+            parts = clean_atk.split("-")
+            attack = _safe_int(parts[0].strip(), 0)
+            attack2 = _safe_int(parts[1].strip(), 0) if len(parts) > 1 else attack
+        else:
+            attack = _safe_int(raw.get("atk1") or raw.get("attack"), 0)
+            attack2 = _safe_int(raw.get("atk2") or raw.get("attack2"), 0)
 
         # Timing — live API: ``speed`` (float, lower = faster), ``attackSpeed`` (float s)
         # rAthena WalkSpeed is in ms; DP ``speed`` appears to be tiles/sec → approximate.
@@ -880,7 +891,6 @@ class DivinePrideAdapter:
         result: Dict[str, Any] = {
             "Id":              mob_id,
             "AegisName":       aegis,
-            "SpriteName":      sprite,
             "Name":            name,
             "Level":           _safe_int(raw.get("level"), 1),
             "Hp":              _safe_int(raw.get("health"), 1),
@@ -898,8 +908,8 @@ class DivinePrideAdapter:
             "Int":             _safe_int(raw.get("int"), 1),
             "Dex":             _safe_int(raw.get("dex"), 1),
             "Luk":             _safe_int(raw.get("luk"), 1),
-            # attackRange: live API is a string range "1 - 1" → take first int
-            "AttackRange":     _safe_int(str(raw.get("attackRange") or "1").split("-")[0].strip(), 1),
+            # AttackRange (distance) - usually not directly exposed if `attackRange` holds damage. Default to 1.
+            "AttackRange":     1,
             "SkillRange":      _safe_int(raw.get("aggroRange") or raw.get("skillRange") or raw.get("range"), 10),
             "ChaseRange":      _safe_int(raw.get("escapeRange") or raw.get("chaseRange"), 12),
             "Size":            size_str,
