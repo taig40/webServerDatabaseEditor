@@ -317,7 +317,6 @@ export const SkillEditor: React.FC = () => {
                   <span className="flex items-center gap-1.5 bg-dark-800 px-2 py-0.5 rounded border border-white/10 text-xs font-mono">
                     <span>ID: <span className="text-amber-400">{selectedSkill.Id}</span></span>
                     <button
-                      disabled
                       type="button"
                       onClick={() => setShowDPPanel(true)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all shadow-sm cursor-pointer"

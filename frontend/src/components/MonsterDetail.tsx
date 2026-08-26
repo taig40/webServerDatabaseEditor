@@ -215,9 +215,15 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
   const [dpMessage, setDpMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleDPImportSuccess = (mappedData: any) => {
-    setLocal(prev => ({
+    // Strip display-only metadata fields that the new adapter emits for the
+    // preview panel but must NOT be written to mob_db.yml.
+    const DP_DISPLAY_ONLY_FIELDS = ['Spawns', 'ElementalDamage', 'ExpPenaltyTable'];
+    const cleanData = Object.fromEntries(
+      Object.entries(mappedData).filter(([k]) => !DP_DISPLAY_ONLY_FIELDS.includes(k))
+    );
+    setLocal((prev: any) => ({
       ...prev,
-      ...mappedData,
+      ...cleanData,
       Id: mob.Id
     }));
     if (mappedData.MobSkills && Array.isArray(mappedData.MobSkills)) {
@@ -560,7 +566,6 @@ const MonsterDetail: React.FC<MonsterDetailProps> = ({ mob, onUpdate, onDelete }
                 <span>ID: <span className="text-violet-400">{mob.Id}</span></span>
                 <button
                   type="button"
-                  disabled
                   onClick={() => setShowDPPanel(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all shadow-sm"
                   title={t('divinepride.import_button')}

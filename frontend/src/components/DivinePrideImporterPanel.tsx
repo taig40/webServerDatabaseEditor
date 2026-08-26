@@ -168,7 +168,7 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
                 />
                 <button
                   onClick={handleFetch}
-                  disabled
+                  disabled={isLoading}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-400 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}

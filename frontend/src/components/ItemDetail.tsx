@@ -92,9 +92,15 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDPImportSuccess = (mappedData: any) => {
+    // Strip display-only metadata fields that the adapter includes for the preview
+    // but must NOT be written to item_db.yml (they are DP-side relation data only).
+    const DP_DISPLAY_ONLY_FIELDS = ['SoldBy', 'Sources', 'ContainedIn', 'Contains'];
+    const cleanData = Object.fromEntries(
+      Object.entries(mappedData).filter(([k]) => !DP_DISPLAY_ONLY_FIELDS.includes(k))
+    );
     setLocalItem((prev: any) => ({
       ...prev,
-      ...mappedData,
+      ...cleanData,
       Id: item.Id
     }));
     setDpMessage({ type: 'success', text: t('divinepride.import_success') });
@@ -227,7 +233,6 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item, onUpdate, onDelete }) => 
                 <span>ID: <span className="text-violet-400">{localItem.Id}</span></span>
                 <button
                   type="button"
-                  disabled
                   onClick={() => setShowDPPanel(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all shadow-sm"
                   title={t('divinepride.import_button')}
