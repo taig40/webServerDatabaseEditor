@@ -504,6 +504,17 @@ class DivinePrideAdapter:
                 if wrapped:
                     result[ra_key] = wrapped
 
+        # Extra relations/metadata from Divine Pride
+        sold_by = raw.get("soldByEntries") or raw.get("soldBy")
+        if sold_by:
+            result["SoldBy"] = sold_by
+        if raw.get("sources"):
+            result["Sources"] = raw.get("sources")
+        if raw.get("containedIn"):
+            result["ContainedIn"] = raw.get("containedIn")
+        if raw.get("contains"):
+            result["Contains"] = raw.get("contains")
+
         result = _omit_defaults(result, _ITEM_DEFAULTS)
         result = {k: v for k, v in result.items() if v is not None}
 
@@ -778,6 +789,15 @@ class DivinePrideAdapter:
         if mob_skills:
             result["MobSkills"] = mob_skills
 
+        # Extra relations/metadata from Divine Pride
+        if raw.get("spawns"):
+            result["Spawns"] = raw.get("spawns")
+        elem_res = raw.get("elementResistances") or stats.get("elementalDamage")
+        if elem_res:
+            result["ElementalDamage"] = elem_res
+        if raw.get("expPenaltyTable"):
+            result["ExpPenaltyTable"] = raw.get("expPenaltyTable")
+
         result = _omit_defaults(result, _MOB_DEFAULTS)
         result = {k: v for k, v in result.items() if v is not None}
 
@@ -815,10 +835,20 @@ class DivinePrideAdapter:
             "MaxLevel":    max_level,
         }
 
-        if raw.get("range")      is not None: result["Range"]      = _safe_int(raw["range"])
-        if raw.get("targetType") is not None: result["TargetType"] = str(raw["targetType"])
-        if raw.get("element")    is not None:
+        if raw.get("range")            is not None: result["Range"]            = _safe_int(raw["range"])
+        if raw.get("targetType")       is not None: result["TargetType"]       = str(raw["targetType"])
+        if raw.get("element")          is not None:
             result["Element"] = _ELEMENT_TYPES.get(_safe_int(raw["element"]), "Neutral")
+        if raw.get("castTime")         is not None: result["CastTime"]         = raw["castTime"]
+        if raw.get("fixedCastTime")    is not None: result["FixedCastTime"]    = raw["fixedCastTime"]
+        if raw.get("variableCastTime") is not None: result["VariableCastTime"] = raw["variableCastTime"]
+        if raw.get("globalCooldown")   is not None: result["GlobalCooldown"]   = raw["globalCooldown"]
+        if raw.get("skillCooldown")    is not None: result["SkillCooldown"]    = raw["skillCooldown"]
+        elif raw.get("cooldown")       is not None: result["SkillCooldown"]    = raw["cooldown"]
+        if raw.get("levelTable")       is not None: result["LevelTable"]       = raw["levelTable"]
+        if raw.get("prerequisites")    is not None: result["Prerequisites"]    = raw["prerequisites"]
+        if raw.get("monsterUsers")     is not None: result["Monsters"]         = raw["monsterUsers"]
+        elif raw.get("monsters")       is not None: result["Monsters"]         = raw["monsters"]
 
         return {k: v for k, v in result.items() if v is not None}
 
@@ -860,6 +890,62 @@ class DivinePrideAdapter:
             "MaxBaseLevel":  len(base_arr),
             "MaxJobLevel":   len(job_arr),
         }
+
+    # ── Quest ─────────────────────────────────────────────────────────────────
+
+    def adapt_quest(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+        """Transforma JSON de Quest do DP → formato estruturado do Web Editor."""
+        if not isinstance(raw, dict):
+            raw = {}
+
+        quest_id = _safe_int(raw.get("id"), 0)
+        title = str(raw.get("Title") or raw.get("title") or raw.get("name") or f"QUEST_{quest_id}")
+        description = str(raw.get("Description") or raw.get("description") or "")
+        summary = str(raw.get("Summary") or raw.get("summary") or "")
+
+        result: Dict[str, Any] = {
+            "Id":          quest_id,
+            "Title":       title,
+            "Description": description,
+            "Summary":     summary,
+        }
+
+        if raw.get("RewardExp") is not None or raw.get("rewardExp") is not None:
+            result["RewardExp"] = _safe_int(raw.get("RewardExp") or raw.get("rewardExp"), 0)
+        if raw.get("RewardJobExp") is not None or raw.get("rewardJobExp") is not None:
+            result["RewardJobExp"] = _safe_int(raw.get("RewardJobExp") or raw.get("rewardJobExp"), 0)
+        if raw.get("rewardItems") or raw.get("RewardItems"):
+            result["RewardItems"] = raw.get("rewardItems") or raw.get("RewardItems")
+        if raw.get("dropItems") or raw.get("DropItems"):
+            result["DropItems"] = raw.get("dropItems") or raw.get("DropItems")
+        if raw.get("huntingList") or raw.get("HuntingList"):
+            result["HuntingList"] = raw.get("huntingList") or raw.get("HuntingList")
+        if raw.get("coolDown") or raw.get("Cooldown"):
+            result["Cooldown"] = _safe_int(raw.get("coolDown") or raw.get("Cooldown"), 0)
+
+        return {k: v for k, v in result.items() if v is not None}
+
+    # ── Efst ──────────────────────────────────────────────────────────────────
+
+    def adapt_efst(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+        """Transforma JSON de Status Effect (Efst) do DP → formato estruturado."""
+        if not isinstance(raw, dict):
+            raw = {}
+
+        efst_id = _safe_int(raw.get("id"), 0)
+        name = str(raw.get("name") or raw.get("aegisName") or raw.get("title") or f"EFST_{efst_id}")
+        description = str(raw.get("description") or raw.get("rawDescription") or "")
+
+        result: Dict[str, Any] = {
+            "Id":          efst_id,
+            "Name":        name,
+            "Description": description or None,
+            "IconUrl":     raw.get("iconUrl") or raw.get("icon"),
+            "Group":       raw.get("group"),
+            "Type":        raw.get("type"),
+        }
+
+        return {k: v for k, v in result.items() if v is not None}
 
 
 # ─── Singleton global ──────────────────────────────────────────────────────────────────────────────

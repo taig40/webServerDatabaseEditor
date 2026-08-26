@@ -3,7 +3,7 @@ import axios from 'axios';
 import { X, Zap, DownloadCloud, Loader2 } from 'lucide-react';
 import { API_URL } from '../config/env';
 import { useLanguageStore } from '../store/useLanguageStore';
-import { getDivinePrideApiKey } from '../utils/divinePride';
+import { getDivinePrideApiKey, getDivinePrideServer } from '../utils/divinePride';
 
 interface CreateSkillModalProps {
   onClose: () => void;
@@ -12,6 +12,7 @@ interface CreateSkillModalProps {
 
 const CreateSkillModal: React.FC<CreateSkillModalProps> = ({ onClose, onSkillCreated }) => {
   const t = useLanguageStore(state => state.t);
+  const language = useLanguageStore(state => state.language);
   const [formData, setFormData] = useState({
     Id: 2001,
     Name: '',
@@ -49,12 +50,17 @@ const CreateSkillModal: React.FC<CreateSkillModalProps> = ({ onClose, onSkillCre
     setError('');
     setDpMessage('');
 
+    const langCode = language.startsWith('pt') ? 'pt' : 'en';
+    const server = getDivinePrideServer();
+
     try {
       const response = await axios.get(
         `${API_URL}/api/divinepride/preview/skill/${formData.Id}`,
         {
           headers: {
             'x-divine-pride-key': apiKey,
+            'x-server': server,
+            'Accept-Language': langCode,
           },
         }
       );
@@ -73,7 +79,11 @@ const CreateSkillModal: React.FC<CreateSkillModalProps> = ({ onClose, onSkillCre
       }
     } catch (err: any) {
       console.error('Erro no DP preview:', err);
-      setError(err.response?.data?.detail || err.message || 'Erro ao buscar no Divine Pride');
+      if (err.response?.status === 429) {
+        setError(t('divinepride.rate_limit_exceeded'));
+      } else {
+        setError(err.response?.data?.detail || err.message || 'Erro ao buscar no Divine Pride');
+      }
     } finally {
       setDpLoading(false);
     }

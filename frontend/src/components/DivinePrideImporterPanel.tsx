@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { X, Search, DownloadCloud, Loader2, AlertCircle, Code2, Save } from 'lucide-react';
 import { API_URL } from '../config/env';
-import { getDivinePrideApiKey } from '../utils/divinePride';
+import { getDivinePrideApiKey, getDivinePrideServer } from '../utils/divinePride';
 import { useLanguageStore } from '../store/useLanguageStore';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -21,6 +21,7 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
   onImportSuccess
 }) => {
   const t = useLanguageStore((state) => state.t);
+  const language = useLanguageStore((state) => state.language);
 
   const [dpId, setDpId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -60,12 +61,17 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
     setError(null);
     setPreviewData(null);
 
+    const langCode = language.startsWith('pt') ? 'pt' : 'en';
+    const server = getDivinePrideServer();
+
     try {
       const response = await axios.get(
         `${API_URL}/api/divinepride/preview/${resourceType}/${numericId}`,
         {
           headers: {
             'x-divine-pride-key': apiKey,
+            'x-server': server,
+            'Accept-Language': langCode,
           },
         }
       );
@@ -80,8 +86,12 @@ export const DivinePrideImporterPanel: React.FC<DivinePrideImporterPanelProps> =
         setError(t('divinepride.invalid_response'));
       }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || err.message || 'Unknown error';
-      setError(t('divinepride.panel_fetch_error', { message: errorMessage }));
+      if (err.response?.status === 429) {
+        setError(t('divinepride.rate_limit_exceeded'));
+      } else {
+        const errorMessage = err.response?.data?.detail || err.message || 'Unknown error';
+        setError(t('divinepride.panel_fetch_error', { message: errorMessage }));
+      }
     } finally {
       setIsLoading(false);
     }

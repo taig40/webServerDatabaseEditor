@@ -4,11 +4,13 @@ Single Responsibility: orchestrates calls between the HTTP client
 (``divine_pride_client``) and the transformation adapter (``divine_pride_adapter``),
 returning appropriate HTTP responses.  No business logic, no direct HTTP requests.
 
-**Preview (new) routes:**
+**Preview routes:**
 
 - ``GET /api/divinepride/preview/item/{id}``
 - ``GET /api/divinepride/preview/monster/{id}``
 - ``GET /api/divinepride/preview/skill/{id}``
+- ``GET /api/divinepride/preview/quest/{id}``
+- ``GET /api/divinepride/preview/efst/{id}``
 - ``GET /api/divinepride/preview/experience``
 
 **Legacy routes (backwards-compatibility):**
@@ -16,6 +18,8 @@ returning appropriate HTTP responses.  No business logic, no direct HTTP request
 - ``GET /api/divinepride/import/{resource_type}/{resource_id}``
 - ``GET /api/divinepride/import/item/{id}``
 - ``GET /api/divinepride/import/skill/{id}``
+- ``GET /api/divinepride/import/quest/{id}``
+- ``GET /api/divinepride/import/efst/{id}``
 - ``GET /api/divinepride/import/experience``
 """
 
@@ -28,6 +32,7 @@ from app.clients.divine_pride_client import (
     dp_client,
     DPNotFoundException,
     DPAuthException,
+    DPRateLimitException,
     DPNetworkException,
     DPHTTPException,
 )
@@ -37,14 +42,7 @@ router = APIRouter()
 
 
 def _to_yaml_preview(data: dict) -> str:
-    """Serializes a dict to YAML formatted in the rAthena style for the preview panel.
-
-    Args:
-        data: The dict to serialize.
-
-    Returns:
-        str: YAML string.
-    """
+    """Serializes a dict to YAML formatted in the rAthena style for the preview panel."""
     yaml = YAML()
     yaml.preserve_quotes = True
     yaml.indent(mapping=2, sequence=4, offset=2)
@@ -57,18 +55,7 @@ def _resolve_key(
     header_key: Optional[str],
     query_key: Optional[str],
 ) -> str:
-    """Resolves the Divine Pride API key from request headers or query params.
-
-    Args:
-        header_key: Value of the ``x-divine-pride-key`` HTTP header.
-        query_key: Value of the ``apiKey`` query parameter.
-
-    Returns:
-        str: The resolved API key string.
-
-    Raises:
-        HTTPException: 400 if neither source provides a key.
-    """
+    """Resolves the Divine Pride API key from request headers or query params."""
     key = (header_key or query_key or "").strip()
     if not key:
         raise HTTPException(
@@ -78,17 +65,24 @@ def _resolve_key(
     return key
 
 
+def _resolve_server(header_server: Optional[str], query_server: Optional[str]) -> Optional[str]:
+    server = (header_server or query_server or "").strip()
+    return server if server else None
+
+
+def _resolve_language(header_lang: Optional[str], query_lang: Optional[str]) -> Optional[str]:
+    lang = (header_lang or query_lang or "").strip()
+    return lang if lang else None
+
+
 def _translate_dp_error(exc: Exception, resource_type: str, resource_id) -> HTTPException:
-    """Converts typed Divine Pride client exceptions into FastAPI ``HTTPException``s.
-
-    Args:
-        exc: The caught exception from the DP client.
-        resource_type: Human-readable resource label (e.g. ``"Item"``).
-        resource_id: The requested resource ID (used in the error message).
-
-    Returns:
-        HTTPException: Mapped HTTP error with an appropriate status code.
-    """
+    """Converts typed Divine Pride client exceptions into FastAPI ``HTTPException``s."""
+    if isinstance(exc, DPRateLimitException):
+        return HTTPException(
+            status_code=429,
+            detail=str(exc),
+            headers={"Retry-After": str(exc.retry_after)},
+        )
     if isinstance(exc, DPNotFoundException):
         return HTTPException(
             status_code=404,
@@ -104,29 +98,7 @@ def _translate_dp_error(exc: Exception, resource_type: str, resource_id) -> HTTP
 
 
 def _build_combo_previews(combos: list) -> list:
-    """Serializes adapter combo descriptors into YAML-with-comments preview strings.
-
-    Each combo descriptor produced by ``DivinePrideAdapter.adapt_item_combos``
-    contains both data fields and private meta-data keys (prefixed with ``_``).
-    This function consumes the meta-data to prepend the correct comment block and
-    serializes the clean data portion into a YAML string via ruamel.
-
-    The resulting strings are **read-only previews** for the front-end; they are
-    never written to disk.  Disk writes go through ``POST /api/combos/`` which
-    enforces Pydantic validation and redirects to ``db/import/item_combos.yml``.
-
-    Args:
-        combos: List returned by ``DivinePrideAdapter.adapt_item_combos``.
-
-    Returns:
-        List of preview dicts, each containing:
-
-        - ``combo_yaml`` (``str``): Comment-annotated YAML block.
-        - ``has_missing_items`` (``bool``): Whether placeholder ``501`` was used.
-        - ``original_ids`` (``List[int]``): Original IDs from the DP payload.
-        - ``script_is_server_side`` (``bool``): Script classification result.
-        - ``combo_data`` (``dict``): Clean payload ready for ``POST /api/combos/``.
-    """
+    """Serializes adapter combo descriptors into YAML-with-comments preview strings."""
     results = []
     for c in combos:
         comment_lines = [c["_yaml_comment"]]
@@ -143,11 +115,11 @@ def _build_combo_previews(combos: list) -> list:
         combo_yaml = "\n".join(comment_lines) + "\n" + yaml_block
 
         results.append({
-            "combo_yaml":          combo_yaml,
-            "has_missing_items":   c["has_missing_items"],
-            "original_ids":        c["original_ids"],
+            "combo_yaml":            combo_yaml,
+            "has_missing_items":     c["has_missing_items"],
+            "original_ids":          c["original_ids"],
             "script_is_server_side": c["script_is_server_side"],
-            "combo_data":          combo_data,
+            "combo_data":            combo_data,
         })
     return results
 
@@ -157,34 +129,21 @@ async def preview_item(
     item_id: int,
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
+    x_server: Optional[str] = Header(None, alias="x-server"),
+    server: Optional[str] = Query(None),
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+    language: Optional[str] = Query(None),
 ):
-    """Fetches an item from Divine Pride, transforms it via the adapter, and returns a preview.
-
-    Response includes:
-    - ``mapped``: dict compatible with ``ItemDBModel`` (ready for ``POST /api/items/``).
-    - ``yaml_preview``: formatted YAML string of what will be written to disk.
-    - ``raw``: original JSON from Divine Pride (for debugging).
-
-    Args:
-        item_id: Numeric item ID.
-        x_divine_pride_key: API key from the ``x-divine-pride-key`` header.
-        api_key: API key from the ``apiKey`` query parameter (fallback).
-
-    Returns:
-        dict: Preview payload with ``success``, ``source``, ``resource``, ``id``,
-            ``mapped``, ``yaml_preview``, and ``raw``.
-
-    Raises:
-        HTTPException: 400 if no API key; 401/404/502/500 from Divine Pride errors.
-    """
+    """Fetches an item from Divine Pride, transforms it via the adapter, and returns a preview."""
     key = _resolve_key(x_divine_pride_key, api_key)
+    srv = _resolve_server(x_server, server)
+    lng = _resolve_language(accept_language, language)
     try:
-        raw = dp_client.fetch_item(item_id, key)
+        raw = dp_client.fetch_item(item_id, key, server=srv, language=lng)
     except Exception as e:
         raise _translate_dp_error(e, "Item", item_id)
 
     mapped = dp_adapter.adapt_item(raw)
-    preview_dict = {k: (str(v) if hasattr(v, "lc") else v) for k, v in mapped.items()}
     combo_previews = _build_combo_previews(dp_adapter.adapt_item_combos(raw, item_id))
 
     return {
@@ -204,23 +163,17 @@ async def preview_monster(
     mob_id: int,
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
+    x_server: Optional[str] = Header(None, alias="x-server"),
+    server: Optional[str] = Query(None),
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+    language: Optional[str] = Query(None),
 ):
-    """Fetches a monster from Divine Pride, transforms it via the adapter, and returns a preview.
-
-    Args:
-        mob_id: Numeric monster ID.
-        x_divine_pride_key: API key from the ``x-divine-pride-key`` header.
-        api_key: API key from the ``apiKey`` query parameter (fallback).
-
-    Returns:
-        dict: ``{"success", "source", "resource", "id", "mapped", "yaml_preview", "raw"}``.
-
-    Raises:
-        HTTPException: 400 if no API key; 401/404/502/500 from Divine Pride errors.
-    """
+    """Fetches a monster from Divine Pride, transforms it via the adapter, and returns a preview."""
     key = _resolve_key(x_divine_pride_key, api_key)
+    srv = _resolve_server(x_server, server)
+    lng = _resolve_language(accept_language, language)
     try:
-        raw = dp_client.fetch_monster(mob_id, key)
+        raw = dp_client.fetch_monster(mob_id, key, server=srv, language=lng)
     except Exception as e:
         raise _translate_dp_error(e, "Monster", mob_id)
 
@@ -242,35 +195,91 @@ async def preview_skill(
     skill_id: int,
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
+    x_server: Optional[str] = Header(None, alias="x-server"),
+    server: Optional[str] = Query(None),
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+    language: Optional[str] = Query(None),
 ):
-    """Fetches a skill from Divine Pride, transforms it via the adapter, and returns a preview.
-
-    Args:
-        skill_id: Numeric skill ID.
-        x_divine_pride_key: API key from the ``x-divine-pride-key`` header.
-        api_key: API key from the ``apiKey`` query parameter (fallback).
-
-    Returns:
-        dict: ``{"success", "source", "resource", "id", "mapped", "yaml_preview", "raw"}``.
-
-    Raises:
-        HTTPException: 400 if no API key; 401/404/502/500 from Divine Pride errors.
-    """
+    """Fetches a skill from Divine Pride, transforms it via the adapter, and returns a preview."""
     key = _resolve_key(x_divine_pride_key, api_key)
+    srv = _resolve_server(x_server, server)
+    lng = _resolve_language(accept_language, language)
     try:
-        raw = dp_client.fetch_skill(skill_id, key)
+        raw = dp_client.fetch_skill(skill_id, key, server=srv, language=lng)
     except Exception as e:
         raise _translate_dp_error(e, "Skill", skill_id)
 
     mapped = dp_adapter.adapt_skill(raw)
     return {
-        "success": True,
-        "source":  "divinepride",
-        "resource": "skill",
-        "id":      skill_id,
-        "mapped":  mapped,
+        "success":      True,
+        "source":       "divinepride",
+        "resource":     "skill",
+        "id":           skill_id,
+        "mapped":       mapped,
         "yaml_preview": _to_yaml_preview(mapped),
-        "raw":     raw,
+        "raw":          raw,
+    }
+
+
+@router.get("/preview/quest/{quest_id}")
+async def preview_quest(
+    quest_id: int,
+    x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
+    api_key: Optional[str] = Query(None, alias="apiKey"),
+    x_server: Optional[str] = Header(None, alias="x-server"),
+    server: Optional[str] = Query(None),
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+    language: Optional[str] = Query(None),
+):
+    """Fetches a quest from Divine Pride, transforms it via the adapter, and returns a preview."""
+    key = _resolve_key(x_divine_pride_key, api_key)
+    srv = _resolve_server(x_server, server)
+    lng = _resolve_language(accept_language, language)
+    try:
+        raw = dp_client.fetch_quest(quest_id, key, server=srv, language=lng)
+    except Exception as e:
+        raise _translate_dp_error(e, "Quest", quest_id)
+
+    mapped = dp_adapter.adapt_quest(raw)
+    return {
+        "success":      True,
+        "source":       "divinepride",
+        "resource":     "quest",
+        "id":           quest_id,
+        "mapped":       mapped,
+        "yaml_preview": _to_yaml_preview(mapped),
+        "raw":          raw,
+    }
+
+
+@router.get("/preview/efst/{efst_id}")
+async def preview_efst(
+    efst_id: int,
+    x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
+    api_key: Optional[str] = Query(None, alias="apiKey"),
+    x_server: Optional[str] = Header(None, alias="x-server"),
+    server: Optional[str] = Query(None),
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+    language: Optional[str] = Query(None),
+):
+    """Fetches an status effect (efst) from Divine Pride and returns a preview."""
+    key = _resolve_key(x_divine_pride_key, api_key)
+    srv = _resolve_server(x_server, server)
+    lng = _resolve_language(accept_language, language)
+    try:
+        raw = dp_client.fetch_efst(efst_id, key, server=srv, language=lng)
+    except Exception as e:
+        raise _translate_dp_error(e, "Efst", efst_id)
+
+    mapped = dp_adapter.adapt_efst(raw)
+    return {
+        "success":      True,
+        "source":       "divinepride",
+        "resource":     "efst",
+        "id":           efst_id,
+        "mapped":       mapped,
+        "yaml_preview": _to_yaml_preview(mapped),
+        "raw":          raw,
     }
 
 
@@ -280,23 +289,17 @@ async def preview_experience(
     exp_type: str = "normal",
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
+    x_server: Optional[str] = Header(None, alias="x-server"),
+    server: Optional[str] = Query(None),
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+    language: Optional[str] = Query(None),
 ):
-    """Fetches the experience table from Divine Pride and returns the adapted data.
-
-    Args:
-        exp_type: Experience table type (e.g. ``"normal"``, ``"premium"``).
-        x_divine_pride_key: API key from the ``x-divine-pride-key`` header.
-        api_key: API key from the ``apiKey`` query parameter (fallback).
-
-    Returns:
-        dict: ``{"success", "source", "mapped", "raw"}``.
-
-    Raises:
-        HTTPException: 400 if no API key; 401/404/502/500 from Divine Pride errors.
-    """
+    """Fetches the experience table from Divine Pride and returns the adapted data."""
     key = _resolve_key(x_divine_pride_key, api_key)
+    srv = _resolve_server(x_server, server)
+    lng = _resolve_language(accept_language, language)
     try:
-        raw = dp_client.fetch_experience(key)
+        raw = dp_client.fetch_experience(key, server=srv, language=lng)
     except Exception as e:
         raise _translate_dp_error(e, "Experience", exp_type)
 
@@ -309,9 +312,13 @@ async def import_item_legacy(
     item_id: int,
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
+    x_server: Optional[str] = Header(None, alias="x-server"),
+    server: Optional[str] = Query(None),
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+    language: Optional[str] = Query(None),
 ):
     """[Legacy] Delegates to the new ``/preview/item/`` route for backwards-compatibility."""
-    return await preview_item(item_id, x_divine_pride_key, api_key)
+    return await preview_item(item_id, x_divine_pride_key, api_key, x_server, server, accept_language, language)
 
 
 @router.get("/import/skill/{skill_id}")
@@ -319,9 +326,41 @@ async def import_skill_legacy(
     skill_id: int,
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
+    x_server: Optional[str] = Header(None, alias="x-server"),
+    server: Optional[str] = Query(None),
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+    language: Optional[str] = Query(None),
 ):
     """[Legacy] Delegates to the new ``/preview/skill/`` route for backwards-compatibility."""
-    return await preview_skill(skill_id, x_divine_pride_key, api_key)
+    return await preview_skill(skill_id, x_divine_pride_key, api_key, x_server, server, accept_language, language)
+
+
+@router.get("/import/quest/{quest_id}")
+async def import_quest_legacy(
+    quest_id: int,
+    x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
+    api_key: Optional[str] = Query(None, alias="apiKey"),
+    x_server: Optional[str] = Header(None, alias="x-server"),
+    server: Optional[str] = Query(None),
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+    language: Optional[str] = Query(None),
+):
+    """[Legacy] Delegates to the new ``/preview/quest/`` route for backwards-compatibility."""
+    return await preview_quest(quest_id, x_divine_pride_key, api_key, x_server, server, accept_language, language)
+
+
+@router.get("/import/efst/{efst_id}")
+async def import_efst_legacy(
+    efst_id: int,
+    x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
+    api_key: Optional[str] = Query(None, alias="apiKey"),
+    x_server: Optional[str] = Header(None, alias="x-server"),
+    server: Optional[str] = Query(None),
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+    language: Optional[str] = Query(None),
+):
+    """[Legacy] Delegates to the new ``/preview/efst/`` route for backwards-compatibility."""
+    return await preview_efst(efst_id, x_divine_pride_key, api_key, x_server, server, accept_language, language)
 
 
 @router.get("/import/experience/{exp_type}")
@@ -330,9 +369,13 @@ async def import_experience_legacy(
     exp_type: str = "normal",
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
+    x_server: Optional[str] = Header(None, alias="x-server"),
+    server: Optional[str] = Query(None),
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+    language: Optional[str] = Query(None),
 ):
     """[Legacy] Delegates to the new ``/preview/experience/`` route for backwards-compatibility."""
-    return await preview_experience(exp_type, x_divine_pride_key, api_key)
+    return await preview_experience(exp_type, x_divine_pride_key, api_key, x_server, server, accept_language, language)
 
 
 @router.get("/import/{resource_type}/{resource_id}")
@@ -341,26 +384,25 @@ async def import_resource_legacy(
     resource_id: int,
     x_divine_pride_key: Optional[str] = Header(None, alias="x-divine-pride-key"),
     api_key: Optional[str] = Query(None, alias="apiKey"),
+    x_server: Optional[str] = Header(None, alias="x-server"),
+    server: Optional[str] = Query(None),
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+    language: Optional[str] = Query(None),
 ):
-    """[Legacy] Generic catch-all route — delegates to the appropriate typed preview route.
-
-    Args:
-        resource_type: One of ``"monster"`` / ``"mob"``, ``"item"``, or ``"skill"``.
-        resource_id: Numeric resource ID.
-        x_divine_pride_key: API key from the ``x-divine-pride-key`` header.
-        api_key: API key from the ``apiKey`` query parameter (fallback).
-
-    Raises:
-        HTTPException: 400 if ``resource_type`` is not recognized.
-    """
+    """[Legacy] Generic catch-all route — delegates to the appropriate typed preview route."""
     rt = resource_type.lower()
     if rt in ("monster", "mob"):
-        return await preview_monster(resource_id, x_divine_pride_key, api_key)
+        return await preview_monster(resource_id, x_divine_pride_key, api_key, x_server, server, accept_language, language)
     if rt == "item":
-        return await preview_item(resource_id, x_divine_pride_key, api_key)
+        return await preview_item(resource_id, x_divine_pride_key, api_key, x_server, server, accept_language, language)
     if rt == "skill":
-        return await preview_skill(resource_id, x_divine_pride_key, api_key)
+        return await preview_skill(resource_id, x_divine_pride_key, api_key, x_server, server, accept_language, language)
+    if rt == "quest":
+        return await preview_quest(resource_id, x_divine_pride_key, api_key, x_server, server, accept_language, language)
+    if rt in ("efst", "status", "statuseffect"):
+        return await preview_efst(resource_id, x_divine_pride_key, api_key, x_server, server, accept_language, language)
     raise HTTPException(
         status_code=400,
-        detail=f"Tipo de recurso inválido: '{resource_type}'. Use 'monster', 'item' ou 'skill'.",
+        detail=f"Tipo de recurso inválido: '{resource_type}'. Use 'monster', 'item', 'skill', 'quest' ou 'efst'.",
     )
+
