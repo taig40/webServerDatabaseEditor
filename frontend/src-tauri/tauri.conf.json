@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicatbayramov/tauri/refs/heads/dev/crates/tauri-config-schema/schema.json",
   "productName": "rAthena Web Editor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "identifier": "com.rathena.webeditor",
   "build": {
     "beforeDevCommand": "npm run dev",

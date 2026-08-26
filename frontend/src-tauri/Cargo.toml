@@ -1,6 +1,6 @@
 [package]
 name = "rathena-web-editor"
-version = "1.0.0"
+version = "1.0.1"
 description = "rAthena Database Editor — Desktop Edition (Tauri v2)"
 authors = ["Taig4o"]
 edition = "2021"
