@@ -9,8 +9,25 @@ dicts compatible with the Pydantic V2 DTOs (``ItemDBModel``, ``MobDBModelUpdate`
    silently dropped — the final dump applies ``exclude_defaults=True``.
 2. **LiteralScalarString**: scripts are wrapped to force pipe (``|``) block-style YAML.
 3. **Implicit ``exclude_none``**: no ``None`` field is ever included in the result.
-4. **Location correction**: DP bitmask → ``ItemLocations`` dict (official iRO/kRO table).
+4. **Location correction**: DP ``equipLocation`` bitmask → ``ItemLocations`` dict.
 5. **MobSkills**: only the internal editor keys are emitted (no CamelCase duplication).
+
+**Live API alignment (2026-08):**
+
+- Monster payload is **flat** — all stats at root level (no nested ``stats`` dict).
+- ``element`` is a string (``"Water 1"``) not an int; ``race``/``size``/``type`` are plain
+  English strings already, so numeric lookup tables are used only as a fallback.
+- Drop chance field is ``probability`` (float, percentage) → multiply × 100 for rAthena.
+- Drop steal-protection flag is ``isStealProtected``, not ``stealProtected``.
+- MVP drops key is ``mvpDrops`` (camelCase capital D).
+- Monster sprite field is ``spriteName``, not ``sprite``.
+- Item buy/sell prices are ``buyPrice`` / ``sellPrice``.
+- Item type is already a string (``"Consumable"``, ``"Armor"``, …) — ``itemTypeId`` gone.
+- Item equip location is ``equipLocation`` (int bitmask), not ``LOCA``.
+- Item scripts are in ``scripts`` (array of dicts with ``script`` key), not ``script``.
+- Skill cast/cooldown fields are strings (``"0 sec"``, ``"0,5 sec"``) — parse them.
+- Skill levels are in ``levelTable`` (array), not a top-level int per key.
+- Skill display name is ``raw["name"]``; internal DB name is ``raw["databaseName"]``.
 """
 
 import re
@@ -37,6 +54,9 @@ _ELEMENT_TYPES: Dict[int, str] = {
     5: "Poison",  6: "Holy",   7: "Dark",  8: "Ghost",  9: "Undead",
 }
 
+# Set of valid rAthena element names for quick membership check
+_ELEMENT_NAMES: frozenset = frozenset(_ELEMENT_TYPES.values())
+
 _RACE_TYPES: Dict[int, str] = {
     0: "Formless", 1: "Undead", 2: "Brute",  3: "Plant",    4: "Insect",
     5: "Fish",     6: "Demon",  7: "Demihuman", 8: "Angel", 9: "Dragon",
@@ -47,6 +67,11 @@ _SCALE_MAP: Dict[int, str] = _SIZE_TYPES
 _RACE_MAP: Dict[int, str] = _RACE_TYPES
 
 _CLASS_MAP: Dict[int, str] = {0: "Normal", 1: "Boss", 4: "Guardian"}
+
+# Valid rAthena string values for race / size / class (pass-through if already correct)
+_VALID_RACES: frozenset  = frozenset(_RACE_TYPES.values())
+_VALID_SIZES: frozenset  = frozenset(_SIZE_TYPES.values())
+_VALID_CLASSES: frozenset = frozenset(_CLASS_MAP.values())
 
 # DP condition names (IF_XXX) → rAthena Condition values
 _MOB_SKILL_COND_MAP: Dict[str, str] = {
@@ -298,20 +323,60 @@ def _strip_ro_color_tokens(text: str) -> str:
     return _RO_COLOR_PATTERN.sub('', text).strip()
 
 
-def _get_element(raw_element: int):
-    """Decodes a Divine Pride element integer into (element_name, level).
+def _get_element(raw_element: Any) -> tuple:
+    """Decodes a Divine Pride element field into ``(element_name, level)``.
 
-    DP encoding: ``element = level * 10 + type_index``
+    The live DP API returns a **string** such as ``"Water 1"`` or ``"Neutral"``.
+    Legacy/internal callers may still pass an integer encoded as
+    ``level * 10 + type_index``.  Both forms are handled.
 
     Args:
-        raw_element: Integer from ``stats.element`` in the DP payload.
+        raw_element: String (``"Fire 3"``) or integer from the DP payload.
 
     Returns:
-        Tuple of (element_name: str, level: int) clamped to rAthena valid range [1, 4].
+        Tuple of (element_name: str, level: int) where level is clamped to [1, 4].
     """
-    element_type_idx = raw_element % 10
-    element_level    = raw_element // 10
+    if isinstance(raw_element, str) and raw_element.strip():
+        # Format: "<ElementName> <level>" or just "<ElementName>"
+        parts = raw_element.strip().split()
+        element_name = parts[0].capitalize() if parts else "Neutral"
+        if element_name not in _ELEMENT_NAMES:
+            element_name = "Neutral"
+        try:
+            element_level = max(1, min(4, int(parts[1]))) if len(parts) > 1 else 1
+        except (ValueError, IndexError):
+            element_level = 1
+        return element_name, element_level
+
+    # Legacy integer encoding: level * 10 + type_index
+    raw_int = _safe_int(raw_element, 0)
+    element_type_idx = raw_int % 10
+    element_level    = raw_int // 10
     return _ELEMENT_TYPES.get(element_type_idx, "Neutral"), max(1, min(4, element_level))
+
+
+def _parse_dp_seconds(value: Any, default: float = 0.0) -> float:
+    """Parses a Divine Pride time string such as ``"0,5 sec"`` or ``"1 sec"`` into
+    a float number of seconds.
+
+    Args:
+        value: Raw string from the DP payload (commas used as decimal separator).
+        default: Value returned when parsing fails or input is empty/dash.
+
+    Returns:
+        Float seconds value, or ``default`` if the input cannot be parsed.
+    """
+    if value is None:
+        return default
+    s = str(value).strip()
+    if not s or s in ("-", ""):
+        return default
+    # Remove " sec" suffix and replace comma decimal separator
+    s = s.lower().replace(" sec", "").replace(",", ".").strip()
+    try:
+        return float(s)
+    except ValueError:
+        return default
 
 
 # ─── Adapter ─────────────────────────────────────────────────────────────────
@@ -389,18 +454,18 @@ class DivinePrideAdapter:
     def adapt_item(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         """Transforms raw Divine Pride item JSON into an ``ItemDBModel``-compatible dict.
 
-        Corrections applied:
+        Aligned with the live DP API (2026-08):
 
-        - **Name**: resolved via ``globalization[]`` / ``sets[]`` / ``aegisName`` fallback chain.
-        - **Type**: cross-validated against ``LOCA`` bitmask and ``requiredLevel`` to prevent
-          map-server crashes from incorrect ``itemTypeId`` values in the DP payload.
-        - **Location**: uses ``LOCA`` (primary) since ``location`` is always ``null`` in DP.
-        - **Defense**: multi-field lookup (``defense`` → ``defRate`` → ``armorDefense``).
-        - **Refineable**: ``null``/``true`` → ``True``; explicit ``false`` → ``False`` (omitted).
-        - **Indestructible**: ``null``/``false`` → ``False`` (omitted); ``true`` → written.
-        - **Trade**: ``itemMoveInfo`` mapped to rAthena ``Trade:`` restriction block.
+        - **buyPrice / sellPrice** are the price fields (``price`` is gone).
+        - **type** is already a string (``"Consumable"``, ``"Armor"`` …).
+        - **equipLocation** is the bitmask (``LOCA`` / ``location`` are absent).
+        - **scripts** is an array of dicts; the first item with a non-null ``script``
+          key is used as the item ``Script:`` value.
+        - **weight** arrives as a plain integer (no ×10 conversion needed).
+        - **Trade**: ``itemMoveInfo`` keys ``canDrop``, ``canTrade`` … are booleans
+          (also available at root level as ``canDrop``, ``canTrade`` …).
+        - **Refineable / Indestructible**: only emitted for equipment.
         - **Defaults omitted**: fields equal to rAthena engine defaults are not written.
-        - **Scripts**: wrapped in ``LiteralScalarString`` for YAML pipe-block style.
         """
         if not isinstance(raw, dict):
             raw = {}
@@ -411,17 +476,26 @@ class DivinePrideAdapter:
         if not aegis:
             aegis = _to_aegis_name(name, item_id)
 
+        # Weight: live API delivers the raw integer already (no ×10 conversion)
         try:
-            weight = int(round(float(raw.get("weight") or 0) * 10))
+            weight = int(raw.get("weight") or 0)
         except (ValueError, TypeError):
             weight = 0
 
-        raw_type  = _safe_int(raw.get("itemTypeId"), 3)
-        item_type = _ITEM_TYPE_MAP.get(raw_type, "Etc")
+        # Type: live API delivers a ready string ("Consumable", "Armor", "Weapon" …)
+        # Legacy fallback: itemTypeId integer map still accepted.
+        raw_type_str = str(raw.get("type") or "").strip()
+        if raw_type_str in ("Consumable", "Armor", "Weapon", "Card", "Etc",
+                            "PetEgg", "PetArmor", "Ammo"):
+            item_type = raw_type_str
+        else:
+            item_type = _ITEM_TYPE_MAP.get(_safe_int(raw.get("itemTypeId"), 3), "Etc")
 
-        # Location — DP uses 'LOCA' (uppercase) as the primary field; 'location' is always null.
-        location_raw     = raw.get("LOCA") or raw.get("location")
-        location_bitmask = _safe_int(location_raw) if location_raw is not None else 0
+        # Location — live API uses ``equipLocation`` (int bitmask).
+        # Legacy fallback: ``LOCA`` / ``location`` still accepted.
+        location_bitmask = _safe_int(
+            raw.get("equipLocation") or raw.get("LOCA") or raw.get("location") or 0
+        )
 
         # Type sanity: cross-validate against location bitmask and requiredLevel.
         # A wrong Type in item_db.yml causes map-server crashes on startup.
@@ -434,33 +508,33 @@ class DivinePrideAdapter:
             if inferred:
                 item_type = inferred
 
-        price = _safe_int(raw.get("price"), 0)
-        sell  = price // 2 if price > 0 else 0
+        # Prices: live API uses ``buyPrice`` and ``sellPrice``.
+        # Legacy fallback: ``price`` (old field) still accepted.
+        buy_price  = _safe_int(raw.get("buyPrice")  or raw.get("price"),  0)
+        sell_price = _safe_int(raw.get("sellPrice"), buy_price // 2 if buy_price > 0 else 0)
 
         defense = _safe_int(
             raw.get("defense") or raw.get("defRate") or raw.get("armorDefense"), 0
         )
 
         # Refineable / Indestructible only apply to equipment (Armor, Weapon).
-        # Consumables and Etc items cannot be refined or destroyed in rAthena,
-        # so writing these flags for them would produce a dirty/incorrect YAML.
-        _is_equipment = item_type in ("Armor", "Weapon")
+        # Consumables and Etc items cannot be refined or destroyed in rAthena.
+        _is_equipment      = item_type in ("Armor", "Weapon")
         refinable_raw      = raw.get("refinable")
         indestructible_raw = raw.get("indestructible")
         refineable     = (False if refinable_raw is False else True)  if _is_equipment else False
         indestructible = (True  if indestructible_raw is True else False) if _is_equipment else False
-
 
         result: Dict[str, Any] = {
             "Id":             item_id,
             "AegisName":      aegis,
             "Name":           name,
             "Type":           item_type,
-            "Buy":            price,
-            "Sell":           sell,
+            "Buy":            buy_price,
+            "Sell":           sell_price,
             "Weight":         weight,
             "Attack":         _safe_int(raw.get("attack"), 0),
-            "MagicAttack":    _safe_int(raw.get("matk"), 0),
+            "MagicAttack":    _safe_int(raw.get("matk") or raw.get("magicAttack"), 0),
             "Defense":        defense,
             "Slots":          _safe_int(raw.get("slots"), 0),
             "Refineable":     refineable,
@@ -469,38 +543,58 @@ class DivinePrideAdapter:
             "EquipLevelMax":  _safe_int(raw.get("limitLevel"), 0),
         }
 
-        # Locations (LOCA bitmask → ItemLocations dict)
+        # Locations (equipLocation bitmask → ItemLocations dict)
         if location_bitmask:
             locations = _decode_location_bitmask(location_bitmask)
             if locations:
                 result["Locations"] = locations
 
-        # Trade restrictions from itemMoveInfo
-        move_info = raw.get("itemMoveInfo")
-        if isinstance(move_info, dict):
-            _DP_TRADE_MAP = (
-                ("drop",       "NoDrop"),
-                ("trade",      "NoTrade"),
-                ("sell",       "NoSell"),
-                ("cart",       "NoCart"),
-                ("store",      "NoStorage"),
-                ("guildStore", "NoGuildStorage"),
-                ("mail",       "NoMail"),
-                ("auction",    "NoAuction"),
-            )
-            trade = {
-                ra_key: True
-                for dp_key, ra_key in _DP_TRADE_MAP
-                if move_info.get(dp_key) is False
-            }
-            if trade:
-                result["Trade"] = trade
+        # Trade restrictions.
+        # Live API: ``itemMoveInfo`` dict with keys ``drop``, ``trade``, ``store`` …
+        # Fallback: root-level ``canDrop``, ``canTrade`` … booleans.
+        _DP_TRADE_MAP = (
+            ("drop",        "canDrop",         "NoDrop"),
+            ("trade",       "canTrade",        "NoTrade"),
+            ("sell",        "canSellToNpc",    "NoSell"),
+            ("cart",        "canCart",         "NoCart"),
+            ("store",       "canStore",        "NoStorage"),
+            ("guildStore",  "canGuildStorage", "NoGuildStorage"),
+            ("mail",        "canMail",         "NoMail"),
+            ("auction",     "canAuction",      "NoAuction"),
+        )
+        move_info = raw.get("itemMoveInfo") or {}
+        trade: Dict[str, bool] = {}
+        for mi_key, root_key, ra_key in _DP_TRADE_MAP:
+            # itemMoveInfo value=False means NOT allowed → write restriction
+            val = move_info.get(mi_key)
+            if val is None:
+                # Fallback to root-level canX booleans (False = restricted)
+                val = raw.get(root_key)
+            if val is False:
+                trade[ra_key] = True
+        if trade:
+            result["Trade"] = trade
 
-        # Scripts
-        for dp_key, ra_key in [("script", "Script"), ("equipScript", "EquipScript"), ("unequipScript", "UnEquipScript")]:
-            script = raw.get(dp_key)
-            if script:
-                wrapped = _wrap_script(str(script))
+        # Scripts — live API returns ``scripts`` array of dicts.
+        # Each dict may have ``script``, ``equipScript``, ``unequipScript`` keys.
+        # Also accept legacy top-level ``script`` / ``equipScript`` strings.
+        scripts_arr = raw.get("scripts") or []
+        _script_fields = [
+            ("script",        "Script"),
+            ("equipScript",   "EquipScript"),
+            ("unequipScript", "UnEquipScript"),
+        ]
+        for dp_key, ra_key in _script_fields:
+            # Try array first, then top-level
+            script_val = None
+            for s_entry in scripts_arr:
+                if isinstance(s_entry, dict) and s_entry.get(dp_key):
+                    script_val = s_entry[dp_key]
+                    break
+            if not script_val:
+                script_val = raw.get(dp_key)
+            if script_val:
+                wrapped = _wrap_script(str(script_val))
                 if wrapped:
                     result[ra_key] = wrapped
 
@@ -645,98 +739,138 @@ class DivinePrideAdapter:
     def adapt_monster(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         """Transforms raw Divine Pride monster JSON into a ``MobDBModelUpdate``-compatible dict.
 
-        Corrections applied:
+        Aligned with the live DP API (2026-08) where the payload is **flat** — all
+        stats live at root level (no nested ``stats`` dict).
 
-        - **SpriteName**: uses ``raw["sprite"]`` (not dbname).
-        - **Element**: fixed decoder — DP encoding is ``level * 10 + type``.
-        - **Timing**: ``movementSpeed`` → ``WalkSpeed``; ``rechargeTime`` → ``AttackDelay``;
-          ``attackSpeed`` → ``AttackMotion``; ``attackedSpeed`` → ``DamageMotion``.
-        - **Drops**: entries with ``chance == 0`` are filtered (DP placeholder rows).
-        - **MvpDrops**: reads lowercase ``raw["mvpdrops"]`` key (DP canonical casing).
-        - **StealProtected**: forwarded per-drop when ``stealProtected == True``.
-        - **Class**: ``stats.class`` mapped via ``_CLASS_MAP``; ``Normal`` omitted as default.
-        - **Resistance / MagicResistance**: ``stats.res`` / ``stats.mres``.
-        - **Skills**: ``state`` normalised via ``_MOB_SKILL_STATE_MAP``;
-          ``condition`` via ``_MOB_SKILL_COND_MAP`` (IF_ prefix stripped).
-        - **Ai**: returned as ``int`` (no zero-padding string).
+        Key field mappings:
+
+        - ``spriteName``          → ``SpriteName``
+        - ``element`` (str)       → ``Element`` + ``ElementLevel`` (parsed from ``"Water 1"``)
+        - ``race`` / ``size`` / ``type`` (strings) → used as-is; int fallback retained.
+        - ``speed``               → ``WalkSpeed`` (float, converted to int ms-equivalent)
+        - ``attackSpeed``         → ``AttackMotion``
+        - ``def``                 → ``Defense``
+        - ``mDef``                → ``MagicDefense``
+        - ``res`` / ``mRes``      → ``Resistance`` / ``MagicResistance``
+        - Drop ``probability``    → ``Rate`` (float % → × 100 → int, capped at 10000)
+        - Drop ``isStealProtected`` → ``StealProtected``
+        - ``mvpDrops``            → ``MvpDrops`` (capital D)
+        - ``skills``              → ``MobSkills`` (via ``MobSkillTranslator``)
         """
         if not isinstance(raw, dict):
             raw = {}
 
-        stats = raw.get("stats")
-        if not isinstance(stats, dict):
-            stats = {}
-
         mob_id = _safe_int(raw.get("id"), 0)
         name   = str(raw.get("name") or f"MOB_{mob_id}")
         aegis  = str(raw.get("dbname") or raw.get("aegisName") or f"MOB_{mob_id}")
-        sprite = str(raw.get("sprite") or aegis)
+        # Live API: spriteName (not sprite)
+        sprite = str(raw.get("spriteName") or raw.get("sprite") or aegis)
 
-        # Element
-        element_str, element_level = _get_element(_safe_int(stats.get("element"), 0))
+        # Element — live API: string "Water 1"; legacy: int encoded as level*10+type
+        element_str, element_level = _get_element(raw.get("element") or 0)
+        # elementLevel is also provided directly in the live payload
+        if raw.get("elementLevel") is not None:
+            element_level = max(1, min(4, _safe_int(raw["elementLevel"], element_level)))
 
-        # Size, Race, Class
-        size_str  = _SCALE_MAP.get(_safe_int(stats.get("scale"),  1), "Medium")
-        race_str  = _RACE_MAP.get(_safe_int(stats.get("race"),   0), "Formless")
-        class_str = _CLASS_MAP.get(_safe_int(stats.get("class"), 0), "Normal")
+        # Size, Race, Class — live API returns strings already; int fallback preserved.
+        raw_race  = raw.get("race")  or ""
+        raw_size  = raw.get("size")  or ""
+        raw_class = raw.get("type")  or "Normal"
 
-        # AI
-        raw_ai = str(stats.get("ai") or "01").strip()
+        race_str  = raw_race  if raw_race  in _VALID_RACES   else _RACE_MAP.get(_safe_int(raw_race,  0), "Formless")
+        size_str  = raw_size  if raw_size  in _VALID_SIZES   else _SCALE_MAP.get(_safe_int(raw_size, 1), "Medium")
+        class_str = raw_class if raw_class in _VALID_CLASSES else _CLASS_MAP.get(_safe_int(raw_class, 0), "Normal")
+
+        # AI — live API does not expose ai; default to "01" (passive)
+        raw_ai = str(raw.get("ai") or raw.get("aiFlag") or "01").strip()
         m = re.search(r"(\d+)$", raw_ai)
         ai_str = m.group(1).zfill(2) if m else "01"
 
-        # Attack (may arrive as {minimum, maximum} dict or raw ints)
-        attack_raw = stats.get("attack")
-        if isinstance(attack_raw, dict):
-            attack  = _safe_int(attack_raw.get("minimum"), 0)
-            attack2 = _safe_int(attack_raw.get("maximum"), 0)
+        # Attack — live API: ``attackRange`` is a string range ("1 - 1"); stats are flat.
+        attack  = _safe_int(raw.get("atk1") or raw.get("attack"), 0)
+        attack2 = _safe_int(raw.get("atk2") or raw.get("attack2"), 0)
+
+        # Timing — live API: ``speed`` (float, lower = faster), ``attackSpeed`` (float s)
+        # rAthena WalkSpeed is in ms; DP ``speed`` appears to be tiles/sec → approximate.
+        # Use direct ms values where available, fall back to DP floats.
+        raw_speed = raw.get("speed")
+        if raw_speed is not None:
+            try:
+                walk_speed = max(20, int(1000.0 / float(raw_speed))) if float(raw_speed) > 0 else 150
+            except (ValueError, TypeError):
+                walk_speed = 150
         else:
-            attack  = _safe_int(stats.get("atk1"), 0)
-            attack2 = _safe_int(stats.get("atk2"), 0)
+            walk_speed = _safe_int(raw.get("movementSpeed"), 150)
 
-        # Timing — DP field names differ from rAthena YAML keys
-        walk_speed    = _safe_int(stats.get("movementSpeed"), 150)
-        attack_delay  = _safe_int(stats.get("rechargeTime") or stats.get("attackSpeed"), 1000)
-        attack_motion = _safe_int(stats.get("attackSpeed"), 500)
-        damage_motion = _safe_int(stats.get("attackedSpeed"), 500)
+        raw_atk_spd = raw.get("attackSpeed")
+        if raw_atk_spd is not None:
+            try:
+                attack_delay  = max(100, int(float(raw_atk_spd) * 1000))
+                attack_motion = max(100, int(float(raw_atk_spd) * 1000))
+            except (ValueError, TypeError):
+                attack_delay  = 1000
+                attack_motion = 500
+        else:
+            attack_delay  = _safe_int(raw.get("rechargeTime"), 1000)
+            attack_motion = _safe_int(raw.get("attackMotion"), 500)
+        damage_motion = _safe_int(raw.get("attackedSpeed") or raw.get("damageMotion"), 500)
 
-        # Modes
+        # Modes — live API does not directly expose MVP flag in a numeric field;
+        # detect from mvpDrops presence or type=="Boss".
         modes: Dict[str, bool] = {}
-        if _safe_int(stats.get("mvp"), 0) == 1:
+        if raw.get("mvpDrops") or raw.get("mvpdrops"):
             modes["Mvp"] = True
+        if class_str == "Boss" and not modes.get("Mvp"):
+            # Boss without mvp drops = miniboss; add NoCast flag typically
+            pass
 
-        # Drops — filter out DP placeholder rows (chance == 0)
+        # Drops — live API: ``probability`` (float %) → rAthena Rate (int, 1=0.01%, 10000=100%)
+        # Filter rows where probability is 0 or None (DP placeholder rows).
         drops: List[Dict[str, Any]] = []
         for drop in (raw.get("drops") or []):
             if not isinstance(drop, dict):
                 continue
             item_id = _safe_int(drop.get("itemId") or drop.get("id") or drop.get("Item"), 0)
-            rate    = _safe_int(drop.get("chance") or drop.get("rate") or drop.get("Rate"), 0)
-            if item_id <= 0 or rate == 0:
+            if item_id <= 0:
+                continue
+            # probability is a float percentage (e.g. 0.7 = 0.7% = 700 in rAthena units)
+            prob = drop.get("probability") or drop.get("chance") or drop.get("rate") or 0
+            try:
+                rate = min(10000, max(0, int(round(float(prob) * 100))))
+            except (ValueError, TypeError):
+                rate = 0
+            if rate == 0:
                 continue
             entry: Dict[str, Any] = {"Item": self._resolve_item_ref(item_id), "Rate": rate}
-            if drop.get("stealProtected") is True:
+            # isStealProtected is the live API field (not stealProtected)
+            if drop.get("isStealProtected") is True or drop.get("stealProtected") is True:
                 entry["StealProtected"] = True
             drops.append(entry)
 
-        # MvpDrops — DP uses lowercase key "mvpdrops", filter chance == 0 rows
-        mvp_exp = _safe_int(raw.get("mvpExperience") or stats.get("mvpExperience"), 0)
+        # MvpDrops — live API key: ``mvpDrops`` (camelCase, capital D)
+        mvp_exp: int = _safe_int(raw.get("mvpExperience"), 0)
         mvp_drops: List[Dict[str, Any]] = []
-        for drop in (raw.get("mvpdrops") or raw.get("mvpDrops") or []):
+        for drop in (raw.get("mvpDrops") or raw.get("mvpdrops") or []):
             if not isinstance(drop, dict):
                 continue
             item_id = _safe_int(drop.get("itemId") or drop.get("id") or drop.get("Item"), 0)
-            rate    = _safe_int(drop.get("chance") or drop.get("rate") or drop.get("Rate"), 0)
-            if item_id <= 0 or rate == 0:
+            if item_id <= 0:
+                continue
+            prob = drop.get("probability") or drop.get("chance") or drop.get("rate") or 0
+            try:
+                rate = min(10000, max(0, int(round(float(prob) * 100))))
+            except (ValueError, TypeError):
+                rate = 0
+            if rate == 0:
                 continue
             entry = {"Item": self._resolve_item_ref(item_id), "Rate": rate}
-            if drop.get("stealProtected") is True:
+            if drop.get("isStealProtected") is True or drop.get("stealProtected") is True:
                 entry["StealProtected"] = True
             mvp_drops.append(entry)
 
-        # MobSkills
+        # MobSkills — live API key: ``skills`` (not ``skill``)
         mob_skills: List[Dict[str, Any]] = []
-        for sk in (raw.get("skill") or raw.get("skills") or []):
+        for sk in (raw.get("skills") or raw.get("skill") or []):
             if not isinstance(sk, dict):
                 continue
             normalized_sk = MobSkillTranslator.normalize_skill_entry(sk, mob_id=mob_id, dummy_name=aegis)
@@ -748,24 +882,26 @@ class DivinePrideAdapter:
             "AegisName":       aegis,
             "SpriteName":      sprite,
             "Name":            name,
-            "Level":           _safe_int(stats.get("level"), 1),
-            "Hp":              _safe_int(stats.get("health"), 1),
-            "Sp":              _safe_int(stats.get("sp"), 0),
-            "BaseExp":         _safe_int(stats.get("baseExperience"), 0),
-            "JobExp":          _safe_int(stats.get("jobExperience"), 0),
+            "Level":           _safe_int(raw.get("level"), 1),
+            "Hp":              _safe_int(raw.get("health"), 1),
+            "Sp":              _safe_int(raw.get("sp") or raw.get("magicHealth"), 0),
+            "BaseExp":         _safe_int(raw.get("baseExperience"), 0),
+            "JobExp":          _safe_int(raw.get("jobExperience"), 0),
             "Attack":          attack,
             "Attack2":         attack2,
-            "Defense":         _safe_int(stats.get("defense"), 0),
-            "MagicDefense":    _safe_int(stats.get("magicDefense"), 0),
-            "Str":             _safe_int(stats.get("str"), 1),
-            "Agi":             _safe_int(stats.get("agi"), 1),
-            "Vit":             _safe_int(stats.get("vit"), 1),
-            "Int":             _safe_int(stats.get("int"), 1),
-            "Dex":             _safe_int(stats.get("dex"), 1),
-            "Luk":             _safe_int(stats.get("luk"), 1),
-            "AttackRange":     _safe_int(stats.get("attackRange"), 1),
-            "SkillRange":      _safe_int(stats.get("aggroRange") if stats.get("aggroRange") is not None else stats.get("skillRange"), 10),
-            "ChaseRange":      _safe_int(stats.get("escapeRange") if stats.get("escapeRange") is not None else stats.get("chaseRange"), 12),
+            # live API: "def" (reserved keyword — accessed via .get)
+            "Defense":         _safe_int(raw.get("def") or raw.get("defense"), 0),
+            "MagicDefense":    _safe_int(raw.get("mDef") or raw.get("magicDefense"), 0),
+            "Str":             _safe_int(raw.get("str"), 1),
+            "Agi":             _safe_int(raw.get("agi"), 1),
+            "Vit":             _safe_int(raw.get("vit"), 1),
+            "Int":             _safe_int(raw.get("int"), 1),
+            "Dex":             _safe_int(raw.get("dex"), 1),
+            "Luk":             _safe_int(raw.get("luk"), 1),
+            # attackRange: live API is a string range "1 - 1" → take first int
+            "AttackRange":     _safe_int(str(raw.get("attackRange") or "1").split("-")[0].strip(), 1),
+            "SkillRange":      _safe_int(raw.get("aggroRange") or raw.get("skillRange") or raw.get("range"), 10),
+            "ChaseRange":      _safe_int(raw.get("escapeRange") or raw.get("chaseRange"), 12),
             "Size":            size_str,
             "Race":            race_str,
             "Element":         element_str,
@@ -775,8 +911,8 @@ class DivinePrideAdapter:
             "AttackDelay":     attack_delay,
             "AttackMotion":    attack_motion,
             "DamageMotion":    damage_motion,
-            "Resistance":      _safe_int(stats.get("res"), 0),
-            "MagicResistance": _safe_int(stats.get("mres"), 0),
+            "Resistance":      _safe_int(raw.get("res") or raw.get("mRes"), 0),
+            "MagicResistance": _safe_int(raw.get("mRes") or raw.get("magicResistance"), 0),
             "Ai":              ai_str,
             "Modes":           modes if modes else None,
             "Drops":           drops if drops else None,
@@ -792,7 +928,7 @@ class DivinePrideAdapter:
         # Extra relations/metadata from Divine Pride
         if raw.get("spawns"):
             result["Spawns"] = raw.get("spawns")
-        elem_res = raw.get("elementResistances") or stats.get("elementalDamage")
+        elem_res = raw.get("elementResistances")
         if elem_res:
             result["ElementalDamage"] = elem_res
         if raw.get("expPenaltyTable"):
@@ -806,27 +942,41 @@ class DivinePrideAdapter:
     # ── Skill ─────────────────────────────────────────────────────────────────
 
     def adapt_skill(self, raw: Dict[str, Any]) -> Dict[str, Any]:
-        """Transforma JSON de Skill do DP → dict compatível com SkillModel."""
+        """Transforma JSON de Skill do DP → dict compatível com SkillModel.
+
+        Aligned with the live DP API (2026-08):
+
+        - ``name`` is the display name; ``databaseName`` is the internal constant.
+        - ``description`` is the rendered description (no ``globalization`` array).
+        - ``levelTable`` is an array of objects with per-level timing strings such as
+          ``"0 sec"`` or ``"0,5 sec"`` — parsed via ``_parse_dp_seconds``.
+        - Top-level ``castTime`` / ``cooldown`` are aggregate strings for the whole skill.
+        - ``prerequisites`` is an array of ``{skillId, skillLevel}`` dicts.
+        - ``monsterUsers`` / ``itemUsers`` contain related entity arrays.
+        """
         if not isinstance(raw, dict):
             raw = {}
 
         skill_id  = _safe_int(raw.get("id"), 0)
         max_level = _safe_int(raw.get("maxLevel"), 1)
 
-        # Nome e descrição via globalization (language=0 = inglês)
-        name        = f"SKILL_{skill_id}"
-        description = ""
-        globalization = raw.get("globalization")
-        if isinstance(globalization, list):
-            entry = next((e for e in globalization if isinstance(e, dict) and _safe_int(e.get("language"), -1) == 0), None)
-            if entry is None:
-                entry = next((e for e in globalization if isinstance(e, dict)), None)
-            if entry:
-                name        = str(entry.get("name")        or raw.get("name")        or name)
-                description = str(entry.get("description") or raw.get("description") or "")
-        else:
-            name        = str(raw.get("name")        or name)
-            description = str(raw.get("description") or "")
+        # Name: display name; fallback chain includes databaseName and placeholder.
+        # Legacy globalization array still supported as final fallback.
+        name = str(raw.get("name") or "").strip()
+        if not name:
+            globalization = raw.get("globalization")
+            if isinstance(globalization, list):
+                entry = next(
+                    (e for e in globalization if isinstance(e, dict) and _safe_int(e.get("language"), -1) == 0),
+                    next((e for e in globalization if isinstance(e, dict)), None),
+                )
+                if entry:
+                    name = str(entry.get("name") or "").strip()
+        if not name:
+            name = str(raw.get("databaseName") or f"SKILL_{skill_id}")
+
+        db_name     = str(raw.get("databaseName") or "").strip() or None
+        description = str(raw.get("description") or raw.get("rawDescription") or "").strip()
 
         result: Dict[str, Any] = {
             "Id":          skill_id,
@@ -835,20 +985,88 @@ class DivinePrideAdapter:
             "MaxLevel":    max_level,
         }
 
-        if raw.get("range")            is not None: result["Range"]            = _safe_int(raw["range"])
-        if raw.get("targetType")       is not None: result["TargetType"]       = str(raw["targetType"])
-        if raw.get("element")          is not None:
-            result["Element"] = _ELEMENT_TYPES.get(_safe_int(raw["element"]), "Neutral")
-        if raw.get("castTime")         is not None: result["CastTime"]         = raw["castTime"]
-        if raw.get("fixedCastTime")    is not None: result["FixedCastTime"]    = raw["fixedCastTime"]
-        if raw.get("variableCastTime") is not None: result["VariableCastTime"] = raw["variableCastTime"]
-        if raw.get("globalCooldown")   is not None: result["GlobalCooldown"]   = raw["globalCooldown"]
-        if raw.get("skillCooldown")    is not None: result["SkillCooldown"]    = raw["skillCooldown"]
-        elif raw.get("cooldown")       is not None: result["SkillCooldown"]    = raw["cooldown"]
-        if raw.get("levelTable")       is not None: result["LevelTable"]       = raw["levelTable"]
-        if raw.get("prerequisites")    is not None: result["Prerequisites"]    = raw["prerequisites"]
-        if raw.get("monsterUsers")     is not None: result["Monsters"]         = raw["monsterUsers"]
-        elif raw.get("monsters")       is not None: result["Monsters"]         = raw["monsters"]
+        if db_name:
+            result["DatabaseName"] = db_name
+
+        # Range — live API: string "-" means N/A → skip
+        raw_range = raw.get("range")
+        if raw_range is not None and str(raw_range).strip() not in ("", "-"):
+            result["Range"] = _safe_int(raw_range)
+
+        # TargetType / SkillType
+        if raw.get("targetType") and str(raw["targetType"]).strip():
+            result["TargetType"] = str(raw["targetType"]).strip()
+        if raw.get("skillType") and str(raw["skillType"]).strip():
+            result["SkillType"] = str(raw["skillType"]).strip()
+
+        # Element — live API: string ("Fire") or int or empty string
+        raw_elem = raw.get("element")
+        if raw_elem is not None and str(raw_elem).strip():
+            elem_str_candidate = str(raw_elem).strip().capitalize()
+            if elem_str_candidate in _ELEMENT_NAMES:
+                result["Element"] = elem_str_candidate
+            else:
+                elem_int = _safe_int(raw_elem, -1)
+                if elem_int >= 0 and elem_int in _ELEMENT_TYPES:
+                    result["Element"] = _ELEMENT_TYPES[elem_int]
+
+        # Top-level cast/cooldown strings (aggregate for whole skill, not per-level)
+        # Live API: string values like "0,5 sec" or "-"; parse to float seconds.
+        _timing_map = [
+            ("castTime",         "CastTime"),
+            ("fixedCastTime",    "FixedCastTime"),
+            ("variableCastTime", "VariableCastTime"),
+            ("globalCooldown",   "GlobalCooldown"),
+            ("skillCooldown",    "SkillCooldown"),
+            ("cooldown",         "SkillCooldown"),   # legacy key
+        ]
+        for dp_key, ra_key in _timing_map:
+            if ra_key in result:
+                continue  # already filled by a higher-priority key
+            val = raw.get(dp_key)
+            if val is None:
+                continue
+            parsed = _parse_dp_seconds(val)
+            if parsed > 0:
+                result[ra_key] = parsed
+
+        # LevelTable — live API: array of objects per level with per-level timing strings.
+        # Normalize each entry to float seconds so consumers don't deal with string parsing.
+        raw_level_table = raw.get("levelTable")
+        if isinstance(raw_level_table, list) and raw_level_table:
+            parsed_levels = []
+            for lvl_entry in raw_level_table:
+                if not isinstance(lvl_entry, dict):
+                    continue
+                parsed_entry: Dict[str, Any] = {"level": _safe_int(lvl_entry.get("level"), 0)}
+                for t_key in ("fixedCastTime", "variableCastTime", "globalCooldown", "skillCooldown"):
+                    raw_t = lvl_entry.get(t_key)
+                    if raw_t is not None:
+                        parsed_entry[t_key] = _parse_dp_seconds(raw_t)
+                parsed_levels.append(parsed_entry)
+            if parsed_levels:
+                result["LevelTable"] = parsed_levels
+
+        # Prerequisites
+        if raw.get("prerequisites") is not None:
+            result["Prerequisites"] = raw["prerequisites"]
+
+        # Monster / item users
+        if raw.get("monsterUsers") is not None:
+            result["Monsters"] = raw["monsterUsers"]
+        elif raw.get("monsters") is not None:
+            result["Monsters"] = raw["monsters"]
+
+        if raw.get("itemUsers") is not None:
+            result["ItemUsers"] = raw["itemUsers"]
+
+        # SP cost (display string, not YAML-serialized — kept for frontend preview)
+        if raw.get("spCost") and str(raw["spCost"]).strip():
+            result["SpCost"] = str(raw["spCost"]).strip()
+
+        # Icon URL (for frontend display only)
+        if raw.get("iconUrl"):
+            result["IconUrl"] = raw["iconUrl"]
 
         return {k: v for k, v in result.items() if v is not None}
 
