@@ -207,17 +207,40 @@ class DivinePrideMapper:
             race_str = RACE_MAP.get(raw_race, "Formless")
 
         # 4. AI Behavior
-        raw_ai = str(stats.get("ai") or "01").strip()
-        match = re.search(r'(\d+)$', raw_ai)
-        if match:
-            ai_str = match.group(1).zfill(2)
+        ai_str = "01"
+        ai_flags = dp_json.get("aiFlags", [])
+        if isinstance(ai_flags, list) and len(ai_flags) > 0:
+            match = re.search(r'(\d+)$', str(ai_flags[0]))
+            if match:
+                ai_str = match.group(1).zfill(2)
         else:
-            ai_str = "01"
+            raw_ai = str(stats.get("ai") or "01").strip()
+            match = re.search(r'(\d+)$', raw_ai)
+            if match:
+                ai_str = match.group(1).zfill(2)
 
-        # 5. Mvp Mode
+        # 5. Modes (Mvp e aiFlagDetails)
         modes: Dict[str, bool] = {}
         if str(dp_json.get("type", "")).upper() == "MVP" or _safe_int(stats.get("mvp"), 0) == 1:
             modes["Mvp"] = True
+            
+        ai_details = dp_json.get("aiFlagDetails")
+        if isinstance(ai_details, dict):
+            if ai_details.get("aggressive"):
+                modes["Aggressive"] = True
+            if ai_details.get("assist"):
+                modes["Assist"] = True
+            if ai_details.get("looter"):
+                modes["Looter"] = True
+            if ai_details.get("changeTarget"):
+                modes["ChangeTargetMelee"] = True
+                modes["ChangeTargetChase"] = True
+            if ai_details.get("changeTargetOnAttack"):
+                modes["Angry"] = True
+            if ai_details.get("immobile"):
+                modes["CanMove"] = False
+            if ai_details.get("castSensor"):
+                modes["CastSensorIdle"] = True
 
         # Função auxiliar para parse de probabilidade
         def _parse_drop_rate(drop_info: Dict[str, Any]) -> int:
