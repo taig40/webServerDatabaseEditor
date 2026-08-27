@@ -208,12 +208,16 @@ class DivinePrideMapper:
 
         # 4. AI Behavior
         ai_str = "01"
-        ai_flags = dp_json.get("aiFlags", [])
-        if isinstance(ai_flags, list) and len(ai_flags) > 0:
-            match = re.search(r'(\d+)$', str(ai_flags[0]))
-            if match:
-                ai_str = match.group(1).zfill(2)
-        else:
+        ai_flags = dp_json.get("aiFlags")
+        if isinstance(ai_flags, list):
+            for flag in ai_flags:
+                match = re.search(r'TYPE_(\d+)', str(flag))
+                if match:
+                    ai_str = match.group(1).zfill(2)
+                    break
+                    
+        # Fallback se continuar sendo 01 e tiver old stats
+        if ai_str == "01":
             raw_ai = str(stats.get("ai") or "01").strip()
             match = re.search(r'(\d+)$', raw_ai)
             if match:
