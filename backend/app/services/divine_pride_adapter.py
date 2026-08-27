@@ -781,7 +781,8 @@ class DivinePrideAdapter:
         class_str = raw_class if raw_class in _VALID_CLASSES else _CLASS_MAP.get(_safe_int(raw_class, 0), "Normal")
 
         # AI — live API does not expose ai; default to "01" (passive)
-        raw_ai = str(raw.get("ai") or raw.get("aiFlags") or "01").strip()
+        ai_data = raw.get("ai") or raw.get("aiFlags") or "01"
+        raw_ai = str(ai_data[0] if isinstance(ai_data, list) and ai_data else ai_data).strip()
         m = re.search(r"(\d+)$", raw_ai)
         ai_str = m.group(1).zfill(2) if m else "01"
 
