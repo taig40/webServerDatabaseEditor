@@ -168,30 +168,43 @@ class DivinePrideMapper:
 
         mob_id = _safe_int(dp_json.get("id"), 0)
         name = str(dp_json.get("name") or f"MOB_{mob_id}")
-        aegis_name = str(dp_json.get("dbname") or dp_json.get("aegisName") or f"MOB_{mob_id}")
+        aegis_name = str(dp_json.get("spriteName") or dp_json.get("dbname") or dp_json.get("aegisName") or f"MOB_{mob_id}")
 
         # 1. Elemento
-        # A API do DivinePride / RO Client armazena o elemento como: (nível * 20) + tipo
-        # Tipo do elemento = raw_element % 10 (0=Neutral, 1=Water, ..., 9=Undead)
-        # Nível do elemento = raw_element // 20 (ou clamped entre 1 e 4)
-        raw_element = _safe_int(stats.get("element"), 0)
-        element_type_idx = raw_element % 10
-        if raw_element >= 20:
-            element_level = raw_element // 20
-        elif raw_element >= 10:
-            element_level = raw_element // 10
+        element_str = "Neutral"
+        element_level = 1
+        raw_el = dp_json.get("element")
+        if isinstance(raw_el, str):
+            # Formato novo: "Holy 4"
+            parts = raw_el.strip().split()
+            if len(parts) >= 2:
+                element_str = parts[0]
+                element_level = _safe_int(parts[1], 1)
+            else:
+                element_str = raw_el
         else:
-            element_level = 1
-        element_level = max(1, min(4, element_level))
-        element_str = ELEMENT_TYPES.get(element_type_idx, "Neutral")
+            raw_element = _safe_int(stats.get("element"), 0)
+            element_type_idx = raw_element % 10
+            if raw_element >= 20:
+                element_level = raw_element // 20
+            elif raw_element >= 10:
+                element_level = raw_element // 10
+            else:
+                element_level = 1
+            element_level = max(1, min(4, element_level))
+            element_str = ELEMENT_TYPES.get(element_type_idx, "Neutral")
 
         # 2. Tamanho (Size)
-        raw_scale = _safe_int(stats.get("scale", 1), 1)
-        size_str = SCALE_MAP.get(raw_scale, "Medium")
+        size_str = dp_json.get("size")
+        if not isinstance(size_str, str):
+            raw_scale = _safe_int(stats.get("scale", 1), 1)
+            size_str = SCALE_MAP.get(raw_scale, "Medium")
 
         # 3. Raça (Race)
-        raw_race = _safe_int(stats.get("race", 0), 0)
-        race_str = RACE_MAP.get(raw_race, "Formless")
+        race_str = dp_json.get("race")
+        if not isinstance(race_str, str):
+            raw_race = _safe_int(stats.get("race", 0), 0)
+            race_str = RACE_MAP.get(raw_race, "Formless")
 
         # 4. AI Behavior
         raw_ai = str(stats.get("ai") or "01").strip()
@@ -203,9 +216,18 @@ class DivinePrideMapper:
 
         # 5. Mvp Mode
         modes: Dict[str, bool] = {}
-        raw_mvp = _safe_int(stats.get("mvp"), 0)
-        if raw_mvp == 1:
+        if str(dp_json.get("type", "")).upper() == "MVP" or _safe_int(stats.get("mvp"), 0) == 1:
             modes["Mvp"] = True
+
+        # Função auxiliar para parse de probabilidade
+        def _parse_drop_rate(drop_info: Dict[str, Any]) -> int:
+            prob = drop_info.get("probability")
+            if prob is not None:
+                try:
+                    return int(round(float(prob) * 10000))
+                except (ValueError, TypeError):
+                    return 0
+            return _safe_int(drop_info.get("chance") or drop_info.get("rate") or drop_info.get("Rate"), 0)
 
         # 6. Drops
         rathena_drops: List[Dict[str, Any]] = []
@@ -215,21 +237,12 @@ class DivinePrideMapper:
                 if not isinstance(drop, dict):
                     continue
                 item_id = _safe_int(drop.get("itemId") or drop.get("id") or drop.get("Item"), 0)
-                rate = _safe_int(drop.get("chance") or drop.get("rate") or drop.get("Rate"), 0)
+                rate = _parse_drop_rate(drop)
                 if item_id > 0:
-                    rathena_drops.append({
-                        "Item": item_id,
-                        "Rate": rate
-                    })
-
-        # Ataque Mínimo e Máximo
-        attack_raw = stats.get("attack")
-        if isinstance(attack_raw, dict):
-            attack = _safe_int(attack_raw.get("minimum"), 0)
-            attack2 = _safe_int(attack_raw.get("maximum"), 0)
-        else:
-            attack = _safe_int(attack_raw, 0)
-            attack2 = _safe_int(stats.get("attack2"), 0)
+                    d_entry: Dict[str, Any] = {"Item": item_id, "Rate": rate}
+                    if drop.get("isStealProtected"):
+                        d_entry["StealProtected"] = True
+                    rathena_drops.append(d_entry)
 
         # 7. Mvp Experience e Mvp Drops
         mvp_exp = _safe_int(dp_json.get("mvpExperience", stats.get("mvpExperience")), 0)
@@ -240,16 +253,35 @@ class DivinePrideMapper:
                 if not isinstance(drop, dict):
                     continue
                 item_id = _safe_int(drop.get("itemId", drop.get("id", drop.get("Item"))), 0)
-                rate = _safe_int(drop.get("chance", drop.get("rate", drop.get("Rate"))), 0)
+                rate = _parse_drop_rate(drop)
                 if item_id > 0:
-                    rathena_mvp_drops.append({
-                        "Item": item_id,
-                        "Rate": rate
-                    })
+                    rathena_mvp_drops.append({"Item": item_id, "Rate": rate})
+
+        # Ataque Mínimo e Máximo
+        attack = 0
+        attack2 = 0
+        atk_range_str = dp_json.get("attackRange")
+        if isinstance(atk_range_str, str) and "-" in atk_range_str:
+            parts = atk_range_str.replace(".", "").split("-")
+            attack = _safe_int(parts[0].strip())
+            if len(parts) > 1:
+                attack2 = _safe_int(parts[1].strip())
+        else:
+            attack_raw = stats.get("attack")
+            if isinstance(attack_raw, dict):
+                attack = _safe_int(attack_raw.get("minimum"), 0)
+                attack2 = _safe_int(attack_raw.get("maximum"), 0)
+            else:
+                attack = _safe_int(attack_raw, 0)
+                attack2 = _safe_int(stats.get("attack2"), 0)
+
+        # Status Bases
+        def _get_stat(key: str, default: int) -> int:
+            return _safe_int(dp_json.get(key, stats.get(key)), default)
 
         # 8. Mob Skills (Habilidades de Monstro)
         rathena_mob_skills: List[Dict[str, Any]] = []
-        raw_skills = dp_json.get("skill", dp_json.get("skills", []))
+        raw_skills = dp_json.get("skills", dp_json.get("skill", []))
         if isinstance(raw_skills, list):
             for sk in raw_skills:
                 if not isinstance(sk, dict):
@@ -284,32 +316,32 @@ class DivinePrideMapper:
             "Id": mob_id,
             "AegisName": aegis_name,
             "Name": name,
-            "Level": _safe_int(stats.get("level", 1), 1),
-            "Hp": _safe_int(stats.get("health", 1), 1),
-            "Sp": _safe_int(stats.get("sp", 0), 0),
-            "BaseExp": _safe_int(stats.get("baseExperience", 0), 0),
-            "JobExp": _safe_int(stats.get("jobExperience", 0), 0),
+            "Level": _get_stat("level", 1),
+            "Hp": _get_stat("health", 1),
+            "Sp": _get_stat("sp", 0),
+            "BaseExp": _get_stat("baseExperience", 0),
+            "JobExp": _get_stat("jobExperience", 0),
             "Attack": attack,
             "Attack2": attack2,
-            "Defense": _safe_int(stats.get("defense", 0), 0),
-            "MagicDefense": _safe_int(stats.get("magicDefense", 0), 0),
-            "Str": _safe_int(stats.get("str", 1), 1),
-            "Agi": _safe_int(stats.get("agi", 1), 1),
-            "Vit": _safe_int(stats.get("vit", 1), 1),
-            "Int": _safe_int(stats.get("int", 1), 1),
-            "Dex": _safe_int(stats.get("dex", 1), 1),
-            "Luk": _safe_int(stats.get("luk", 1), 1),
-            "AttackRange": _safe_int(stats.get("attackRange", 1), 1),
-            "SkillRange": _safe_int(stats.get("aggroRange") if stats.get("aggroRange") is not None else stats.get("skillRange"), 10),
-            "ChaseRange": _safe_int(stats.get("escapeRange") if stats.get("escapeRange") is not None else stats.get("chaseRange"), 12),
+            "Defense": _get_stat("def", _get_stat("defense", 0)),
+            "MagicDefense": _get_stat("mDef", _get_stat("magicDefense", 0)),
+            "Str": _get_stat("str", 1),
+            "Agi": _get_stat("agi", 1),
+            "Vit": _get_stat("vit", 1),
+            "Int": _get_stat("int", 1),
+            "Dex": _get_stat("dex", 1),
+            "Luk": _get_stat("luk", 1),
+            "AttackRange": _get_stat("range", _get_stat("attackRange", 1)),
+            "SkillRange": _get_stat("aggroRange", _get_stat("skillRange", 10)),
+            "ChaseRange": _get_stat("escapeRange", _get_stat("chaseRange", 12)),
             "Size": size_str,
             "Race": race_str,
             "Element": element_str,
             "ElementLevel": element_level,
-            "WalkSpeed": _safe_int(stats.get("walkSpeed", 200), 200),
-            "AttackDelay": _safe_int(stats.get("attackDelay", 1000), 1000),
-            "AttackMotion": _safe_int(stats.get("attackMotion", 500), 500),
-            "DamageMotion": _safe_int(stats.get("damageMotion", 500), 500),
+            "WalkSpeed": _get_stat("speed", _get_stat("walkSpeed", 200)),
+            "AttackDelay": _get_stat("attackDelay", 1000),
+            "AttackMotion": _get_stat("attackMotion", 500),
+            "DamageMotion": _get_stat("damageMotion", 500),
             "Ai": ai_str,
             "Modes": modes,
             "Drops": rathena_drops,
