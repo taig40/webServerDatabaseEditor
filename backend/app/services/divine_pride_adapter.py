@@ -951,7 +951,7 @@ class DivinePrideAdapter:
             # Conversao de probabilityPercent -> ra_rate (pre-calculado, bypassa reprocessamento)
             dp_probability = sk.get("probabilityPercent") or sk.get("probability") or sk.get("chance")
             try:
-                ra_rate = min(10000, max(0, int(round(float(dp_probability) * 100)))) if dp_probability is not None else 10000
+                ra_rate = min(10000, max(0, int(round(float(dp_probability) * 1000)))) if dp_probability is not None else 10000
             except (ValueError, TypeError):
                 ra_rate = 10000
 
