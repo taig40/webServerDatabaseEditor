@@ -154,7 +154,10 @@ _MOB_DEFAULTS: Dict[str, Any] = {
     "Attack2":         0,
     "Resistance":      0,
     "MagicResistance": 0,
-    "WalkSpeed":       150,
+    # BUG FIX #2: O padrão canônico do rAthena para mobs comuns é 200ms (não 150).
+    # 150 é reservado para mobs rápidos/MVPs. Usar 200 evita omissão incorreta
+    # do campo WalkSpeed quando speed=5 → 1000/5 = 200ms.
+    "WalkSpeed":       200,
     "ElementLevel":    1,
     "DamageTaken":     100,
     "Class":           "Normal",
@@ -780,13 +783,30 @@ class DivinePrideAdapter:
         size_str  = raw_size  if raw_size  in _VALID_SIZES   else _SCALE_MAP.get(_safe_int(raw_size, 1), "Medium")
         class_str = raw_class if raw_class in _VALID_CLASSES else _CLASS_MAP.get(_safe_int(raw_class, 0), "Normal")
 
-        # AI — live API does not expose ai; default to "01" (passive)
-        ai_data = raw.get("ai") or raw.get("aiFlags") or "01"
-        raw_ai = str(ai_data[0] if isinstance(ai_data, list) and ai_data else ai_data).strip()
-        m = re.search(r"(\d+)$", raw_ai)
-        ai_str = m.group(1).zfill(2) if m else "01"
+        # AI — BUG FIX #4: usar regex precisa `MONSTER_TYPE_(\d+)` em vez de `(\d+)$`
+        # para garantir extração correta do tipo de AI independente do conteúdo da string.
+        # Ex: ["MONSTER_TYPE_21"] → "21"; ["MONSTER_TYPE_04"] → "04".
+        ai_str = "01"  # default: passive
+        ai_flags_raw = raw.get("ai") or raw.get("aiFlags")
+        if ai_flags_raw:
+            ai_candidates = ai_flags_raw if isinstance(ai_flags_raw, list) else [str(ai_flags_raw)]
+            for flag in ai_candidates:
+                m_ai = re.search(r"MONSTER_TYPE_(\d+)", str(flag), re.IGNORECASE)
+                if m_ai:
+                    ai_str = m_ai.group(1).zfill(2)
+                    break
+            else:
+                # Fallback: extrair qualquer sequência numérica final
+                first_flag = str(ai_candidates[0]).strip() if ai_candidates else "01"
+                m_fb = re.search(r"(\d+)$", first_flag)
+                if m_fb:
+                    ai_str = m_fb.group(1).zfill(2)
 
-        # Attack — live API: ``attackRange`` is often a string range representing damage (e.g., "4.067 - 889").
+        # Attack — BUG FIX #1: ``attackRange`` do DP é string de dano com locale variável.
+        # Ex: "9.945 - 14.646" (pt-BR) ou "5.442 - 7.949" — ponto é separador de milhar,
+        # vírgula seria decimal mas a API usa ponto como decimal também.
+        # Estratégia: parsear como float após normalizar separadores, depois arredondar.
+        # O campo rAthena ``AttackRange`` (tiles) é ``raw["range"]`` (int).
         attack = 0
         attack2 = 0
         raw_atk = raw.get("attackRange") or raw.get("attack") or raw.get("atk1")
@@ -794,12 +814,15 @@ class DivinePrideAdapter:
             attack = _safe_int(raw_atk.get("minimum"), 0)
             attack2 = _safe_int(raw_atk.get("maximum"), 0)
         elif isinstance(raw_atk, str) and "-" in raw_atk:
-            clean_atk = raw_atk.replace(".", "").replace(",", "")
-            parts = clean_atk.split("-")
-            attack = _safe_int(parts[0].strip(), 0)
-            attack2 = _safe_int(parts[1].strip(), 0) if len(parts) > 1 else attack
+            # Remove espaços, substitui vírgula decimal por ponto, depois split no " - "
+            parts = raw_atk.replace(",", ".").split("-")
+            try:
+                attack  = int(round(float(parts[0].strip())))
+                attack2 = int(round(float(parts[1].strip()))) if len(parts) > 1 else attack
+            except (ValueError, IndexError):
+                attack = attack2 = 0
         else:
-            attack = _safe_int(raw.get("atk1") or raw.get("attack"), 0)
+            attack  = _safe_int(raw.get("atk1") or raw.get("attack"), 0)
             attack2 = _safe_int(raw.get("atk2") or raw.get("attack2"), 0)
 
         # Timing — live API: ``speed`` (float, lower = faster), ``attackSpeed`` (float s)
@@ -827,14 +850,37 @@ class DivinePrideAdapter:
             attack_motion = _safe_int(raw.get("attackMotion"), 500)
         damage_motion = _safe_int(raw.get("attackedSpeed") or raw.get("damageMotion"), 500)
 
-        # Modes — live API does not directly expose MVP flag in a numeric field;
-        # detect from mvpDrops presence or type=="Boss".
+        # Modes — BUG FIX #5: processar ``aiFlagDetails`` para popular Modes completos.
+        # A API live entrega flags ricas que o adapter anterior ignorava completamente.
+        # Referência: divinepride_mapper.py (mapper legado) já implementava isso corretamente.
         modes: Dict[str, bool] = {}
-        if raw.get("mvpDrops") or raw.get("mvpdrops"):
+
+        # MVP: detectado por presença de mvpDrops OU type == "MVP"
+        raw_type_str = str(raw.get("type") or "").upper()
+        if raw.get("mvpDrops") or raw.get("mvpdrops") or raw_type_str == "MVP":
             modes["Mvp"] = True
-        if class_str == "Boss" and not modes.get("Mvp"):
-            # Boss without mvp drops = miniboss; add NoCast flag typically
-            pass
+
+        # aiFlagDetails: mapeamento direto dos campos booleanos do DP para os Modes do rAthena.
+        ai_details = raw.get("aiFlagDetails")
+        if isinstance(ai_details, dict):
+            if ai_details.get("aggressive"):
+                modes["Aggressive"] = True
+            if ai_details.get("assist"):
+                modes["Assist"] = True
+            if ai_details.get("looter"):
+                modes["Looter"] = True
+            if ai_details.get("changeTarget"):
+                # changeTarget = muda alvo ao ser atacado por outro player durante perseguição
+                modes["ChangeTargetMelee"] = True
+                modes["ChangeTargetChase"] = True
+            if ai_details.get("changeTargetOnAttack"):
+                # changeTargetOnAttack = comportamento "raivoso" (angry AI)
+                modes["Angry"] = True
+            if ai_details.get("immobile") is True:
+                # immobile = NÃO pode se mover (inverso de CanMove)
+                modes["CanMove"] = False
+            if ai_details.get("castSensor"):
+                modes["CastSensorIdle"] = True
 
         # Drops — live API: ``probability`` (float %) → rAthena Rate (int, 1=0.01%, 10000=100%)
         # Filter rows where probability is 0 or None (DP placeholder rows).
@@ -880,13 +926,65 @@ class DivinePrideAdapter:
                 entry["StealProtected"] = True
             mvp_drops.append(entry)
 
-        # MobSkills — live API key: ``skills`` (not ``skill``)
+        # MobSkills — BUG FIX #6 (com sub-bugs A e B resolvidos):
+        # O payload DP usa campos camelCase diferentes dos esperados pelo MobSkillTranslator.
+        #
+        # Sub-bug A — Rate reprocessado pelo translator:
+        #   normalize_skill_entry() tem logica: if 0 < raw_rate <= 1000: rate *= 10
+        #   rate=1000 (10%) se tornaria 10000 (100%). Solucao: sentinel 99999 como placeholder
+        #   que bypassa o reprocessamento, depois injetamos ra_rate correto no resultado.
+        #
+        # Sub-bug B — State TitleCase do DP nao reconhecido:
+        #   'Attacking', 'Idling', 'Chasing' nao existem no _STATE_MAP (que usa UPPERCASE).
+        #   Solucao: mapear TitleCase -> UPPERCASE antes de passar ao translator.
+        #
+        # Conversao de probabilityPercent -> rate rAthena:
+        #   probabilityPercent=10 (10%) -> 10 * 100 = 1000
+        #   (rAthena: 10000=100%, 100=1%, 10=0.1%)
+        _DP_STATE_TITLECASE: Dict[str, str] = {
+            "Attacking": "ATTACK", "Idling": "IDLE",   "Chasing": "CHASE",
+            "Walking":   "WALK",   "Dead":   "DEAD",   "Looting":  "LOOT",
+            "Following": "FOLLOW", "Angry":  "ANGRY",
+        }
         mob_skills: List[Dict[str, Any]] = []
         for sk in (raw.get("skills") or raw.get("skill") or []):
             if not isinstance(sk, dict):
                 continue
-            normalized_sk = MobSkillTranslator.normalize_skill_entry(sk, mob_id=mob_id, dummy_name=aegis)
+
+            # Conversao de probabilityPercent -> ra_rate (pre-calculado, bypassa reprocessamento)
+            dp_probability = sk.get("probabilityPercent") or sk.get("probability") or sk.get("chance")
+            try:
+                ra_rate = min(10000, max(0, int(round(float(dp_probability) * 100)))) if dp_probability is not None else 10000
+            except (ValueError, TypeError):
+                ra_rate = 10000
+
+            # Sub-bug B: normalizar state TitleCase -> UPPERCASE para o translator reconhecer
+            dp_state_raw = sk.get("state") or sk.get("State")
+            dp_state_upper = _DP_STATE_TITLECASE.get(
+                str(dp_state_raw),
+                str(dp_state_raw).upper() if dp_state_raw else "IDLE"
+            )
+
+            normalized_entry: Dict[str, Any] = {
+                "skill_id":        sk.get("skillId") or sk.get("skill_id") or sk.get("id"),
+                "skill_lv":        sk.get("skillLevel") or sk.get("skill_lv") or sk.get("level") or 1,
+                # Sub-bug A: sentinel 99999 bypassa o reprocessamento 'if 0 < rate <= 1000: rate*=10'
+                "rate":            99999,
+                "cast_time":       sk.get("castTime") or sk.get("cast_time") or 0,
+                "delay":           sk.get("cooldownTime") or sk.get("delay") or 0,
+                "cancelable":      sk.get("interruptable") if sk.get("interruptable") is not None
+                                   else sk.get("cancelable") or False,
+                "state":           dp_state_upper,
+                "condition":       sk.get("condition") or sk.get("condition_type") or "always",
+                "condition_value": sk.get("conditionValue") or sk.get("condition_value") or 0,
+                "target":          sk.get("target") or sk.get("Target"),
+            }
+            normalized_sk = MobSkillTranslator.normalize_skill_entry(
+                normalized_entry, mob_id=mob_id, dummy_name=aegis
+            )
             if normalized_sk and normalized_sk.get("skill_id", 0) > 0:
+                # Sub-bug A: substituir o sentinel pelo rate correto pre-calculado
+                normalized_sk["rate"] = ra_rate
                 mob_skills.append(normalized_sk)
 
         result: Dict[str, Any] = {
@@ -921,7 +1019,9 @@ class DivinePrideAdapter:
             "AttackDelay":     attack_delay,
             "AttackMotion":    attack_motion,
             "DamageMotion":    damage_motion,
-            "Resistance":      _safe_int(raw.get("res") or raw.get("mRes"), 0),
+            # BUG FIX #3: ``res`` e ``mRes`` são campos distintos — não usar um como fallback do outro.
+            # Quando res=0 (falsy), o código anterior pegava mRes incorretamente para Resistance.
+            "Resistance":      _safe_int(raw.get("res", 0), 0),
             "MagicResistance": _safe_int(raw.get("mRes") or raw.get("magicResistance"), 0),
             "Ai":              ai_str,
             "Modes":           modes if modes else None,

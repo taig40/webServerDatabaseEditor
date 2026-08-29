@@ -246,12 +246,15 @@ class DivinePrideMapper:
             if ai_details.get("castSensor"):
                 modes["CastSensorIdle"] = True
 
-        # Função auxiliar para parse de probabilidade
+        # BUG FIX #7: ``probability`` do DP é porcentagem float (ex: 0.8 = 0.8%).
+        # rAthena Rate unit: 10000 = 100%, 100 = 1%, 10 = 0.1%.
+        # Fórmula correta: prob × 100 (e não × 10000 que inflava o rate em 100×).
+        # Ex: probability=0.8 (0.8%) → rate = round(0.8 * 100) = 80 ✓
         def _parse_drop_rate(drop_info: Dict[str, Any]) -> int:
             prob = drop_info.get("probability")
             if prob is not None:
                 try:
-                    return int(round(float(prob) * 10000))
+                    return min(10000, max(0, int(round(float(prob) * 100))))
                 except (ValueError, TypeError):
                     return 0
             return _safe_int(drop_info.get("chance") or drop_info.get("rate") or drop_info.get("Rate"), 0)
