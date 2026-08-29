@@ -814,13 +814,10 @@ class DivinePrideAdapter:
             attack = _safe_int(raw_atk.get("minimum"), 0)
             attack2 = _safe_int(raw_atk.get("maximum"), 0)
         elif isinstance(raw_atk, str) and "-" in raw_atk:
-            # Remove espaços, substitui vírgula decimal por ponto, depois split no " - "
-            parts = raw_atk.replace(",", ".").split("-")
-            try:
-                attack  = int(round(float(parts[0].strip())))
-                attack2 = int(round(float(parts[1].strip()))) if len(parts) > 1 else attack
-            except (ValueError, IndexError):
-                attack = attack2 = 0
+            clean_atk = raw_atk.replace(".", "").replace(",", "")
+            parts = clean_atk.split("-")
+            attack = _safe_int(parts[0].strip(), 0)
+            attack2 = _safe_int(parts[1].strip(), 0) if len(parts) > 1 else attack
         else:
             attack  = _safe_int(raw.get("atk1") or raw.get("attack"), 0)
             attack2 = _safe_int(raw.get("atk2") or raw.get("attack2"), 0)
