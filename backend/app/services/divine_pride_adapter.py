@@ -479,9 +479,9 @@ class DivinePrideAdapter:
         if not aegis:
             aegis = _to_aegis_name(name, item_id)
 
-        # Weight: live API delivers the raw integer already (no ×10 conversion)
+        # Weight: live API delivers the raw integer / 10
         try:
-            weight = int(raw.get("weight") or 0)
+            weight = int(raw.get("weight") or 0) * 10
         except (ValueError, TypeError):
             weight = 0
 
@@ -620,7 +620,7 @@ class DivinePrideAdapter:
     # ── Item Combos ──────────────────────────────────────────────────────────
 
     def adapt_item_combos(self, raw: Dict[str, Any], item_id: int) -> List[Dict[str, Any]]:
-        """Extracts and validates combo entries from the Divine Pride ``sets`` key.
+        """Extracts and validates combo entries from the Divine Pride ``itemSets`` key.
 
         Applies two scenarios based on local cache availability:
 
@@ -634,7 +634,7 @@ class DivinePrideAdapter:
 
         Script classification (server vs client-side):
 
-        - If ``sets[].script`` passes ``_is_server_script()``, it is wrapped as
+        - If ``itemSets[].bonuses`` passes ``_is_server_script()``, it is wrapped as
           a ``LiteralScalarString`` for the YAML ``Script:`` field.
         - Otherwise the raw text is demoted to a ``_visual_script_note`` comment
           and the ``Script:`` field is **omitted** from the output to avoid
@@ -656,9 +656,9 @@ class DivinePrideAdapter:
             - ``original_ids`` (``List[int]``): Original IDs from the DP payload.
             - ``script_is_server_side`` (``bool``): Classification result.
 
-            Returns an empty list when ``sets`` is absent or empty.
+            Returns an empty list when ``itemSets`` is absent or empty.
         """
-        sets = raw.get("sets") or []
+        sets = raw.get("itemSets") or []
         if not sets or not isinstance(sets, list):
             return []
 
@@ -668,7 +668,7 @@ class DivinePrideAdapter:
             if not isinstance(set_entry, dict):
                 continue
 
-            dp_items = set_entry.get("items") or []
+            dp_items = set_entry.get("members") or []
             if not isinstance(dp_items, list):
                 continue
 
@@ -687,12 +687,12 @@ class DivinePrideAdapter:
                 continue
 
             # Classify the DP script field
-            dp_script = str(set_entry.get("script") or "").strip()
-            if dp_script and _is_server_script(dp_script):
-                server_script: Optional[LiteralScalarString] = _wrap_script(dp_script)
-                visual_note: Optional[str] = None
-                script_is_server = True
-            elif dp_script:
+            dp_script = str(set_entry.get("bonuses") or "").strip()
+            # if dp_script and _is_server_script(dp_script):
+            #     server_script: Optional[LiteralScalarString] = _wrap_script(dp_script)
+            #     visual_note: Optional[str] = None
+            #     script_is_server = True
+            if dp_script:
                 server_script = None
                 visual_note = _strip_ro_color_tokens(dp_script)
                 script_is_server = False
