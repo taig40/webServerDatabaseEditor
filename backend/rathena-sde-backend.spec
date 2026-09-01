@@ -57,6 +57,9 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+version_info_path = os.path.join(SPECPATH, 'file_version_info.txt')
+icon_path = os.path.join(SPECPATH, '..', 'frontend', 'src-tauri', 'icons', 'icon.ico')
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -68,7 +71,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=True,
@@ -77,4 +80,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    version=version_info_path if os.path.exists(version_info_path) else None,
+    icon=icon_path if os.path.exists(icon_path) else None,
 )
+

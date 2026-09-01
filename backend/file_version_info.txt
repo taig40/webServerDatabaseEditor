@@ -1,0 +1,35 @@
+# UTF-8
+#
+# Version configuration for Windows PE Header (PyInstaller)
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 0, 1, 0),
+    prodvers=(1, 0, 1, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo(
+      [
+        StringTable(
+          '040904B0',
+          [
+            StringStruct('CompanyName', 'Taig4o Company'),
+            StringStruct('FileDescription', 'rAthena Web Editor Standalone Backend Service'),
+            StringStruct('FileVersion', '1.0.1.0'),
+            StringStruct('InternalName', 'rathena-sde-backend'),
+            StringStruct('LegalCopyright', 'Copyright (C) 2025 rAthena Web Editor Contributors'),
+            StringStruct('OriginalFilename', 'rathena-sde-backend.exe'),
+            StringStruct('ProductName', 'rAthena Web Editor'),
+            StringStruct('ProductVersion', '1.0.1.0')
+          ]
+        )
+      ]
+    ),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])])
+  ]
+)

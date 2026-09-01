@@ -39,6 +39,8 @@ backend/test_cache.pkl
 backend/scratch_output.txt
 backend/*.txt
 !backend/requirements.txt
+!backend/file_version_info.txt
+
 
 # Environment variables
 .env
